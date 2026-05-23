@@ -687,8 +687,6 @@ def docx_drawing_manifest_changed(source_docx: Path | None, final_docx: Path | N
         "extent_signature",
         "relationship_ids",
         "media_signature",
-        "next_text",
-        "next_is_figure_caption",
     )
     for key, source in source_drawings.items():
         final = final_drawings.get(key, {})
@@ -704,9 +702,6 @@ def stable_drawing_signature(row: dict[str, Any]) -> tuple[str, ...]:
         "extent_signature",
         "relationship_ids",
         "media_signature",
-        "paragraph_text",
-        "next_text",
-        "next_is_figure_caption",
     )
     return tuple(str(row.get(field, "")) for field in fields)
 

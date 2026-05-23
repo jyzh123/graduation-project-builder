@@ -306,7 +306,7 @@ def heading_level(text: str) -> int | None:
         return None
     sep = r"[\s\u25a1]+"
     normalized_numbering = re.sub(r"(?<=\d)[\s\u25a1]*[\.．][\s\u25a1]*(?=\d)", ".", stripped)
-    if re.match(r"^\u7b2c\s*\d+\s*\u7ae0(?:\s+\S.*)?$", stripped):
+    if re.match(r"^\u7b2c\s*[0-9\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341]+\s*\u7ae0(?:\s*\S.*)?$", stripped):
         return 1
     if re.match(r"^\d{1,2}\.\d{1,2}$", normalized_numbering):
         return 2
@@ -381,6 +381,14 @@ def is_reference_heading(text: str) -> bool:
 def is_ack_heading(text: str) -> bool:
     normalized = compact_text(text).lower()
     return normalized in {compact_text("\u81f4\u8c22").lower(), compact_text("\u8c22\u8f9e").lower(), "acknowledgements", "acknowledgments"}
+
+
+def is_zh_abstract_title(text: str) -> bool:
+    return compact_text(text).lower() in {compact_text("\u6458\u8981").lower(), compact_text("\u6458  \u8981").lower()}
+
+
+def is_en_abstract_title(text: str) -> bool:
+    return compact_text(text).lower() in {"abstract"}
 
 
 def paragraph_style_id(paragraph: ET.Element) -> str:
@@ -774,11 +782,125 @@ def replay_toc(
     return changed
 
 
+def int_or_none(value: str | None) -> int | None:
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
+
+
+def paragraph_indent_score(paragraph: ET.Element) -> int:
+    ppr = paragraph_ppr(paragraph)
+    ind = ppr.find("./w:ind", NS) if ppr is not None else None
+    if ind is None:
+        return 0
+    score = 0
+    first_line = int_or_none(ind.get(qn("firstLine")))
+    left = int_or_none(ind.get(qn("left")))
+    right = int_or_none(ind.get(qn("right")))
+    if first_line is not None and first_line > 0:
+        score += 4
+    if left is None or abs(left) < 1000:
+        score += 2
+    if right is None or abs(right) < 1000:
+        score += 2
+    if paragraph_style_id(paragraph) != "1":
+        score += 1
+    return score
+
+
+def find_abstract_range(
+    paragraphs: list[ET.Element],
+    title_predicate,
+    keyword_predicate,
+    label: str,
+) -> tuple[int, int]:
+    title_index, _title = find_first(
+        paragraphs,
+        lambda _i, p: title_predicate(paragraph_text(p).strip()) and not looks_like_toc_entry(paragraph_text(p).strip()),
+        f"{label} title",
+    )
+    keyword_index, _keyword = find_first(
+        paragraphs,
+        lambda i, p: i > title_index
+        and keyword_predicate(paragraph_text(p).strip())
+        and not looks_like_toc_entry(paragraph_text(p).strip()),
+        f"{label} keyword",
+    )
+    return title_index, keyword_index
+
+
+def abstract_body_donor(
+    paragraphs: list[ET.Element],
+    title_index: int,
+    keyword_index: int,
+    title_predicate,
+) -> ET.Element:
+    candidates: list[ET.Element] = []
+    for paragraph in paragraphs[title_index + 1 : keyword_index]:
+        text = paragraph_text(paragraph).strip()
+        if not text or title_predicate(text):
+            continue
+        candidates.append(paragraph)
+    if not candidates:
+        raise RuntimeError("abstract body donor not found")
+    return sorted(candidates, key=paragraph_indent_score, reverse=True)[0]
+
+
+def replay_abstracts(template_paragraphs: list[ET.Element], final_paragraphs: list[ET.Element]) -> list[dict[str, object]]:
+    changes: list[dict[str, object]] = []
+    surface_specs = [
+        ("zh_abstract", is_zh_abstract_title, is_zh_keyword_text),
+        ("en_abstract", is_en_abstract_title, is_en_keyword_text),
+    ]
+    for surface, title_predicate, keyword_predicate in surface_specs:
+        template_title_index, template_keyword_index = find_abstract_range(
+            template_paragraphs,
+            title_predicate,
+            keyword_predicate,
+            f"template {surface}",
+        )
+        final_title_index, final_keyword_index = find_abstract_range(
+            final_paragraphs,
+            title_predicate,
+            keyword_predicate,
+            f"target {surface}",
+        )
+        donor_body = abstract_body_donor(
+            template_paragraphs,
+            template_title_index,
+            template_keyword_index,
+            title_predicate,
+        )
+        donor_keyword = template_paragraphs[template_keyword_index]
+        for index in range(final_title_index + 1, final_keyword_index):
+            paragraph = final_paragraphs[index]
+            text = paragraph_text(paragraph).strip()
+            if not text or title_predicate(text):
+                continue
+            replace_ppr(paragraph, paragraph_ppr(donor_body))
+            set_paragraph_style(paragraph, paragraph_style_id(donor_body))
+            replace_text_run_rprs(paragraph, first_text_rpr(donor_body))
+            changes.append({"paragraph_index": index, "surface": f"{surface}_body", "text": text[:80]})
+        final_keyword = final_paragraphs[final_keyword_index]
+        replace_ppr(final_keyword, paragraph_ppr(donor_keyword))
+        set_paragraph_style(final_keyword, paragraph_style_id(donor_keyword))
+        replace_text_run_rprs(final_keyword, first_text_rpr(donor_keyword))
+        changes.append({"paragraph_index": final_keyword_index, "surface": f"{surface}_keyword"})
+    return changes
+
+
 def replay_acknowledgement(template_paragraphs: list[ET.Element], final_paragraphs: list[ET.Element]) -> list[dict[str, object]]:
     _donor_heading_index, donor_heading = find_first(template_paragraphs, lambda _i, p: is_ack_heading(paragraph_text(p).strip()), "template acknowledgement heading")
     donor_body_index, donor_body = find_first(
         template_paragraphs,
-        lambda i, p: i > _donor_heading_index and bool(paragraph_text(p).strip()) and paragraph_ppr(p) is not None and paragraph_ppr(p).find("./w:ind", NS) is not None,
+        lambda i, p: i > _donor_heading_index
+        and bool(paragraph_text(p).strip())
+        and not is_ack_heading(paragraph_text(p).strip())
+        and paragraph_ppr(p) is not None
+        and paragraph_ppr(p).find("./w:ind", NS) is not None,
         "template acknowledgement body",
     )
     del donor_body_index
@@ -848,8 +970,12 @@ def replay_footer_indent(
     changed: list[dict[str, object]] = []
     template_names = {name for name in template_zip.namelist() if name.startswith("word/footer") and name.endswith(".xml")}
     final_names = {name for name in final_parts if name.startswith("word/footer") and name.endswith(".xml")}
-    for name in sorted(final_names & template_names):
-        template_root = ET.fromstring(template_zip.read(name))
+    donor_footer_name = sorted(template_names)[-1] if template_names else ""
+    for name in sorted(final_names):
+        template_name = name if name in template_names else donor_footer_name
+        if not template_name:
+            continue
+        template_root = ET.fromstring(template_zip.read(template_name))
         final_root = ET.fromstring(final_parts[name])
         template_paragraphs = template_root.findall(".//w:p", NS)
         final_paragraphs = final_root.findall(".//w:p", NS)
@@ -857,11 +983,20 @@ def replay_footer_indent(
         touched = 0
         for idx, paragraph in enumerate(final_paragraphs):
             donor_ppr = paragraph_ppr(template_paragraphs[idx]) if idx < len(template_paragraphs) else None
-            if donor_ppr is None:
-                continue
-            replace_ppr(paragraph, remap_ppr_style_id(donor_ppr, source_style_names, target_style_ids))
+            if donor_ppr is not None:
+                replace_ppr(paragraph, remap_ppr_style_id(donor_ppr, source_style_names, target_style_ids))
             donor_rpr = page_result_rpr if page_result_rpr is not None else (first_text_rpr(template_paragraphs[idx]) if idx < len(template_paragraphs) else None)
             replace_text_run_rprs(paragraph, donor_rpr)
+            for run in paragraph.findall(".//w:r", NS):
+                if not visible_run_text(run).strip() and run.find(".//w:fldChar", NS) is None:
+                    continue
+                rpr = ensure_rpr(run)
+                for tag in ("sz", "szCs"):
+                    node = rpr.find(f"./w:{tag}", NS)
+                    if node is None:
+                        node = ET.Element(qn(tag))
+                        rpr.append(node)
+                    node.set(qn("val"), "18")
             touched += 1
         if touched:
             final_parts[name] = ET.tostring(final_root, encoding="utf-8", xml_declaration=True)
@@ -870,14 +1005,17 @@ def replay_footer_indent(
 
 
 def footer_page_result_rpr(template_paragraphs: list[ET.Element]) -> ET.Element | None:
-    """Use the real footer PAGE-result run, not the template field-cache run.
-
-    Some school templates contain an extra cached field paragraph whose first
-    run carries direct `w:sz=18`; Word ignores it visually, but the acceptance
-    gate correctly treats copying it into active footer PAGE results as drift.
-    Prefer the visible PAGE-result run that keeps the template font slots and
-    inherits size from the paragraph/style layer.
-    """
+    """Use the footer run whose visible PAGE result matches the template size."""
+    for paragraph in template_paragraphs:
+        for run in paragraph.findall("./w:r", NS):
+            if not visible_run_text(run).strip():
+                continue
+            rpr = run.find("./w:rPr", NS)
+            if rpr is None:
+                continue
+            size = rpr.find("./w:sz", NS)
+            if size is not None and size.get(qn("val")) == "18":
+                return deepcopy(rpr)
     for paragraph in template_paragraphs:
         for run in paragraph.findall("./w:r", NS):
             if not visible_run_text(run).strip():
@@ -1401,6 +1539,7 @@ def changed_zip_parts(before: Path, after: Path) -> list[str]:
 
 
 SURFACE_CHOICES = {
+    "abstracts",
     "cover",
     "toc",
     "headings",
@@ -1450,6 +1589,7 @@ def repair(input_docx: Path, template_docx: Path, output_docx: Path, *, surfaces
             "requested_surfaces": sorted(surfaces),
             "styles_xml_merged_from_template_by_name": "styles" in surfaces,
             "style_definition_changes": style_definition_changes,
+            "abstracts": replay_abstracts(template_paragraphs, final_paragraphs) if "abstracts" in surfaces else [],
             "cover": replay_cover(template_paragraphs, final_paragraphs, template_style_names, final_style_ids) if "cover" in surfaces else [],
             "cover_table": replay_cover_table(template_document, final_document) if "cover" in surfaces else [],
             "toc_entries": replay_toc(template_paragraphs, final_paragraphs, template_style_names, final_style_ids) if "toc" in surfaces else [],
@@ -1501,7 +1641,7 @@ def main() -> int:
         "--surfaces",
         required=True,
         help=(
-            "Comma-separated explicit scope: cover,toc,headings,acknowledgement,references,header,footer,"
+            "Comma-separated explicit scope: abstracts,cover,toc,headings,acknowledgement,references,header,footer,"
             "frontmatter-section-headers,image-holder,table-cells,styles. "
             "Including styles replaces word/styles.xml and must be justified by the caller."
         ),

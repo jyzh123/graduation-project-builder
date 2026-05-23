@@ -90,7 +90,32 @@ Default semantic usage:
 Usage rule:
 - If a TOC sample exists, treat it as a strong visual target during final thesis formatting review.
 
-## 5. Missing Sample Categories
+## 5. Mechanical CAD Style
+
+Directory:
+- `references/visual-style-samples/mechanical-cad`
+
+Current sample files:
+- `default-mechanical-cad-baseline-sgb62080t.md`
+- `sgb62080t-sheet-11-default-baseline.png`
+- `sgb62080t-sheet-13-default-baseline.png`
+- `sgb62080t-sheet-16-default-baseline.png`
+- `sgb62080t-default-baseline-audit-v5.json`
+
+Default semantic usage:
+- fallback benchmark for graduation-level mechanical CAD drawing packages
+- visual comparison target for installation/drive integration sheets
+- visual comparison target for assembly dimension-chain sheets
+- visual comparison target for installation/maintenance/trial-run sheets
+- copied audit baseline for density, rendered-review, and package-workload expectations
+
+Usage rule:
+- When the current run has no stronger user-provided mechanical CAD package sample, this directory is the mandatory default mechanical CAD baseline.
+- Use the stored PNG sheets together with the copied v5 audit JSON and the baseline note; do not compare only border/title-block style.
+- A stronger current-run user sample overrides this fallback baseline.
+- This baseline controls both complexity and cleanliness expectations, including no-overlap, annotation margin clearance, local crowding, and manufacturing-view depth.
+
+## 6. Missing Sample Categories
 
 The following categories are conceptually supported by the visual-style-samples system but do not currently contain confirmed real sample image files in this skill snapshot:
 
@@ -100,7 +125,7 @@ The following categories are conceptually supported by the visual-style-samples 
 
 If future tasks depend heavily on those surfaces, add real sample images before treating them as style-controlled defaults.
 
-## 6. Maintenance Rule
+## 7. Maintenance Rule
 
 When new sample images are added:
 

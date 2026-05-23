@@ -108,7 +108,7 @@ def ensure_ordered(parent: ET._Element, tag: str, order: list[str]) -> ET._Eleme
     return node
 
 
-def border(tag: str, val: str, sz: str, color: str = "auto") -> ET._Element:
+def border(tag: str, val: str, sz: str, color: str = "000000") -> ET._Element:
     return ET.Element(
         tag,
         {
@@ -434,12 +434,51 @@ def ensure_rfonts(rpr: ET._Element) -> ET._Element:
     return rfonts
 
 
+SONG = "\u5b8b\u4f53"
+TIMES_NR = "TimesNewRoman"
+
+
+TABLE_CAPTION_PARAGRAPH_BASELINE = {
+    "align": "center",
+    "before": "",
+    "after": "3",
+    "line": "265",
+    "lineRule": "auto",
+    "left": "10",
+    "right": "122",
+    "hanging": "10",
+    "firstLine": "",
+    "firstLineChars": "",
+    "leftChars": "",
+    "rightChars": "",
+    "hangingChars": "",
+}
+
+TABLE_HEADER_CELL_PARAGRAPH_BASELINE = {
+    "align": "center",
+    "before": "",
+    "after": "0",
+    "line": "",
+    "lineRule": "",
+    "left": "",
+    "right": "",
+    "hanging": "",
+    "firstLine": "",
+    "firstLineChars": "",
+    "leftChars": "",
+    "rightChars": "",
+    "hangingChars": "",
+}
+
+TABLE_BODY_CELL_PARAGRAPH_BASELINE = dict(TABLE_HEADER_CELL_PARAGRAPH_BASELINE)
+
+
 def normalize_table_body_numeric_cells(
     tbl: ET._Element,
     *,
-    east_asia: str = "华文仿宋",
-    ascii_font: str = "Times New Roman",
-    hansi_font: str = "Times New Roman",
+    east_asia: str = SONG,
+    ascii_font: str = SONG,
+    hansi_font: str = SONG,
     size_half_points: str = "21",
 ) -> dict[str, object]:
     changed_cells: list[dict[str, object]] = []
@@ -502,37 +541,70 @@ def remove_child(parent: ET._Element, tag: str) -> None:
         parent.remove(current)
 
 
-def set_paragraph_cell_metrics(paragraph: ET._Element, *, align: str) -> None:
+def set_or_clear_attr(node: ET._Element, key: str, value: str | None) -> None:
+    attr = w_attr(key)
+    if value in {None, ""}:
+        node.attrib.pop(attr, None)
+    else:
+        node.set(attr, str(value))
+
+
+def set_paragraph_direct_metrics(paragraph: ET._Element, baseline: dict[str, str]) -> None:
     ppr = ensure_ppr(paragraph)
+    for tag in (W + "tabs", W + "outlineLvl", W + "numPr"):
+        node = ppr.find(tag)
+        if node is not None:
+            ppr.remove(node)
+
+    ind_keys = ("left", "right", "hanging", "firstLine", "firstLineChars", "leftChars", "rightChars", "hangingChars")
+    ind_values = {key: baseline.get(key, "") for key in ind_keys}
     ind = ppr.find(W + "ind")
-    if ind is None:
-        ind = ET.Element(W + "ind")
-        ppr.append(ind)
-    for key in ("left", "right", "firstLine", "firstLineChars"):
-        ind.set(w_attr(key), "0")
-    ind.attrib.pop(w_attr("hanging"), None)
+    if any(value not in {"", None} for value in ind_values.values()):
+        if ind is None:
+            ind = ET.Element(W + "ind")
+            ppr.append(ind)
+        for key, value in ind_values.items():
+            set_or_clear_attr(ind, key, value)
+    elif ind is not None:
+        ppr.remove(ind)
+
+    spacing_keys = ("before", "after", "line", "lineRule")
+    spacing_values = {key: baseline.get(key, "") for key in spacing_keys}
     spacing = ppr.find(W + "spacing")
-    if spacing is None:
-        spacing = ET.Element(W + "spacing")
-        ppr.append(spacing)
-    spacing.set(w_attr("before"), "0")
-    spacing.set(w_attr("after"), "0")
-    spacing.set(w_attr("line"), "360")
-    spacing.set(w_attr("lineRule"), "auto")
+    if any(value not in {"", None} for value in spacing_values.values()):
+        if spacing is None:
+            spacing = ET.Element(W + "spacing")
+            ppr.append(spacing)
+        for key, value in spacing_values.items():
+            set_or_clear_attr(spacing, key, value)
+    elif spacing is not None:
+        ppr.remove(spacing)
+
     jc = ppr.find(W + "jc")
-    if jc is None:
-        jc = ET.Element(W + "jc")
-        ppr.append(jc)
-    jc.set(w_attr("val"), align)
+    align = baseline.get("align", "")
+    if align:
+        if jc is None:
+            jc = ET.Element(W + "jc")
+            ppr.append(jc)
+        jc.set(w_attr("val"), align)
+    elif jc is not None:
+        ppr.remove(jc)
+
+
+def set_paragraph_cell_metrics(paragraph: ET._Element, *, header: bool = False) -> None:
+    set_paragraph_direct_metrics(
+        paragraph,
+        TABLE_HEADER_CELL_PARAGRAPH_BASELINE if header else TABLE_BODY_CELL_PARAGRAPH_BASELINE,
+    )
 
 
 def set_run_font_metrics(
     run: ET._Element,
     *,
-    east_asia: str = "宋体",
-    ascii_font: str = "Times New Roman",
-    hansi_font: str = "Times New Roman",
-    cs_font: str = "Times New Roman",
+    east_asia: str = SONG,
+    ascii_font: str = SONG,
+    hansi_font: str = SONG,
+    cs_font: str = SONG,
     size_half_points: str = "21",
     bold: bool | None = None,
 ) -> None:
@@ -564,6 +636,100 @@ def set_run_font_metrics(
                 rpr.remove(node)
 
 
+def visible_run_text(run: ET._Element) -> str:
+    return "".join(node.text or "" for node in run.findall(".//" + W + "t"))
+
+
+def text_has_cjk(text: str) -> bool:
+    return any("\u4e00" <= ch <= "\u9fff" for ch in text)
+
+
+def text_has_latin_or_digit(text: str) -> bool:
+    return any(("A" <= ch <= "Z") or ("a" <= ch <= "z") or ch.isdigit() for ch in text)
+
+
+def split_script_chunks(text: str) -> list[tuple[str, str]]:
+    chunks: list[tuple[str, str]] = []
+    current_kind = ""
+    current = ""
+    for ch in text:
+        if "\u4e00" <= ch <= "\u9fff":
+            kind = "cjk"
+        elif ("A" <= ch <= "Z") or ("a" <= ch <= "z") or ch.isdigit():
+            kind = "latin"
+        else:
+            kind = current_kind or "neutral"
+        if current and kind != current_kind and kind != "neutral":
+            chunks.append((current_kind or "neutral", current))
+            current = ch
+            current_kind = kind
+        else:
+            current += ch
+            if kind != "neutral":
+                current_kind = kind
+    if current:
+        chunks.append((current_kind or "neutral", current))
+    return chunks
+
+
+def replace_run_text(run: ET._Element, text: str) -> None:
+    text_nodes = run.findall(".//" + W + "t")
+    if not text_nodes:
+        t = ET.Element(W + "t")
+        run.append(t)
+        text_nodes = [t]
+    text_nodes[0].text = text
+    if text.startswith(" ") or text.endswith(" "):
+        text_nodes[0].set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+    for node in text_nodes[1:]:
+        node.text = ""
+
+
+def set_caption_run_metrics(run: ET._Element, kind: str) -> None:
+    if kind == "latin":
+        set_run_font_metrics(
+            run,
+            east_asia=TIMES_NR,
+            ascii_font=TIMES_NR,
+            hansi_font=TIMES_NR,
+            cs_font=TIMES_NR,
+            size_half_points="21",
+            bold=False,
+        )
+    else:
+        set_run_font_metrics(
+            run,
+            east_asia=SONG,
+            ascii_font=SONG,
+            hansi_font=SONG,
+            cs_font=SONG,
+            size_half_points="21",
+            bold=False,
+        )
+
+
+def normalize_caption_runs(paragraph: ET._Element) -> None:
+    for run in list(children(paragraph, W + "r")):
+        text = visible_run_text(run)
+        if not text.strip():
+            continue
+        chunks = split_script_chunks(text)
+        if len(chunks) <= 1:
+            kind = "latin" if text_has_latin_or_digit(text) and not text_has_cjk(text) else "cjk"
+            set_caption_run_metrics(run, kind)
+            continue
+        parent = run.getparent()
+        if parent is None:
+            continue
+        insert_at = parent.index(run)
+        parent.remove(run)
+        for offset, (kind, chunk_text) in enumerate(chunks):
+            new_run = deepcopy(run)
+            replace_run_text(new_run, chunk_text)
+            set_caption_run_metrics(new_run, "latin" if kind == "latin" else "cjk")
+            parent.insert(insert_at + offset, new_run)
+
+
 def normalize_body_table_structure(tbl: ET._Element) -> dict[str, object]:
     rows = children(tbl, W + "tr")
     border_result = normalize_three_line_table_borders(tbl)
@@ -583,20 +749,22 @@ def normalize_body_table_structure(tbl: ET._Element) -> dict[str, object]:
             tc_borders = ensure_ordered(tcpr, W + "tcBorders", TC_PR_ORDER)
             tc_borders.clear()
             if row_index == 0:
-                tc_borders.extend([border(W + "top", "single", "12"), border(W + "bottom", "single", "6")])
+                tc_borders.extend([border(W + "top", "single", "12"), border(W + "bottom", "single", "4")])
             elif row_index == len(rows) - 1:
-                tc_borders.extend([border(W + "top", "none", "0"), border(W + "bottom", "single", "12")])
+                tc_borders.extend([border(W + "top", "single", "4"), border(W + "bottom", "single", "12")])
             else:
-                tc_borders.extend([border(W + "top", "none", "0"), border(W + "bottom", "none", "0")])
+                tc_borders.extend([border(W + "top", "single", "4"), border(W + "bottom", "single", "4")])
             tc_borders.extend([border(W + "left", "none", "0"), border(W + "right", "none", "0")])
             for paragraph in children(cell, W + "p"):
-                cell_text = text_of(paragraph).strip()
-                align = "center" if row_index == 0 or re.fullmatch(r"\d+(?:\.\d+)?", cell_text) else "left"
-                set_paragraph_cell_metrics(paragraph, align=align)
+                set_paragraph_cell_metrics(paragraph, header=(row_index == 0))
                 for run in children(paragraph, W + "r"):
                     if not text_of(run).strip():
                         continue
-                    set_run_font_metrics(run, bold=(row_index == 0))
+                    set_run_font_metrics(
+                        run,
+                        size_half_points="21",
+                        bold=False,
+                    )
                     body_text_cells += 1
     return {
         **border_result,
@@ -618,6 +786,15 @@ def ensure_table_title_keep_next(title_p: ET._Element | None) -> bool:
     return False
 
 
+def normalize_table_title(title_p: ET._Element | None) -> bool:
+    if title_p is None:
+        return False
+    changed_keep_next = ensure_table_title_keep_next(title_p)
+    set_paragraph_direct_metrics(title_p, TABLE_CAPTION_PARAGRAPH_BASELINE)
+    normalize_caption_runs(title_p)
+    return changed_keep_next
+
+
 def patch_all_body_tables(docx_path: Path, output_path: Path | None = None) -> dict[str, object]:
     out_path = output_path or docx_path
     if output_path:
@@ -628,7 +805,7 @@ def patch_all_body_tables(docx_path: Path, output_path: Path | None = None) -> d
     title_keep_next_updates: list[int] = []
     for table_index, context in enumerate(body_tables, 1):
         tbl = context["tbl"]
-        if ensure_table_title_keep_next(context.get("title_p")):  # type: ignore[arg-type]
+        if normalize_table_title(context.get("title_p")):  # type: ignore[arg-type]
             title_keep_next_updates.append(table_index)
         result = normalize_body_table_structure(tbl)  # type: ignore[arg-type]
         table_reports.append({"table_index": table_index, **result})
@@ -650,18 +827,11 @@ def normalize_three_line_table_borders(tbl: ET._Element) -> dict[str, object]:
     if tbl_style is not None:
         tbl_pr.remove(tbl_style)
         removed_style = True
+    tbl_layout = tbl_pr.find(W + "tblLayout")
+    if tbl_layout is not None:
+        tbl_pr.remove(tbl_layout)
     tbl_borders = ensure_ordered(tbl_pr, W + "tblBorders", TBL_PR_ORDER)
-    tbl_borders.clear()
-    tbl_borders.extend(
-        [
-            border(W + "top", "single", "12"),
-            border(W + "left", "none", "0"),
-            border(W + "bottom", "single", "12"),
-            border(W + "right", "none", "0"),
-            border(W + "insideH", "none", "0"),
-            border(W + "insideV", "none", "0"),
-        ]
-    )
+    tbl_pr.remove(tbl_borders)
     header_cell_count = 0
     rows = children(tbl, W + "tr")
     if rows:
@@ -674,7 +844,7 @@ def normalize_three_line_table_borders(tbl: ET._Element) -> dict[str, object]:
             tc_borders.extend(
                 [
                     border(W + "top", "single", "12"),
-                    border(W + "bottom", "single", "6"),
+                    border(W + "bottom", "single", "4"),
                 ]
             )
     return {"removed_table_style": removed_style, "header_cell_border_count": header_cell_count}
@@ -878,6 +1048,100 @@ def parse_donor_map(value: str | None) -> dict[int, int]:
         left, right = pair.split(":", 1)
         result[int(left)] = int(right)
     return result
+
+
+def body_table_texts(contexts: list[dict[str, object]]) -> list[dict[str, object]]:
+    result: list[dict[str, object]] = []
+    for index, context in enumerate(contexts, 1):
+        tbl = context["tbl"]  # type: ignore[assignment]
+        rows = []
+        for row in children(tbl, W + "tr"):  # type: ignore[arg-type]
+            rows.append([text_of(cell).strip() for cell in children(row, W + "tc")])
+        result.append(
+            {
+                "table_index": index,
+                "title": text_of(context["title_p"]).strip() if context.get("title_p") is not None else "",
+                "header": list(table_header(tbl)),  # type: ignore[arg-type]
+                "rows": rows,
+            }
+        )
+    return result
+
+
+def copy_body_table_from_source(
+    docx_path: Path,
+    source_docx_path: Path,
+    output_path: Path,
+    table_index: int,
+) -> dict[str, object]:
+    """Replace one body table with the same-index body table from a locked source.
+
+    This intentionally copies only the selected w:tbl node in word/document.xml.
+    It is used when a later format pass corrupts table content while the locked
+    source/review copy still owns the correct semantic table rows.
+    """
+
+    if table_index < 1:
+        raise ValueError("--table-index must be >= 1")
+    shutil.copy2(docx_path, output_path)
+    target_members, target_root = load_docx_xml(output_path)
+    source_members, source_root = load_docx_xml(source_docx_path)
+    target_contexts = find_table_contexts(target_root, body_only=True)
+    source_contexts = find_table_contexts(source_root, body_only=True)
+    if len(target_contexts) < table_index:
+        raise ValueError(f"Target body table index {table_index} not found")
+    if len(source_contexts) < table_index:
+        raise ValueError(f"Source body table index {table_index} not found")
+
+    target_context = target_contexts[table_index - 1]
+    source_context = source_contexts[table_index - 1]
+    target_tbl = target_context["tbl"]  # type: ignore[assignment]
+    source_tbl = source_context["tbl"]  # type: ignore[assignment]
+    target_parent = target_tbl.getparent()
+    if target_parent is None:
+        raise ValueError("Target table has no parent")
+    target_position = target_parent.index(target_tbl)
+
+    before_target = body_table_texts(target_contexts)
+    before_source = body_table_texts(source_contexts)
+    target_parent.remove(target_tbl)
+    target_parent.insert(target_position, deepcopy(source_tbl))
+    after_contexts = find_table_contexts(target_root, body_only=True)
+    after_target = body_table_texts(after_contexts)
+
+    style_ids = collect_style_ids(source_tbl)
+    copied_styles, style_id_map, style_collisions = copy_missing_styles(target_members, source_members, style_ids)
+    if style_id_map:
+        copied_tbl = after_contexts[table_index - 1]["tbl"]  # type: ignore[index]
+        for elem in copied_tbl.iter():  # type: ignore[union-attr]
+            if elem.tag in {W + "pStyle", W + "rStyle", W + "tblStyle"}:
+                style_id = elem.get(w_attr("val"))
+                mapped = style_id_map.get(style_id or "")
+                if mapped:
+                    elem.set(w_attr("val"), mapped)
+
+    write_docx_xml(output_path, target_members, target_root)
+    return {
+        "source_docx": str(source_docx_path),
+        "target_docx": str(docx_path),
+        "output_docx": str(output_path),
+        "body_table_index": table_index,
+        "replacement_node_index": target_context.get("node_index"),
+        "source_title": before_source[table_index - 1]["title"],
+        "target_title_before": before_target[table_index - 1]["title"],
+        "target_title_after": after_target[table_index - 1]["title"],
+        "source_header": before_source[table_index - 1]["header"],
+        "target_header_before": before_target[table_index - 1]["header"],
+        "target_header_after": after_target[table_index - 1]["header"],
+        "source_rows": before_source[table_index - 1]["rows"],
+        "target_rows_before": before_target[table_index - 1]["rows"],
+        "target_rows_after": after_target[table_index - 1]["rows"],
+        "body_table_count_before": len(target_contexts),
+        "body_table_count_after": len(after_contexts),
+        "copied_style_ids": copied_styles,
+        "style_id_map": style_id_map,
+        "style_collisions": style_collisions,
+    }
 
 
 def apply_template_table_styles(
@@ -1125,7 +1389,27 @@ def main() -> int:
         action="store_true",
         help="Normalize every body table to the locked thesis three-line table family plus cell fonts, header repeat, and no row splitting.",
     )
+    parser.add_argument(
+        "--copy-body-table-from-source",
+        help="Copy the selected same-index body table from this locked source DOCX before later table normalization.",
+    )
     args = parser.parse_args()
+
+    if args.copy_body_table_from_source:
+        if not args.output:
+            raise SystemExit("--output is required with --copy-body-table-from-source")
+        audit = copy_body_table_from_source(
+            docx_path=Path(args.docx),
+            source_docx_path=Path(args.copy_body_table_from_source),
+            output_path=Path(args.output),
+            table_index=args.table_index,
+        )
+        if args.audit_json:
+            Path(args.audit_json).parent.mkdir(parents=True, exist_ok=True)
+            Path(args.audit_json).write_text(json.dumps(audit, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(f"patched_docx={args.output}")
+        print(f"copied_body_table_index={args.table_index}")
+        return 0
 
     if args.normalize_all_body_tables:
         output_path = Path(args.output) if args.output else Path(args.docx)

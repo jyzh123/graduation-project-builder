@@ -215,6 +215,7 @@ Use this file for table-format, abstract-format, citation-format, and reference-
 ### FMT-REF-001. References Title And Entries Must Bind To The Formal Tail Block
 
 - The `references_title` detector must bind to the formal end-matter title paragraph only. A TOC row such as `参考文献38`, a body mention, or any paragraph whose compact text is not exactly the reference title cannot serve as the `references_title` surface.
+- The formal `references_title` is also a pagination surface: it must start after the previous real content block on rendered output, and its evidence must not pass unless the previous-content page and reference-title page are both recorded with a passing prior-block separation verdict.
 - The `references_entries` detector must start after the formal `references_title` paragraph and must bind only to bibliography-entry paragraphs such as `[1] ...` or the template-approved bibliography numbering form.
 - If the measured `references_entries` paragraph is the reference title, a TOC row, an acknowledgement/appendix title, a generic heading, or a non-entry paragraph, the evidence is failed as `title-as-entry` or wrong-target binding.
 - Reference evidence must record the DOCX paragraph/run path or paragraph index for the formal title and first real entry. Page presence, entry count, or tail-page order cannot prove reference formatting by itself.

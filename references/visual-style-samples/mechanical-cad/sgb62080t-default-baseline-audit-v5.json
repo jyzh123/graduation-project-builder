@@ -1,0 +1,2119 @@
+{
+  "schema": "graduation-project-builder.mechanical-drawing-package-audit.v4",
+  "package_path": "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_PDF-DWG-DXF.zip",
+  "package_sha256": "C4BB72B964F0849FF05DF5F66E22331A3CC9FCC6876B1E3727C12C5F5D2292A5",
+  "reference_paths": [
+    "D:\\weixin\\xwechat_files\\wxid_igafsmkwvzsa22_565b\\msg\\file\\2026-05\\下压图(1).zip",
+    "D:\\weixin\\xwechat_files\\wxid_igafsmkwvzsa22_565b\\msg\\file\\2026-05\\DP2793(350H-V)(4).zip"
+  ],
+  "passed": true,
+  "issues": [],
+  "warnings": [],
+  "candidate": {
+    "path": "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_PDF-DWG-DXF.zip",
+    "path_type": "zip",
+    "sha256": "C4BB72B964F0849FF05DF5F66E22331A3CC9FCC6876B1E3727C12C5F5D2292A5",
+    "file_count": 70,
+    "total_bytes": 24883981,
+    "extension_counts": {
+      ".dwg": 17,
+      ".dxf": 17,
+      ".json": 1,
+      ".pdf": 18,
+      ".png": 17
+    },
+    "dwg_count": 17,
+    "dwg_total_bytes": 2492702,
+    "dwg_header_failures": [],
+    "dxf_count": 17,
+    "dxf": {
+      "aggregate_entities": {
+        "ARC": 334,
+        "BLOCK": 17,
+        "CIRCLE": 1837,
+        "DIMENSION": 398,
+        "ENDBLK": 17,
+        "HATCH": 69743,
+        "INSERT": 39,
+        "LINE": 92878,
+        "POLYLINE": 1084,
+        "SEQEND": 1084,
+        "TEXT": 4465,
+        "VERTEX": 11516
+      },
+      "aggregate_structure_tokens": {
+        "BLOCKS": 17,
+        "DIMSTYLE": 34,
+        "LAYER": 187,
+        "LTYPE": 68,
+        "STYLE": 51,
+        "TABLES": 17
+      },
+      "per_file": [
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-00_A0_SGB620-80T刮板输送机总装配图.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 491595,
+          "acadver": "AC1009",
+          "codepage": "ANSI_936",
+          "section_count": 4,
+          "entities": {
+            "ARC": 40,
+            "BLOCK": 1,
+            "CIRCLE": 156,
+            "DIMENSION": 25,
+            "ENDBLK": 1,
+            "HATCH": 2587,
+            "INSERT": 6,
+            "LINE": 4647,
+            "POLYLINE": 130,
+            "SEQEND": 130,
+            "TEXT": 340,
+            "VERTEX": 788
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 2,
+            "LAYER": 11,
+            "LTYPE": 4,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-01_A1_机头传动部装配图.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 263085,
+          "acadver": "AC1009",
+          "codepage": "ANSI_936",
+          "section_count": 4,
+          "entities": {
+            "ARC": 14,
+            "BLOCK": 1,
+            "CIRCLE": 100,
+            "DIMENSION": 12,
+            "ENDBLK": 1,
+            "HATCH": 2009,
+            "LINE": 2582,
+            "POLYLINE": 40,
+            "SEQEND": 40,
+            "TEXT": 181,
+            "VERTEX": 248
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 2,
+            "LAYER": 11,
+            "LTYPE": 4,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-02_A1_中部槽装配图.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 447621,
+          "acadver": "AC1009",
+          "codepage": "ANSI_936",
+          "section_count": 4,
+          "entities": {
+            "BLOCK": 1,
+            "CIRCLE": 69,
+            "DIMENSION": 14,
+            "ENDBLK": 1,
+            "HATCH": 4345,
+            "LINE": 4893,
+            "POLYLINE": 34,
+            "SEQEND": 34,
+            "TEXT": 169,
+            "VERTEX": 136
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 2,
+            "LAYER": 11,
+            "LTYPE": 4,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-03_A1_机尾张紧装置装配图.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 418411,
+          "acadver": "AC1009",
+          "codepage": "ANSI_936",
+          "section_count": 4,
+          "entities": {
+            "ARC": 12,
+            "BLOCK": 1,
+            "CIRCLE": 45,
+            "DIMENSION": 11,
+            "ENDBLK": 1,
+            "HATCH": 4025,
+            "LINE": 4499,
+            "POLYLINE": 34,
+            "SEQEND": 34,
+            "TEXT": 174,
+            "VERTEX": 216
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 2,
+            "LAYER": 11,
+            "LTYPE": 4,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-04_A2_刮板零件图.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 344737,
+          "acadver": "AC1009",
+          "codepage": "ANSI_936",
+          "section_count": 4,
+          "entities": {
+            "BLOCK": 1,
+            "CIRCLE": 30,
+            "DIMENSION": 11,
+            "ENDBLK": 1,
+            "HATCH": 3541,
+            "LINE": 3815,
+            "POLYLINE": 13,
+            "SEQEND": 13,
+            "TEXT": 135,
+            "VERTEX": 53
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 2,
+            "LAYER": 11,
+            "LTYPE": 4,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-05_A2_链轮轴组件零件图.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 212372,
+          "acadver": "AC1009",
+          "codepage": "ANSI_936",
+          "section_count": 4,
+          "entities": {
+            "ARC": 14,
+            "BLOCK": 1,
+            "CIRCLE": 25,
+            "DIMENSION": 9,
+            "ENDBLK": 1,
+            "HATCH": 1771,
+            "LINE": 2153,
+            "POLYLINE": 29,
+            "SEQEND": 29,
+            "TEXT": 128,
+            "VERTEX": 210
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 2,
+            "LAYER": 11,
+            "LTYPE": 4,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-06_A2_圆环链与连接环零件图.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 292598,
+          "acadver": "AC1009",
+          "codepage": "ANSI_936",
+          "section_count": 4,
+          "entities": {
+            "BLOCK": 1,
+            "CIRCLE": 17,
+            "DIMENSION": 9,
+            "ENDBLK": 1,
+            "HATCH": 1771,
+            "LINE": 2721,
+            "POLYLINE": 24,
+            "SEQEND": 24,
+            "TEXT": 125,
+            "VERTEX": 786
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 2,
+            "LAYER": 11,
+            "LTYPE": 4,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-07_A2_机架支座焊接件零件图.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 215410,
+          "acadver": "AC1009",
+          "codepage": "ANSI_936",
+          "section_count": 4,
+          "entities": {
+            "BLOCK": 1,
+            "CIRCLE": 21,
+            "DIMENSION": 9,
+            "ENDBLK": 1,
+            "HATCH": 2013,
+            "LINE": 2298,
+            "POLYLINE": 15,
+            "SEQEND": 15,
+            "TEXT": 137,
+            "VERTEX": 60
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 2,
+            "LAYER": 11,
+            "LTYPE": 4,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-08_A0_关键零部件制造与装配详图.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 638405,
+          "acadver": "AC1009",
+          "codepage": "ANSI_936",
+          "section_count": 4,
+          "entities": {
+            "BLOCK": 1,
+            "CIRCLE": 117,
+            "DIMENSION": 37,
+            "ENDBLK": 1,
+            "HATCH": 3985,
+            "INSERT": 5,
+            "LINE": 6326,
+            "POLYLINE": 61,
+            "SEQEND": 61,
+            "TEXT": 368,
+            "VERTEX": 929
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 2,
+            "LAYER": 11,
+            "LTYPE": 4,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-09_A0_机头传动装置综合装配详图.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 543221,
+          "acadver": "AC1009",
+          "codepage": "ANSI_936",
+          "section_count": 4,
+          "entities": {
+            "ARC": 28,
+            "BLOCK": 1,
+            "CIRCLE": 144,
+            "DIMENSION": 33,
+            "ENDBLK": 1,
+            "HATCH": 3463,
+            "INSERT": 7,
+            "LINE": 5422,
+            "POLYLINE": 83,
+            "SEQEND": 83,
+            "TEXT": 379,
+            "VERTEX": 515
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 2,
+            "LAYER": 11,
+            "LTYPE": 4,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-10_A0_中部槽与刮板链制造检验详图.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 852651,
+          "acadver": "AC1009",
+          "codepage": "ANSI_936",
+          "section_count": 4,
+          "entities": {
+            "BLOCK": 1,
+            "CIRCLE": 187,
+            "DIMENSION": 68,
+            "ENDBLK": 1,
+            "HATCH": 5476,
+            "LINE": 8243,
+            "POLYLINE": 62,
+            "SEQEND": 62,
+            "TEXT": 421,
+            "VERTEX": 1628
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 2,
+            "LAYER": 11,
+            "LTYPE": 4,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-11_A0_整机安装与传动布置综合详图.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 209532,
+          "acadver": "AC1009",
+          "codepage": "ANSI_936",
+          "section_count": 4,
+          "entities": {
+            "ARC": 42,
+            "BLOCK": 1,
+            "CIRCLE": 130,
+            "DIMENSION": 17,
+            "ENDBLK": 1,
+            "HATCH": 1,
+            "INSERT": 7,
+            "LINE": 1427,
+            "POLYLINE": 92,
+            "SEQEND": 92,
+            "TEXT": 299,
+            "VERTEX": 645
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 2,
+            "LAYER": 11,
+            "LTYPE": 4,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-12_A0_焊接件明细与制造检验工艺图.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 449761,
+          "acadver": "AC1009",
+          "codepage": "ANSI_936",
+          "section_count": 4,
+          "entities": {
+            "BLOCK": 1,
+            "CIRCLE": 117,
+            "DIMENSION": 32,
+            "ENDBLK": 1,
+            "HATCH": 3397,
+            "LINE": 4539,
+            "POLYLINE": 44,
+            "SEQEND": 44,
+            "TEXT": 417,
+            "VERTEX": 176
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 2,
+            "LAYER": 11,
+            "LTYPE": 4,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-13_A0_机头机尾与中部槽装配尺寸链详图.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 498215,
+          "acadver": "AC1009",
+          "codepage": "ANSI_936",
+          "section_count": 4,
+          "entities": {
+            "ARC": 28,
+            "BLOCK": 1,
+            "CIRCLE": 165,
+            "DIMENSION": 26,
+            "ENDBLK": 1,
+            "HATCH": 3561,
+            "INSERT": 6,
+            "LINE": 4873,
+            "POLYLINE": 87,
+            "SEQEND": 87,
+            "TEXT": 279,
+            "VERTEX": 531
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 2,
+            "LAYER": 11,
+            "LTYPE": 4,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-14_A0_传动链轮轴承密封制造详图.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 276419,
+          "acadver": "AC1009",
+          "codepage": "ANSI_936",
+          "section_count": 4,
+          "entities": {
+            "ARC": 100,
+            "BLOCK": 1,
+            "CIRCLE": 130,
+            "DIMENSION": 27,
+            "ENDBLK": 1,
+            "HATCH": 1,
+            "LINE": 1725,
+            "POLYLINE": 133,
+            "SEQEND": 133,
+            "TEXT": 317,
+            "VERTEX": 1199
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 2,
+            "LAYER": 11,
+            "LTYPE": 4,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-15_A0_刮板链与中部槽制造检验总成详图.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 1861664,
+          "acadver": "AC1009",
+          "codepage": "ANSI_936",
+          "section_count": 4,
+          "entities": {
+            "ARC": 28,
+            "BLOCK": 1,
+            "CIRCLE": 177,
+            "DIMENSION": 33,
+            "ENDBLK": 1,
+            "HATCH": 15619,
+            "INSERT": 8,
+            "LINE": 19303,
+            "POLYLINE": 112,
+            "SEQEND": 112,
+            "TEXT": 293,
+            "VERTEX": 2844
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 2,
+            "LAYER": 11,
+            "LTYPE": 4,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-16_A0_安装基础润滑维护与试运转检验图.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 1230299,
+          "acadver": "AC1009",
+          "codepage": "ANSI_936",
+          "section_count": 4,
+          "entities": {
+            "ARC": 28,
+            "BLOCK": 1,
+            "CIRCLE": 207,
+            "DIMENSION": 25,
+            "ENDBLK": 1,
+            "HATCH": 12178,
+            "LINE": 13412,
+            "POLYLINE": 91,
+            "SEQEND": 91,
+            "TEXT": 303,
+            "VERTEX": 552
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 2,
+            "LAYER": 11,
+            "LTYPE": 4,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        }
+      ],
+      "mojibake_hits": []
+    },
+    "pdf": {
+      "count": 18,
+      "total_bytes": 4114059,
+      "header_failures": [],
+      "fitz_available": true,
+      "estimated_a0_equivalent_workload": 12.5,
+      "per_file": [
+        {
+          "file": "SGB620-80T刮板输送机图纸包/SGB620-80T刮板输送机图纸包_合并版.pdf",
+          "size": 2048667,
+          "page_count": 17,
+          "a0_equivalent": 12.5,
+          "drawing_objects": 94698,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 1189.0,
+              "height_mm": 841.0,
+              "sheet_class": "A0",
+              "a0_equivalent": 1.0
+            },
+            {
+              "index": 2,
+              "width_mm": 841.0,
+              "height_mm": 594.0,
+              "sheet_class": "A1",
+              "a0_equivalent": 0.5
+            },
+            {
+              "index": 3,
+              "width_mm": 841.0,
+              "height_mm": 594.0,
+              "sheet_class": "A1",
+              "a0_equivalent": 0.5
+            },
+            {
+              "index": 4,
+              "width_mm": 841.0,
+              "height_mm": 594.0,
+              "sheet_class": "A1",
+              "a0_equivalent": 0.5
+            },
+            {
+              "index": 5,
+              "width_mm": 594.0,
+              "height_mm": 420.0,
+              "sheet_class": "A2",
+              "a0_equivalent": 0.25
+            },
+            {
+              "index": 6,
+              "width_mm": 594.0,
+              "height_mm": 420.0,
+              "sheet_class": "A2",
+              "a0_equivalent": 0.25
+            },
+            {
+              "index": 7,
+              "width_mm": 594.0,
+              "height_mm": 420.0,
+              "sheet_class": "A2",
+              "a0_equivalent": 0.25
+            },
+            {
+              "index": 8,
+              "width_mm": 594.0,
+              "height_mm": 420.0,
+              "sheet_class": "A2",
+              "a0_equivalent": 0.25
+            },
+            {
+              "index": 9,
+              "width_mm": 1189.0,
+              "height_mm": 841.0,
+              "sheet_class": "A0",
+              "a0_equivalent": 1.0
+            },
+            {
+              "index": 10,
+              "width_mm": 1189.0,
+              "height_mm": 841.0,
+              "sheet_class": "A0",
+              "a0_equivalent": 1.0
+            },
+            {
+              "index": 11,
+              "width_mm": 1189.0,
+              "height_mm": 841.0,
+              "sheet_class": "A0",
+              "a0_equivalent": 1.0
+            },
+            {
+              "index": 12,
+              "width_mm": 1189.0,
+              "height_mm": 841.0,
+              "sheet_class": "A0",
+              "a0_equivalent": 1.0
+            },
+            {
+              "index": 13,
+              "width_mm": 1189.0,
+              "height_mm": 841.0,
+              "sheet_class": "A0",
+              "a0_equivalent": 1.0
+            },
+            {
+              "index": 14,
+              "width_mm": 1189.0,
+              "height_mm": 841.0,
+              "sheet_class": "A0",
+              "a0_equivalent": 1.0
+            },
+            {
+              "index": 15,
+              "width_mm": 1189.0,
+              "height_mm": 841.0,
+              "sheet_class": "A0",
+              "a0_equivalent": 1.0
+            },
+            {
+              "index": 16,
+              "width_mm": 1189.0,
+              "height_mm": 841.0,
+              "sheet_class": "A0",
+              "a0_equivalent": 1.0
+            },
+            {
+              "index": 17,
+              "width_mm": 1189.0,
+              "height_mm": 841.0,
+              "sheet_class": "A0",
+              "a0_equivalent": 1.0
+            }
+          ]
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-00_A0_SGB620-80T刮板输送机总装配图.pdf",
+          "size": 131793,
+          "page_count": 1,
+          "a0_equivalent": 1.0,
+          "drawing_objects": 4802,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 1189.0,
+              "height_mm": 841.0,
+              "sheet_class": "A0",
+              "a0_equivalent": 1.0
+            }
+          ]
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-01_A1_机头传动部装配图.pdf",
+          "size": 83543,
+          "page_count": 1,
+          "a0_equivalent": 0.5,
+          "drawing_objects": 2681,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 841.0,
+              "height_mm": 594.0,
+              "sheet_class": "A1",
+              "a0_equivalent": 0.5
+            }
+          ]
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-02_A1_中部槽装配图.pdf",
+          "size": 99378,
+          "page_count": 1,
+          "a0_equivalent": 0.5,
+          "drawing_objects": 4961,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 841.0,
+              "height_mm": 594.0,
+              "sheet_class": "A1",
+              "a0_equivalent": 0.5
+            }
+          ]
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-03_A1_机尾张紧装置装配图.pdf",
+          "size": 95357,
+          "page_count": 1,
+          "a0_equivalent": 0.5,
+          "drawing_objects": 4543,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 841.0,
+              "height_mm": 594.0,
+              "sheet_class": "A1",
+              "a0_equivalent": 0.5
+            }
+          ]
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-04_A2_刮板零件图.pdf",
+          "size": 78598,
+          "page_count": 1,
+          "a0_equivalent": 0.25,
+          "drawing_objects": 3844,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 594.0,
+              "height_mm": 420.0,
+              "sheet_class": "A2",
+              "a0_equivalent": 0.25
+            }
+          ]
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-05_A2_链轮轴组件零件图.pdf",
+          "size": 68195,
+          "page_count": 1,
+          "a0_equivalent": 0.25,
+          "drawing_objects": 2177,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 594.0,
+              "height_mm": 420.0,
+              "sheet_class": "A2",
+              "a0_equivalent": 0.25
+            }
+          ]
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-06_A2_圆环链与连接环零件图.pdf",
+          "size": 72603,
+          "page_count": 1,
+          "a0_equivalent": 0.25,
+          "drawing_objects": 2737,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 594.0,
+              "height_mm": 420.0,
+              "sheet_class": "A2",
+              "a0_equivalent": 0.25
+            }
+          ]
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-07_A2_机架支座焊接件零件图.pdf",
+          "size": 66099,
+          "page_count": 1,
+          "a0_equivalent": 0.25,
+          "drawing_objects": 2318,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 594.0,
+              "height_mm": 420.0,
+              "sheet_class": "A2",
+              "a0_equivalent": 0.25
+            }
+          ]
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-08_A0_关键零部件制造与装配详图.pdf",
+          "size": 145203,
+          "page_count": 1,
+          "a0_equivalent": 1.0,
+          "drawing_objects": 6442,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 1189.0,
+              "height_mm": 841.0,
+              "sheet_class": "A0",
+              "a0_equivalent": 1.0
+            }
+          ]
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-09_A0_机头传动装置综合装配详图.pdf",
+          "size": 146920,
+          "page_count": 1,
+          "a0_equivalent": 1.0,
+          "drawing_objects": 5565,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 1189.0,
+              "height_mm": 841.0,
+              "sheet_class": "A0",
+              "a0_equivalent": 1.0
+            }
+          ]
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-10_A0_中部槽与刮板链制造检验详图.pdf",
+          "size": 162206,
+          "page_count": 1,
+          "a0_equivalent": 1.0,
+          "drawing_objects": 8429,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 1189.0,
+              "height_mm": 841.0,
+              "sheet_class": "A0",
+              "a0_equivalent": 1.0
+            }
+          ]
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-11_A0_整机安装与传动布置综合详图.pdf",
+          "size": 104030,
+          "page_count": 1,
+          "a0_equivalent": 1.0,
+          "drawing_objects": 1556,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 1189.0,
+              "height_mm": 841.0,
+              "sheet_class": "A0",
+              "a0_equivalent": 1.0
+            }
+          ]
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-12_A0_焊接件明细与制造检验工艺图.pdf",
+          "size": 128731,
+          "page_count": 1,
+          "a0_equivalent": 1.0,
+          "drawing_objects": 4655,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 1189.0,
+              "height_mm": 841.0,
+              "sheet_class": "A0",
+              "a0_equivalent": 1.0
+            }
+          ]
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-13_A0_机头机尾与中部槽装配尺寸链详图.pdf",
+          "size": 125013,
+          "page_count": 1,
+          "a0_equivalent": 1.0,
+          "drawing_objects": 5037,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 1189.0,
+              "height_mm": 841.0,
+              "sheet_class": "A0",
+              "a0_equivalent": 1.0
+            }
+          ]
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-14_A0_传动链轮轴承密封制造详图.pdf",
+          "size": 91937,
+          "page_count": 1,
+          "a0_equivalent": 1.0,
+          "drawing_objects": 1854,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 1189.0,
+              "height_mm": 841.0,
+              "sheet_class": "A0",
+              "a0_equivalent": 1.0
+            }
+          ]
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-15_A0_刮板链与中部槽制造检验总成详图.pdf",
+          "size": 249349,
+          "page_count": 1,
+          "a0_equivalent": 1.0,
+          "drawing_objects": 19479,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 1189.0,
+              "height_mm": 841.0,
+              "sheet_class": "A0",
+              "a0_equivalent": 1.0
+            }
+          ]
+        },
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/SGB62080T-16_A0_安装基础润滑维护与试运转检验图.pdf",
+          "size": 216437,
+          "page_count": 1,
+          "a0_equivalent": 1.0,
+          "drawing_objects": 13618,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 1189.0,
+              "height_mm": 841.0,
+              "sheet_class": "A0",
+              "a0_equivalent": 1.0
+            }
+          ]
+        }
+      ]
+    },
+    "json_manifest": {
+      "manifests": [
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/图纸包清单.json",
+          "top_level_type": "dict",
+          "entry_count": 10
+        }
+      ],
+      "failures": [],
+      "mojibake_hits": []
+    },
+    "rendered_review": {
+      "required_schema": "rendered_review",
+      "passed": true,
+      "review_count": 1,
+      "accepted_review_count": 1,
+      "reviews": [
+        {
+          "file": "SGB620-80T刮板输送机图纸包/PDF-DXF/图纸包清单.json",
+          "location": "$.rendered_review",
+          "passed": true,
+          "preview_paths": [
+            "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-00_A0_SGB620-80T刮板输送机总装配图.png",
+            "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-01_A1_机头传动部装配图.png",
+            "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-02_A1_中部槽装配图.png",
+            "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-03_A1_机尾张紧装置装配图.png",
+            "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-04_A2_刮板零件图.png",
+            "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-05_A2_链轮轴组件零件图.png",
+            "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-06_A2_圆环链与连接环零件图.png",
+            "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-07_A2_机架支座焊接件零件图.png",
+            "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-08_A0_关键零部件制造与装配详图.png",
+            "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-09_A0_机头传动装置综合装配详图.png",
+            "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-10_A0_中部槽与刮板链制造检验详图.png",
+            "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-11_A0_整机安装与传动布置综合详图.png",
+            "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-12_A0_焊接件明细与制造检验工艺图.png",
+            "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-13_A0_机头机尾与中部槽装配尺寸链详图.png",
+            "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-14_A0_传动链轮轴承密封制造详图.png",
+            "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-15_A0_刮板链与中部槽制造检验总成详图.png",
+            "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-16_A0_安装基础润滑维护与试运转检验图.png"
+          ],
+          "per_sheet_count": 17,
+          "failures": [],
+          "no_overlap_verdict": "pass",
+          "boundary_clearance_verdict": "pass",
+          "detail_density_verdict": "pass",
+          "text_legibility_verdict": "pass",
+          "title_block_table_notes_isolation_verdict": "pass",
+          "annotation_margin_clearance_verdict": "pass",
+          "local_crowding_verdict": "pass",
+          "sheet_layout_verdict": "pass",
+          "manufacturing_view_depth_verdict": "pass",
+          "layout_collision_verdict": "pass",
+          "entity_count_only_verdict": "not-used"
+        }
+      ],
+      "failures": [],
+      "no_overlap_verdict": "pass",
+      "boundary_clearance_verdict": "pass",
+      "detail_density_verdict": "pass",
+      "text_legibility_verdict": "pass",
+      "title_block_table_notes_isolation_verdict": "pass",
+      "annotation_margin_clearance_verdict": "pass",
+      "local_crowding_verdict": "pass",
+      "sheet_layout_verdict": "pass",
+      "manufacturing_view_depth_verdict": "pass",
+      "layout_collision_verdict": "pass",
+      "entity_count_only_verdict": "not-used",
+      "preview_paths": [
+        "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-00_A0_SGB620-80T刮板输送机总装配图.png",
+        "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-01_A1_机头传动部装配图.png",
+        "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-02_A1_中部槽装配图.png",
+        "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-03_A1_机尾张紧装置装配图.png",
+        "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-04_A2_刮板零件图.png",
+        "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-05_A2_链轮轴组件零件图.png",
+        "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-06_A2_圆环链与连接环零件图.png",
+        "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-07_A2_机架支座焊接件零件图.png",
+        "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-08_A0_关键零部件制造与装配详图.png",
+        "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-09_A0_机头传动装置综合装配详图.png",
+        "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-10_A0_中部槽与刮板链制造检验详图.png",
+        "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-11_A0_整机安装与传动布置综合详图.png",
+        "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-12_A0_焊接件明细与制造检验工艺图.png",
+        "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-13_A0_机头机尾与中部槽装配尺寸链详图.png",
+        "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-14_A0_传动链轮轴承密封制造详图.png",
+        "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-15_A0_刮板链与中部槽制造检验总成详图.png",
+        "D:\\项目\\刮板输送机\\SGB620-80T刮板输送机图纸包_DXF-PDF\\SGB62080T-16_A0_安装基础润滑维护与试运转检验图.png"
+      ],
+      "per_sheet_count": 17
+    },
+    "filename_mojibake_hits": [],
+    "text_mojibake_hits": [],
+    "reference_dwg_byte_ratio": 0.6998
+  },
+  "references": [
+    {
+      "path": "D:\\weixin\\xwechat_files\\wxid_igafsmkwvzsa22_565b\\msg\\file\\2026-05\\下压图(1).zip",
+      "path_type": "zip",
+      "sha256": "2DE44F5F4E53A0C122C9A0C8B800437D42013BC2B88E7F95F82D2FD5EEA6D335",
+      "file_count": 8,
+      "total_bytes": 3561802,
+      "extension_counts": {
+        ".dwg": 8
+      },
+      "dwg_count": 8,
+      "dwg_total_bytes": 3561802,
+      "dwg_header_failures": [],
+      "dxf_count": 0,
+      "dxf": {
+        "aggregate_entities": {},
+        "aggregate_structure_tokens": {},
+        "per_file": [],
+        "mojibake_hits": []
+      },
+      "pdf": {
+        "count": 0,
+        "total_bytes": 0,
+        "header_failures": [],
+        "fitz_available": true,
+        "estimated_a0_equivalent_workload": 0.0,
+        "per_file": []
+      },
+      "json_manifest": {
+        "manifests": [],
+        "failures": [],
+        "mojibake_hits": []
+      },
+      "rendered_review": {
+        "required_schema": "rendered_review",
+        "passed": false,
+        "review_count": 0,
+        "accepted_review_count": 0,
+        "reviews": [],
+        "failures": []
+      },
+      "filename_mojibake_hits": [],
+      "text_mojibake_hits": []
+    },
+    {
+      "path": "D:\\weixin\\xwechat_files\\wxid_igafsmkwvzsa22_565b\\msg\\file\\2026-05\\DP2793(350H-V)(4).zip",
+      "path_type": "zip",
+      "sha256": "61A2B12006C6BF1E502F7B070D0FC2BEF765B04A770BD8515EC5F8700978F666",
+      "file_count": 23,
+      "total_bytes": 6450857,
+      "extension_counts": {
+        ".pdf": 23
+      },
+      "dwg_count": 0,
+      "dwg_total_bytes": 0,
+      "dwg_header_failures": [],
+      "dxf_count": 0,
+      "dxf": {
+        "aggregate_entities": {},
+        "aggregate_structure_tokens": {},
+        "per_file": [],
+        "mojibake_hits": []
+      },
+      "pdf": {
+        "count": 23,
+        "total_bytes": 6450857,
+        "header_failures": [],
+        "fitz_available": true,
+        "estimated_a0_equivalent_workload": 5.75,
+        "per_file": [
+          {
+            "file": "DP2793(350H-V)/DP2793-1.pdf",
+            "size": 105840,
+            "page_count": 6,
+            "a0_equivalent": 0.0,
+            "drawing_objects": 798,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 210.0,
+                "height_mm": 297.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 2,
+                "width_mm": 210.0,
+                "height_mm": 297.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 3,
+                "width_mm": 210.0,
+                "height_mm": 297.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 4,
+                "width_mm": 210.0,
+                "height_mm": 297.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 5,
+                "width_mm": 210.0,
+                "height_mm": 297.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 6,
+                "width_mm": 210.0,
+                "height_mm": 297.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              }
+            ]
+          },
+          {
+            "file": "DP2793(350H-V)/DP2793-10.pdf",
+            "size": 251998,
+            "page_count": 1,
+            "a0_equivalent": 0.5,
+            "drawing_objects": 7977,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 594.1,
+                "height_mm": 841.0,
+                "sheet_class": "A1",
+                "a0_equivalent": 0.5
+              }
+            ]
+          },
+          {
+            "file": "DP2793(350H-V)/DP2793-11.pdf",
+            "size": 197767,
+            "page_count": 1,
+            "a0_equivalent": 0.125,
+            "drawing_objects": 5332,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 297.0,
+                "height_mm": 420.2,
+                "sheet_class": "A3",
+                "a0_equivalent": 0.125
+              }
+            ]
+          },
+          {
+            "file": "DP2793(350H-V)/DP2793-12.pdf",
+            "size": 229434,
+            "page_count": 1,
+            "a0_equivalent": 0.5,
+            "drawing_objects": 6809,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 594.1,
+                "height_mm": 841.0,
+                "sheet_class": "A1",
+                "a0_equivalent": 0.5
+              }
+            ]
+          },
+          {
+            "file": "DP2793(350H-V)/DP2793-13.pdf",
+            "size": 216391,
+            "page_count": 1,
+            "a0_equivalent": 0.25,
+            "drawing_objects": 7721,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 420.2,
+                "height_mm": 594.1,
+                "sheet_class": "A2",
+                "a0_equivalent": 0.25
+              }
+            ]
+          },
+          {
+            "file": "DP2793(350H-V)/DP2793-14.pdf",
+            "size": 221194,
+            "page_count": 1,
+            "a0_equivalent": 0.25,
+            "drawing_objects": 7662,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 420.2,
+                "height_mm": 594.1,
+                "sheet_class": "A2",
+                "a0_equivalent": 0.25
+              }
+            ]
+          },
+          {
+            "file": "DP2793(350H-V)/DP2793-15.pdf",
+            "size": 203828,
+            "page_count": 1,
+            "a0_equivalent": 0.25,
+            "drawing_objects": 5905,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 420.2,
+                "height_mm": 594.1,
+                "sheet_class": "A2",
+                "a0_equivalent": 0.25
+              }
+            ]
+          },
+          {
+            "file": "DP2793(350H-V)/DP2793-16.pdf",
+            "size": 202911,
+            "page_count": 1,
+            "a0_equivalent": 0.25,
+            "drawing_objects": 5933,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 420.2,
+                "height_mm": 594.1,
+                "sheet_class": "A2",
+                "a0_equivalent": 0.25
+              }
+            ]
+          },
+          {
+            "file": "DP2793(350H-V)/DP2793-17.pdf",
+            "size": 218878,
+            "page_count": 1,
+            "a0_equivalent": 0.0,
+            "drawing_objects": 6605,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 420.2,
+                "height_mm": 742.9,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              }
+            ]
+          },
+          {
+            "file": "DP2793(350H-V)/DP2793-18.pdf",
+            "size": 201916,
+            "page_count": 1,
+            "a0_equivalent": 0.25,
+            "drawing_objects": 5860,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 420.2,
+                "height_mm": 594.1,
+                "sheet_class": "A2",
+                "a0_equivalent": 0.25
+              }
+            ]
+          },
+          {
+            "file": "DP2793(350H-V)/DP2793-19-1.pdf",
+            "size": 529432,
+            "page_count": 1,
+            "a0_equivalent": 0.0,
+            "drawing_objects": 32030,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 594.1,
+                "height_mm": 1050.9,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              }
+            ]
+          },
+          {
+            "file": "DP2793(350H-V)/DP2793-19-2.pdf",
+            "size": 570167,
+            "page_count": 1,
+            "a0_equivalent": 0.5,
+            "drawing_objects": 20335,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 594.1,
+                "height_mm": 841.0,
+                "sheet_class": "A1",
+                "a0_equivalent": 0.5
+              }
+            ]
+          },
+          {
+            "file": "DP2793(350H-V)/DP2793-19-3.pdf",
+            "size": 321194,
+            "page_count": 1,
+            "a0_equivalent": 0.5,
+            "drawing_objects": 10901,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 594.1,
+                "height_mm": 841.0,
+                "sheet_class": "A1",
+                "a0_equivalent": 0.5
+              }
+            ]
+          },
+          {
+            "file": "DP2793(350H-V)/DP2793-19-4.pdf",
+            "size": 353459,
+            "page_count": 1,
+            "a0_equivalent": 0.5,
+            "drawing_objects": 17006,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 594.1,
+                "height_mm": 841.0,
+                "sheet_class": "A1",
+                "a0_equivalent": 0.5
+              }
+            ]
+          },
+          {
+            "file": "DP2793(350H-V)/DP2793-2.pdf",
+            "size": 493967,
+            "page_count": 1,
+            "a0_equivalent": 0.5,
+            "drawing_objects": 21583,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 594.1,
+                "height_mm": 841.0,
+                "sheet_class": "A1",
+                "a0_equivalent": 0.5
+              }
+            ]
+          },
+          {
+            "file": "DP2793(350H-V)/DP2793-200.pdf",
+            "size": 411849,
+            "page_count": 74,
+            "a0_equivalent": 0.0,
+            "drawing_objects": 4257,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 2,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 3,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 4,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 5,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 6,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 7,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 8,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 9,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 10,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 11,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 12,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 13,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 14,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 15,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 16,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 17,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 18,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 19,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 20,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 21,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 22,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 23,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 24,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 25,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 26,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 27,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 28,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 29,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 30,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 31,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 32,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 33,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 34,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 35,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 36,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 37,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 38,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 39,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 40,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 41,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 42,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 43,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 44,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 45,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 46,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 47,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 48,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 49,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 50,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 51,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 52,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 53,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 54,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 55,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 56,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 57,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 58,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 59,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 60,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 61,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 62,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 63,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 64,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 65,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 66,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 67,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 68,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 69,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 70,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 71,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 72,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 73,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              },
+              {
+                "index": 74,
+                "width_mm": 297.0,
+                "height_mm": 210.0,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              }
+            ]
+          },
+          {
+            "file": "DP2793(350H-V)/DP2793-3.pdf",
+            "size": 307538,
+            "page_count": 1,
+            "a0_equivalent": 0.5,
+            "drawing_objects": 9981,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 594.1,
+                "height_mm": 841.0,
+                "sheet_class": "A1",
+                "a0_equivalent": 0.5
+              }
+            ]
+          },
+          {
+            "file": "DP2793(350H-V)/DP2793-4.pdf",
+            "size": 251099,
+            "page_count": 1,
+            "a0_equivalent": 0.5,
+            "drawing_objects": 7640,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 594.1,
+                "height_mm": 841.0,
+                "sheet_class": "A1",
+                "a0_equivalent": 0.5
+              }
+            ]
+          },
+          {
+            "file": "DP2793(350H-V)/DP2793-5.pdf",
+            "size": 372128,
+            "page_count": 1,
+            "a0_equivalent": 0.0,
+            "drawing_objects": 15205,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 594.1,
+                "height_mm": 1261.2,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              }
+            ]
+          },
+          {
+            "file": "DP2793(350H-V)/DP2793-6.pdf",
+            "size": 204686,
+            "page_count": 1,
+            "a0_equivalent": 0.125,
+            "drawing_objects": 5220,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 297.0,
+                "height_mm": 420.2,
+                "sheet_class": "A3",
+                "a0_equivalent": 0.125
+              }
+            ]
+          },
+          {
+            "file": "DP2793(350H-V)/DP2793-7.pdf",
+            "size": 189052,
+            "page_count": 1,
+            "a0_equivalent": 0.0,
+            "drawing_objects": 4531,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 297.0,
+                "height_mm": 209.9,
+                "sheet_class": "unknown",
+                "a0_equivalent": 0.0
+              }
+            ]
+          },
+          {
+            "file": "DP2793(350H-V)/DP2793-8.pdf",
+            "size": 198389,
+            "page_count": 1,
+            "a0_equivalent": 0.125,
+            "drawing_objects": 5007,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 297.0,
+                "height_mm": 420.2,
+                "sheet_class": "A3",
+                "a0_equivalent": 0.125
+              }
+            ]
+          },
+          {
+            "file": "DP2793(350H-V)/DP2793-9.pdf",
+            "size": 197740,
+            "page_count": 1,
+            "a0_equivalent": 0.125,
+            "drawing_objects": 4922,
+            "pages": [
+              {
+                "index": 1,
+                "width_mm": 297.0,
+                "height_mm": 420.2,
+                "sheet_class": "A3",
+                "a0_equivalent": 0.125
+              }
+            ]
+          }
+        ]
+      },
+      "json_manifest": {
+        "manifests": [],
+        "failures": [],
+        "mojibake_hits": []
+      },
+      "rendered_review": {
+        "required_schema": "rendered_review",
+        "passed": false,
+        "review_count": 0,
+        "accepted_review_count": 0,
+        "reviews": [],
+        "failures": []
+      },
+      "filename_mojibake_hits": [],
+      "text_mojibake_hits": []
+    }
+  ],
+  "requirements": {
+    "require_dwg": true,
+    "require_pdf": true,
+    "strict_cad_structure": true,
+    "min_dwg_count": 8,
+    "min_dxf_count": 8,
+    "min_pdf_count": 8,
+    "min_total_a0": 3.5,
+    "min_true_dimensions": 140,
+    "min_reference_dwg_ratio": 0.25,
+    "min_geometry_entities": 12000,
+    "min_insert_count": 1,
+    "min_arc_count": 1,
+    "min_hatch_count": 200,
+    "min_text_count": 500,
+    "min_dxf_entities_per_sheet": 350,
+    "min_dimensions_per_dxf": 8,
+    "min_dimensioned_dxf_files": 8,
+    "min_pdf_drawing_objects_per_a0": 800,
+    "required_text_tokens": [],
+    "require_rendered_review": true
+  },
+  "drawing_density_checks": {
+    "failures": []
+  },
+  "density_verdict": {
+    "passed": true,
+    "dimension_count": 398,
+    "min_true_dimensions": 140,
+    "geometry_entity_count": 96133,
+    "min_geometry_entities": 12000,
+    "reference_dwg_byte_ratio": 0.6998,
+    "min_reference_dwg_ratio": 0.25
+  },
+  "manufacturing_depth": {
+    "insert_count": 39,
+    "min_insert_count": 1,
+    "arc_count": 334,
+    "min_arc_count": 1,
+    "hatch_count": 69743,
+    "min_hatch_count": 200,
+    "text_count": 4465,
+    "min_text_count": 500,
+    "passed": true
+  },
+  "rendered_review_verdict": {
+    "passed": true,
+    "review_count": 1,
+    "accepted_review_count": 1
+  }
+}

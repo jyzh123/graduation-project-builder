@@ -81,6 +81,7 @@ Use this file for front-matter formatting and TOC-specific repair rules.
   - then verify that every TOC line is a real heading entry and that no body paragraph, caption, keyword line, or other non-heading text has been pulled into the TOC
   - only after the TOC content, hierarchy, and page references are verified clean may the builder extract sample formatting for TOC title and each TOC level and apply the final visual tuning
 - Do not replace a multi-paragraph TOC block or TOC content-control region with one plain paragraph or one concatenated text payload. If the TOC title and entries collapse into one paragraph, the TOC repair has failed regardless of whether the text strings are present.
+- For `1:1` template alignment, the TOC implementation form is itself a protected formatting surface. If the active template uses `w:sdt`, `w:fldSimple`, `w:instrText` with a `TOC` field instruction, hyperlinks, bookmarks, smart tags, or another wrapper around visible TOC runs, the target must preserve or deliberately reconstruct the same accepted wrapper family. A static reconstructed TOC that merely imitates the visible rows cannot pass when the template's editable TOC structure was available.
 - Canonical static TOC generation must clone real template TOC paragraph instances and rewrite only the visible label/page text while preserving `pPr`, runs, tabs, leaders, and page-number run structure.
 - Do not update TOC page numbers with `para.text` or any whole-paragraph plain-text assignment; update only page-number text nodes after the template tab run.
 - TOC refresh/page-sync acceptance must include run-level direct-font restoration from the locked template TOC donor. Paragraph style names such as `TOC 1` are not enough: refreshed entries must not carry body-heading direct font overrides unless that same direct font is present in the template TOC donor for that level and run side.
@@ -143,6 +144,12 @@ Use this file for front-matter formatting and TOC-specific repair rules.
     - old TOC paragraph styles with sparse style definitions
     - or a field/content-control block
   - restore the refreshed TOC to the visible paragraph metrics of the template's real TOC entries, even when those metrics come mainly from direct formatting rather than style definitions
+- TOC implementation-parity evidence rule:
+  - record the template TOC implementation type and the target TOC implementation type before any pass claim
+  - record whether the template and target keep the same live-field/content-control/static-template family
+  - record the template field instruction and target field instruction when either side contains a TOC field
+  - record the exact source and target XML paths for the TOC title, each used TOC level, tab/leader run, and page-number run
+  - reject `implementation parity: not checked`, `same enough`, `style-bound`, `visible pass`, or any prose-only substitute
 - Tab-stop fidelity rule:
   - treat TOC right-tab position and dotted-leader position as template-owned hard metrics
   - do not accept a TOC whose text is correct but whose page-number tab stop drifts from the template, because this will visibly shift the dotted leaders and page-number column

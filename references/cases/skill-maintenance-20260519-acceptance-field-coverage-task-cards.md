@@ -1,0 +1,162 @@
+# Agent Task Cards
+
+## Controller
+- card_id: skill-maintenance-20260519-controller
+- run_id: skill-maintenance-20260519-acceptance-field-coverage
+- lane: controller
+- role_alias_zh: 总控
+- role_applicability: active
+- attendance_status: active
+- not_applicable_reason: none
+- skip_reason: none
+- lane_alias_zh: 总控
+- owner: controller-local
+- owner_alias_zh: 总控
+- system_agent_id: controller-local
+- authorization_source: user authorized multi-agent collaboration in this task thread
+- agent_mode: sequential-fallback
+- run_manifest_path: C:\Users\Administrator\.agents\skills\graduation-project-builder\references\cases\skill-maintenance-20260519-acceptance-field-coverage-agent-manifest.md
+- objective: coordinate field-chain repair and final gate evidence
+- inputs: SKILL.md; routed references; owner-map failures; current skill bundle
+- outputs: patched template/generator/validators/selftests and final audit record
+- dependencies: citation-worker; acceptance-worker; audit
+- spawn_requested: no
+- spawn_status: sequential-fallback
+- spawn_agent_id: none
+- spawn_agent_alias_zh: none
+- fallback_mode: sequential-fallback
+- status: pass
+- audit_agent_id: none
+- sequential_audit_fallback_id: controller-local-audit-20260519
+- audit_agent_alias_zh: 审核
+- audit_required: yes
+- audit_spawn_or_fallback_mode: sequential-fallback
+- action_audit_scope: all action cycles
+- action_audit_verdict_cadence: after each mutation/verification cycle
+- action_audit_verdicts: pass
+- action_cycles: control bootstrap; mutation patch; compile/selftest/gate; final handoff
+- mutation_audit_scope: changed skill bundle files
+- mutation_audit_verdicts: pass
+- evidence_required: final audit record and gate output
+- evidence_paths: C:\Users\Administrator\.agents\skills\graduation-project-builder\references\cases\skill-maintenance-20260519-acceptance-field-coverage-final-audit.md
+- blockers: none
+
+## Citation Worker
+- card_id: skill-maintenance-20260519-citation-worker
+- run_id: skill-maintenance-20260519-acceptance-field-coverage
+- lane: citation-worker
+- role_alias_zh: 引用
+- role_applicability: active
+- attendance_status: active
+- not_applicable_reason: none
+- skip_reason: none
+- lane_alias_zh: 引用
+- owner: controller-local
+- owner_alias_zh: 总控
+- system_agent_id: controller-local
+- authorization_source: user authorized multi-agent collaboration in this task thread
+- agent_mode: sequential-fallback
+- run_manifest_path: C:\Users\Administrator\.agents\skills\graduation-project-builder\references\cases\skill-maintenance-20260519-acceptance-field-coverage-agent-manifest.md
+- objective: ensure FB-CITE-042 `rendered references-page evidence path` is captured by final acceptance and gate records
+- inputs: references/user-feedback/citations-and-bibliography.md; references/rule-owner-map.json; acceptance/gate scripts
+- outputs: patched field emission, parsing, policy, and selftest anchor
+- dependencies: acceptance-worker
+- spawn_requested: no
+- spawn_status: sequential-fallback
+- spawn_agent_id: none
+- spawn_agent_alias_zh: none
+- fallback_mode: sequential-fallback
+- status: pass
+- audit_agent_id: none
+- sequential_audit_fallback_id: controller-local-audit-20260519
+- audit_agent_alias_zh: 审核
+- audit_required: yes
+- action_audit_scope: FB-CITE-042 owner-map chain
+- action_audit_verdicts: pass
+- mutation_audit_scope: citations acceptance field chain
+- mutation_audit_verdicts: pass
+- evidence_required: targeted selftest and gate validation
+- evidence_paths: C:\Users\Administrator\.agents\skills\graduation-project-builder\references\cases\skill-maintenance-20260519-acceptance-field-coverage-final-audit.md
+- blockers: none
+
+## Acceptance Worker
+- card_id: skill-maintenance-20260519-acceptance-worker
+- run_id: skill-maintenance-20260519-acceptance-field-coverage
+- lane: acceptance-worker
+- role_alias_zh: 验收
+- role_applicability: active
+- attendance_status: active
+- not_applicable_reason: none
+- skip_reason: none
+- lane_alias_zh: 验收
+- owner: controller-local
+- owner_alias_zh: 总控
+- system_agent_id: controller-local
+- authorization_source: user authorized multi-agent collaboration in this task thread
+- agent_mode: sequential-fallback
+- run_manifest_path: C:\Users\Administrator\.agents\skills\graduation-project-builder\references\cases\skill-maintenance-20260519-acceptance-field-coverage-agent-manifest.md
+- objective: ensure EXEC-MAINT-059 `controlled bookmark disposition path` is captured by final acceptance and gate records
+- inputs: maintenance rules; final acceptance template; generator; validators; selftests
+- outputs: patched field emission, parsing, policy, and selftest anchor
+- dependencies: citation-worker
+- spawn_requested: no
+- spawn_status: sequential-fallback
+- spawn_agent_id: none
+- spawn_agent_alias_zh: none
+- fallback_mode: sequential-fallback
+- status: pass
+- audit_agent_id: none
+- sequential_audit_fallback_id: controller-local-audit-20260519
+- audit_agent_alias_zh: 审核
+- audit_required: yes
+- action_audit_scope: EXEC-MAINT-059 owner-map chain
+- action_audit_verdicts: pass
+- mutation_audit_scope: review-artifact acceptance field chain
+- mutation_audit_verdicts: pass
+- evidence_required: targeted selftest and gate validation
+- evidence_paths: C:\Users\Administrator\.agents\skills\graduation-project-builder\references\cases\skill-maintenance-20260519-acceptance-field-coverage-final-audit.md
+- blockers: none
+
+## Audit
+- card_id: skill-maintenance-20260519-audit
+- run_id: skill-maintenance-20260519-acceptance-field-coverage
+- lane: audit
+- role_alias_zh: 审核
+- role_applicability: active
+- attendance_status: active
+- not_applicable_reason: none
+- skip_reason: none
+- lane_alias_zh: 审核
+- owner: controller-local-audit-20260519
+- owner_alias_zh: 审核
+- system_agent_id: controller-local-audit-20260519
+- authorization_source: user authorized multi-agent collaboration in this task thread
+- agent_mode: sequential-fallback
+- run_manifest_path: C:\Users\Administrator\.agents\skills\graduation-project-builder\references\cases\skill-maintenance-20260519-acceptance-field-coverage-agent-manifest.md
+- objective: verify the run did not bypass graduation-project-builder controls and that the two owner-map fields have template/generator/validator/selftest coverage
+- inputs: lock; checklist; manifest; task cards; changed files; command outputs
+- outputs: final audit verdict
+- dependencies: controller; citation-worker; acceptance-worker
+- spawn_requested: no
+- spawn_status: sequential-fallback
+- spawn_agent_id: none
+- spawn_agent_alias_zh: none
+- fallback_mode: sequential-fallback
+- status: pass
+- audit_agent_id: none
+- sequential_audit_fallback_id: controller-local-audit-20260519
+- audit_agent_alias_zh: 审核
+- audit_required: yes
+- action_audit_scope: all action and mutation cycles
+- action_audit_verdicts: pass
+- mutation_audit_scope: all changed paths
+- mutation_audit_verdicts: pass
+- evidence_required: final audit record
+- evidence_paths: C:\Users\Administrator\.agents\skills\graduation-project-builder\references\cases\skill-maintenance-20260519-acceptance-field-coverage-final-audit.md
+- blockers: none
+
+## Not Applicable Lanes
+- lane: content-worker; role_alias_zh: 内容; role_applicability: not-applicable; attendance_status: not-applicable; not_applicable_reason: no thesis prose content rewrite; system_agent_id: none; audit_agent_alias_zh: 审核; fallback_mode: sequential-fallback
+- lane: format-worker; role_alias_zh: 格式; role_applicability: not-applicable; attendance_status: not-applicable; not_applicable_reason: no DOCX format mutation; system_agent_id: none; audit_agent_alias_zh: 审核; fallback_mode: sequential-fallback
+- lane: figure-worker; role_alias_zh: 图表; role_applicability: not-applicable; attendance_status: not-applicable; not_applicable_reason: no figure/table artifact mutation; system_agent_id: none; audit_agent_alias_zh: 审核; fallback_mode: sequential-fallback
+- lane: program-worker; role_alias_zh: 程序; role_applicability: not-applicable; attendance_status: not-applicable; not_applicable_reason: no user project program code delivery; system_agent_id: none; audit_agent_alias_zh: 审核; fallback_mode: sequential-fallback

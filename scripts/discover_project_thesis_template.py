@@ -14,6 +14,7 @@ TEMPLATE_EXTENSIONS = {".docx", ".doc"}
 EXCLUDE_NAME_PREFIXES = ("~$",)
 EXCLUDE_DIR_NAMES = {
     ".git",
+    ".codex",
     "__pycache__",
     "node_modules",
     "dist",
@@ -73,6 +74,29 @@ GENERATED_DIR_PREFIXES = (
     "skill-audit-run-",
     "template-format-audit-run-",
 )
+NEGATIVE_DIR_PARTS = {
+    ".codex",
+    "integration-temp",
+    "integration",
+    "temp",
+    "tmp",
+    "cache",
+    "evidence",
+    "review",
+    "stage",
+    "rendered",
+    "pages",
+    "outputs",
+    "reports",
+}
+OFFICIAL_TOKENS = (
+    "撰写与装订规范",
+    "装订规范",
+    "规范",
+    "标准封面",
+    "teacher",
+    "approved",
+)
 
 
 def sha256_file(path: Path) -> str:
@@ -86,6 +110,7 @@ def sha256_file(path: Path) -> str:
 def score_candidate(path: Path) -> int:
     lowered = path.name.lower()
     stem_lowered = path.stem.lower()
+    path_parts_lower = tuple(part.lower() for part in path.parts)
     score = 0
     if stem_lowered in {stem.lower() for stem in STRONG_TEMPLATE_STEMS}:
         score += 120
@@ -98,12 +123,19 @@ def score_candidate(path: Path) -> int:
     for token in NEGATIVE_TOKENS:
         if token.lower() in lowered:
             score -= 30
+    for token in OFFICIAL_TOKENS:
+        if token.lower() in lowered:
+            score += 35
+    if any(part in NEGATIVE_DIR_PARTS for part in path_parts_lower):
+        score -= 120
     generated_dir = any(part.lower().startswith(GENERATED_DIR_PREFIXES) for part in path.parts)
     if generated_dir:
         if any(token in lowered for token in ("\u6a21\u677f", "template")):
             score -= 5
         else:
             score -= 80
+    if ".codex" in path_parts_lower:
+        score -= 300
     if path.suffix.lower() == ".docx":
         score += 3
     try:
@@ -136,6 +168,15 @@ def build_report(project_root: Path, limit: int) -> dict[str, object]:
     candidates = iter_candidates(project_root)
     selected = candidates[0] if candidates else None
     generated_at = datetime.now(timezone.utc)
+    authority_class = "none"
+    if selected is not None:
+        lowered = selected.name.lower()
+        if any(token.lower() in lowered for token in OFFICIAL_TOKENS):
+            authority_class = "official-format-spec"
+        elif any(token.lower() in lowered for token in POSITIVE_TOKENS):
+            authority_class = "project-template-candidate"
+        else:
+            authority_class = "weak-project-document"
     return {
         "schema": "graduation-project-builder.template-discovery.v1",
         "generation_stage": "pre-mutation-template-lock",
@@ -151,13 +192,15 @@ def build_report(project_root: Path, limit: int) -> dict[str, object]:
                 "score": score_candidate(path),
                 "sha256": sha256_file(path),
                 "size": path.stat().st_size,
+                "under_codex": ".codex" in {part.lower() for part in path.parts},
             }
             for path in candidates[:limit]
         ],
         "selected_template_path": str(selected) if selected else None,
         "selected_template_fingerprint": sha256_file(selected) if selected else None,
+        "selected_template_authority_class": authority_class,
         "selection_reason": (
-            "highest score from template-name tokens and file stability"
+            "highest score from template-name tokens, directory-risk filtering, and authority-weighted selection"
             if selected
             else "no .doc/.docx thesis template candidates found"
         ),

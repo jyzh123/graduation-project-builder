@@ -54,6 +54,14 @@ def load_document_xml(docx_path: Path) -> ET.Element:
         return ET.fromstring(zf.read("word/document.xml"))
 
 
+def load_xml_part(docx_path: Path, part_name: str) -> ET.Element | None:
+    try:
+        with zipfile.ZipFile(docx_path) as zf:
+            return ET.fromstring(zf.read(part_name))
+    except KeyError:
+        return None
+
+
 def compact_text(text: str) -> str:
     return re.sub(r"[\s\u3000]+", "", text or "").lower()
 
@@ -68,6 +76,7 @@ def local_bibliography_entry_paragraphs(root: ET.Element) -> list[tuple[int, ET.
     if body is None:
         return []
     entries: list[tuple[int, ET.Element]] = []
+    unnumbered_entries: list[tuple[int, ET.Element]] = []
     in_references = False
     for body_index, child in enumerate(list(body)):
         if child.tag != w("p"):
@@ -91,7 +100,35 @@ def local_bibliography_entry_paragraphs(root: ET.Element) -> list[tuple[int, ET.
             continue
         if paragraph_num_id(child) or re.match(r"^\s*\[\d{1,3}\]", text):
             entries.append((body_index, child))
-    return entries
+            continue
+        if looks_like_reference_entry(text):
+            unnumbered_entries.append((body_index, child))
+    return entries or unnumbered_entries
+
+
+def looks_like_reference_entry(text: str) -> bool:
+    """Detect real GB/T-style bibliography entries whose visible number was lost."""
+    stripped = (text or "").strip()
+    if not stripped:
+        return False
+    compact = compact_text(stripped)
+    if compact in {
+        compact_text("\u53c2\u8003\u6587\u732e"),
+        compact_text("\u81f4\u8c22"),
+        compact_text("\u9644\u5f55"),
+        "references",
+        "bibliography",
+        "acknowledgements",
+        "acknowledgments",
+        "appendix",
+    }:
+        return False
+    return bool(
+        re.search(r"\[[JMCDEB/OL]{1,8}\]", stripped)
+        or re.search(r"\[EB/OL\]", stripped)
+        or re.search(r"\[C\]//", stripped)
+        or re.search(r"https?://", stripped, re.IGNORECASE)
+    )
 
 
 def bibliography_entry_paragraphs(root: ET.Element) -> list[tuple[int, ET.Element]]:
@@ -110,7 +147,7 @@ def references_title_paragraph(root: ET.Element) -> tuple[int, ET.Element]:
         compact = compact_text(paragraph_text(child))
         if compact in {compact_text("\u53c2\u8003\u6587\u732e"), "references", "bibliography"}:
             matches.append((body_index, child))
-        elif compact.startswith(compact_text("\u53c2\u8003\u6587\u732e\uff08")):
+        elif compact.startswith(compact_text("\u53c2\u8003\u6587\u732e")):
             instruction_matches.append((body_index, child))
     if not matches:
         if instruction_matches:
@@ -130,8 +167,12 @@ def remove_child(parent: ET.Element | None, tag: str) -> None:
 def remove_direct_emphasis(rpr: ET.Element | None) -> None:
     if rpr is None:
         return
-    for tag in ("b", "bCs", "i", "iCs", "u"):
+    for tag in ("b", "bCs", "i", "iCs", "u", "highlight"):
         remove_child(rpr, tag)
+    for color in list(rpr.findall("./w:color", NS)):
+        value = (color.get(w("val")) or "").upper()
+        if value in {"FF0000", "C00000", "0000FF", "0000CC", "BLUE", "RED"}:
+            rpr.remove(color)
 
 
 def force_cjk_slots_to_east_asia(rpr: ET.Element | None) -> None:
@@ -609,17 +650,21 @@ def replace_entry_runs(
     latin_rpr: ET.Element,
     cjk_rpr: ET.Element,
     strip_visible_number: bool = False,
+    manual_visible_number: int | None = None,
 ) -> int:
     original_text = paragraph_text(paragraph)
-    expected_text = re.sub(r"^\[[0-9]+\]\s*", "", original_text, count=1) if strip_visible_number else original_text
+    text_for_runs = original_text
+    if manual_visible_number is not None and not re.match(r"^\s*\[[0-9]+\]", original_text):
+        text_for_runs = f"[{manual_visible_number}] {original_text}"
+    expected_text = re.sub(r"^\[[0-9]+\]\s*", "", text_for_runs, count=1) if strip_visible_number else text_for_runs
     starts, ends = direct_bookmarks(paragraph)
     existing_ppr = paragraph.find("./w:pPr", NS)
     paragraph_ppr = copy.deepcopy(ppr_model if ppr_model is not None else existing_ppr)
     if paragraph_ppr is None:
         paragraph_ppr = ET.Element(w("pPr"))
-    segments = split_entry_text(original_text, strip_visible_number=strip_visible_number)
-    if not segments and original_text and not strip_visible_number:
-        raise RuntimeError(f"entry could not be split into multiple bibliography runs: {original_text[:80]}")
+    segments = split_entry_text(text_for_runs, strip_visible_number=strip_visible_number)
+    if not segments and text_for_runs and not strip_visible_number:
+        raise RuntimeError(f"entry could not be split into multiple bibliography runs: {text_for_runs[:80]}")
 
     runs = [
         make_text_run(payload, cjk_rpr if cls == "cjk" else latin_rpr)
@@ -668,6 +713,101 @@ def write_docx_with_parts(source_docx: Path, output_docx: Path, replacements: di
                 zout.writestr(name, payload)
 
 
+STYLE_REFERENCE_TAGS = {"pStyle", "rStyle", "tblStyle"}
+STYLE_DEPENDENCY_TAGS = {"basedOn", "next", "link", "numStyleLink", "styleLink"}
+
+
+def local_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1] if "}" in tag else tag
+
+
+def style_ids_in_document(root: ET.Element) -> set[str]:
+    style_ids: set[str] = set()
+    for node in root.iter():
+        if local_name(node.tag) in STYLE_REFERENCE_TAGS:
+            value = node.get(w("val"))
+            if value:
+                style_ids.add(value)
+    return style_ids
+
+
+def style_dependencies(style: ET.Element) -> set[str]:
+    deps: set[str] = set()
+    for node in style.iter():
+        if local_name(node.tag) in STYLE_DEPENDENCY_TAGS:
+            value = node.get(w("val"))
+            if value:
+                deps.add(value)
+    return deps
+
+
+def copy_missing_referenced_styles(
+    source_docx: Path,
+    template_docx: Path,
+    document_root: ET.Element,
+) -> tuple[bytes | None, dict[str, object]]:
+    target_styles = load_xml_part(source_docx, "word/styles.xml")
+    template_styles = load_xml_part(template_docx, "word/styles.xml")
+    referenced = set(style_ids_in_document(document_root))
+    if target_styles is None or template_styles is None:
+        return None, {
+            "status": "skipped",
+            "reason": "source or template styles.xml missing",
+            "referenced_style_ids": sorted(referenced),
+            "copied_style_ids": [],
+            "missing_in_template": [],
+        }
+    target_by_id = {
+        style.get(w("styleId")): style
+        for style in target_styles.findall("./w:style", NS)
+        if style.get(w("styleId"))
+    }
+    template_by_id = {
+        style.get(w("styleId")): style
+        for style in template_styles.findall("./w:style", NS)
+        if style.get(w("styleId"))
+    }
+    copied: list[str] = []
+    missing_in_template: list[str] = []
+    queued = list(sorted(referenced))
+    seen: set[str] = set()
+    while queued:
+        style_id = queued.pop(0)
+        if style_id in seen:
+            continue
+        seen.add(style_id)
+        if style_id in target_by_id:
+            continue
+        template_style = template_by_id.get(style_id)
+        if template_style is None:
+            missing_in_template.append(style_id)
+            continue
+        cloned = copy.deepcopy(template_style)
+        target_styles.append(cloned)
+        target_by_id[style_id] = cloned
+        copied.append(style_id)
+        for dep in sorted(style_dependencies(cloned)):
+            if dep not in target_by_id and dep not in seen:
+                queued.append(dep)
+    if not copied:
+        return None, {
+            "status": "unchanged",
+            "referenced_style_ids": sorted(referenced),
+            "copied_style_ids": [],
+            "missing_in_template": sorted(set(missing_in_template)),
+        }
+    return (
+        ET.tostring(target_styles, encoding="utf-8", xml_declaration=True, short_empty_elements=True),
+        {
+            "status": "changed",
+            "referenced_style_ids": sorted(referenced),
+            "copied_style_ids": copied,
+            "missing_in_template": sorted(set(missing_in_template)),
+            "source": str(template_docx),
+        },
+    )
+
+
 def repair_bibliography(
     source_docx: Path,
     template_docx: Path,
@@ -676,6 +816,7 @@ def repair_bibliography(
     expected_size_half_points: str | None = None,
     expected_size_name: str | None = None,
     use_template_numbering: bool = False,
+    add_visible_numbers: bool = False,
     rendered_number_left_twips: str | None = None,
     rendered_number_hanging_twips: str | None = None,
 ) -> dict[str, object]:
@@ -732,17 +873,22 @@ def repair_bibliography(
 
     touched: list[dict[str, object]] = []
     visible_number_removed = 0
-    for paragraph_index, paragraph in entries:
+    visible_number_added = 0
+    for entry_ordinal, (paragraph_index, paragraph) in enumerate(entries, start=1):
         before = paragraph_text(paragraph)
+        manual_visible_number = entry_ordinal if add_visible_numbers and not use_template_numbering else None
         run_count = replace_entry_runs(
             paragraph,
             ppr_model=ppr_model,
             latin_rpr=latin_rpr,
             cjk_rpr=cjk_rpr,
             strip_visible_number=use_template_numbering,
+            manual_visible_number=manual_visible_number,
         )
         if use_template_numbering and re.match(r"^\[[0-9]+\]", before):
             visible_number_removed += 1
+        if manual_visible_number is not None and not re.match(r"^\s*\[[0-9]+\]", before):
+            visible_number_added += 1
         touched.append(
             {
                 "body_child_index": paragraph_index,
@@ -758,11 +904,16 @@ def repair_bibliography(
 
     document_xml = ET.tostring(root, encoding="utf-8", xml_declaration=True, short_empty_elements=True)
     replacements = {"word/document.xml": document_xml}
+    styles_xml, missing_style_report = copy_missing_referenced_styles(source_docx, template_docx, root)
+    if styles_xml is not None:
+        replacements["word/styles.xml"] = styles_xml
     if numbering_xml is not None:
         replacements["word/numbering.xml"] = numbering_xml
     write_docx_with_parts(source_docx, output_docx, replacements)
     changed_parts = changed_zip_parts(source_docx, output_docx)
     expected_parts = ["word/document.xml"]
+    if styles_xml is not None:
+        expected_parts.append("word/styles.xml")
     if numbering_xml is not None:
         expected_parts.append("word/numbering.xml")
     if changed_parts != sorted(expected_parts):
@@ -782,7 +933,9 @@ def repair_bibliography(
         "template_numbering_model": numbering_report,
         "rendered_number_outdent": rendered_outdent_report,
         "visible_manual_numbers_removed": visible_number_removed,
+        "visible_manual_numbers_added": visible_number_added,
         "references_title_repair": title_report,
+        "missing_referenced_style_repair": missing_style_report,
         "expected_size_name": expected_size_name or font_size_name_for_half_points(expected_size_half_points) or "template-derived",
         "expected_size_half_points": expected_size_half_points or "template-derived",
         "touched_scope": "word/document.xml bibliography entry paragraphs only",
@@ -810,6 +963,11 @@ def main(argv: Iterable[str] | None = None) -> int:
         "--use-template-numbering",
         action="store_true",
         help="Copy the template bibliography numbering model and remove visible [n] prefixes.",
+    )
+    parser.add_argument(
+        "--add-visible-numbers",
+        action="store_true",
+        help="Add manual [n] prefixes when bibliography entries lost visible numbering and no template automatic-numbering model is available.",
     )
     parser.add_argument(
         "--rendered-number-left-twips",
@@ -843,6 +1001,7 @@ def main(argv: Iterable[str] | None = None) -> int:
         expected_size_half_points=expected_size_half_points,
         expected_size_name=args.bibliography_size_name or font_size_name_for_half_points(expected_size_half_points),
         use_template_numbering=args.use_template_numbering,
+        add_visible_numbers=args.add_visible_numbers,
         rendered_number_left_twips=args.rendered_number_left_twips,
         rendered_number_hanging_twips=args.rendered_number_hanging_twips,
     )

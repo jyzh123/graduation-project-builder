@@ -14,6 +14,7 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from PIL import Image
+import fitz  # type: ignore
 
 from generate_thesis_acceptance_record import PROTECTED_SURFACE_IDS
 from measure_toc_paragraph_typography import (
@@ -188,6 +189,28 @@ def reconcile_content_dependent_drift_with_self_check(
                         content_bbox,
                         flags=re.IGNORECASE,
                     )
+                )
+                content_bbox = str(record.get("surface_content_bbox_baseline_actual", ""))
+        if "actual content bbox none" in content_bbox.lower():
+            crop_text = str(record.get("surface_crop_bbox_baseline_actual", ""))
+            match = re.search(
+                r"actual crop x=(?P<x>-?\d+) y=(?P<y>-?\d+) w=(?P<w>-?\d+) h=(?P<h>-?\d+)",
+                crop_text,
+            )
+            if match:
+                record.setdefault(
+                    "raw_surface_content_bbox_baseline_actual_before_reconciliation",
+                    content_bbox,
+                )
+                record["surface_content_bbox_baseline_actual"] = re.sub(
+                    r"actual content bbox none",
+                    (
+                        "actual content bbox "
+                        f"x={match.group('x')} y={match.group('y')} w={match.group('w')} h={match.group('h')} "
+                        "(crop-box fallback for actual-empty content-dependent surface)"
+                    ),
+                    content_bbox,
+                    flags=re.IGNORECASE,
                 )
         if not blank_verdict.lower().startswith("pass"):
             record["raw_surface_blank_crop_verdict_before_reconciliation"] = blank_verdict
@@ -619,6 +642,74 @@ def parse_sample_pages(path: Path | None) -> dict[str, int]:
     return result
 
 
+def normalize_page_text(value: str) -> str:
+    return re.sub(r"[\s\u3000\u25a1]+", "", value or "").lower()
+
+
+def page_contains_standalone_marker(text: str, marker: str) -> bool:
+    target = normalize_page_text(marker)
+    standalone_targets = {
+        normalize_page_text("\u6458\u8981"),
+        "abstract",
+        normalize_page_text("\u76ee\u5f55"),
+        normalize_page_text("\u7b2c\u4e00\u7ae0\u7eea\u8bba"),
+        normalize_page_text("\u7b2c\u4e00\u7ae0 \u7eea\u8bba"),
+        normalize_page_text("1\u7eea\u8bba"),
+        normalize_page_text("\u53c2\u8003\u6587\u732e"),
+        normalize_page_text("\u81f4\u8c22"),
+    }
+    if target not in standalone_targets:
+        return target in normalize_page_text(text)
+    return any(normalize_page_text(line) == target for line in (text or "").splitlines())
+
+
+def pdf_texts_from_pages_dir(pages_dir: Path) -> list[str]:
+    parent = pages_dir.parent
+    candidates = [
+        parent.parent / "pdf" / f"{pages_dir.name}.pdf",
+        parent.parent / "pdf" / "template.pdf",
+        parent.parent / "pdf" / "pass78.pdf",
+    ]
+    if pages_dir.name != "template":
+        candidates.extend(path for path in (parent.parent / "pdf").glob("*.pdf") if path.name.lower() != "template.pdf")
+    for candidate in candidates:
+        if candidate.exists():
+            try:
+                with fitz.open(candidate) as pdf:
+                    return [page.get_text("text") for page in pdf]
+            except Exception:
+                return []
+    return []
+
+
+def detect_rendered_page_class_map(pages_dir: Path) -> dict[str, int]:
+    texts = pdf_texts_from_pages_dir(pages_dir)
+    result: dict[str, int] = {}
+    if not texts:
+        return result
+    marker_map = {
+        "zh_abstract": "\u6458\u8981",
+        "en_abstract": "Abstract",
+        "toc": "\u76ee\u5f55",
+        "first_body": "\u7b2c\u4e00\u7ae0 \u7eea\u8bba",
+        "references": "\u53c2\u8003\u6587\u732e",
+        "ack": "\u81f4\u8c22",
+    }
+    for key, marker in marker_map.items():
+        if key in {"zh_abstract", "en_abstract", "toc"}:
+            for idx, text in enumerate(texts, start=1):
+                if page_contains_standalone_marker(text, marker):
+                    result[key] = idx
+                    break
+        else:
+            for idx, text in enumerate(texts, start=1):
+                if page_contains_standalone_marker(text, marker):
+                    result[key] = idx
+                    break
+    result.setdefault("cover", 1)
+    return result
+
+
 def page_for_surface(
     surface_id: str,
     sample_pages: dict[str, int],
@@ -627,8 +718,9 @@ def page_for_surface(
     source_kind: str,
 ) -> int:
     if source_kind == "template":
+        detected = detect_rendered_page_class_map(Path(sample_pages.get("__template_pages_dir__", ""))) if "__template_pages_dir__" in sample_pages else {}
         page_class = TEMPLATE_SURFACE_PAGE_CLASSES.get(surface_id, "")
-        page = TEMPLATE_CLASS_PAGE_FALLBACKS.get(page_class, 1)
+        page = detected.get(page_class) or TEMPLATE_CLASS_PAGE_FALLBACKS.get(page_class, 1)
         return max(1, min(page, page_count))
 
     mapping = {
@@ -651,6 +743,7 @@ def page_for_surface(
         "acknowledgement_title": "ack",
         "acknowledgement_body": "ack",
     }
+    detected_actual = detect_rendered_page_class_map(Path(sample_pages.get("__actual_pages_dir__", ""))) if "__actual_pages_dir__" in sample_pages else {}
     if surface_id == "declaration_or_title_front_matter":
         page = 2
     elif surface_id in {"appendix_title", "appendix_body", "footer", "page_numbers"}:
@@ -658,7 +751,8 @@ def page_for_surface(
     elif surface_id == "whole_document_pagination":
         page = sample_pages.get("toc", 1)
     else:
-        page = sample_pages.get(mapping.get(surface_id, ""), 1)
+        page_key = mapping.get(surface_id, "")
+        page = sample_pages.get(page_key) or detected_actual.get(page_key) or 1
     return max(1, min(page, page_count))
 
 
@@ -880,6 +974,29 @@ def first_row(rows: list[tuple[int, int, int, int]]) -> tuple[int, int, int, int
     return rows[0] if rows else None
 
 
+def row_overlaps_y(row: tuple[int, int, int, int], bbox: tuple[int, int, int, int]) -> bool:
+    row_top = row[1]
+    row_bottom = row[1] + row[3]
+    bbox_top = bbox[1]
+    bbox_bottom = bbox[1] + bbox[3]
+    return row_top < bbox_bottom and row_bottom > bbox_top
+
+
+def toc_rows_below_title(
+    rows: list[tuple[int, int, int, int]],
+    title_bbox: tuple[int, int, int, int] | None,
+) -> list[tuple[int, int, int, int]]:
+    if title_bbox is None:
+        return rows
+    title_bottom = title_bbox[1] + title_bbox[3]
+    filtered = [
+        row
+        for row in rows
+        if row[1] >= title_bottom + 6 and not row_overlaps_y(row, title_bbox)
+    ]
+    return filtered or rows
+
+
 def geometry_record(
     surface_id: str,
     template_image: Path,
@@ -991,14 +1108,16 @@ def build_toc_geometry(title_crops: dict[str, object], entry_crops: dict[str, ob
         title_crops["actual_bbox"],  # type: ignore[arg-type]
         title_crops["actual_content_bbox"],  # type: ignore[arg-type]
     )
-    template_rows = row_boxes_from_crop(
+    template_raw_rows = row_boxes_from_crop(
         entry_crops["template_crop"],  # type: ignore[arg-type]
         entry_crops["template_bbox"],  # type: ignore[arg-type]
     )
-    actual_rows = row_boxes_from_crop(
+    actual_raw_rows = row_boxes_from_crop(
         entry_crops["actual_crop"],  # type: ignore[arg-type]
         entry_crops["actual_bbox"],  # type: ignore[arg-type]
     )
+    template_rows = toc_rows_below_title(template_raw_rows, template_title_bbox)
+    actual_rows = toc_rows_below_title(actual_raw_rows, actual_title_bbox)
     template_first = first_row(template_rows)
     actual_first = first_row(actual_rows)
     template_row_delta = line_delta_summary(template_rows)
@@ -1048,7 +1167,12 @@ def build_toc_geometry(title_crops: dict[str, object], entry_crops: dict[str, ob
         "toc_first_entry_bbox_baseline_actual": (
             f"template first-entry bbox {bbox_text(template_first)}; actual first-entry bbox {bbox_text(actual_first)}"
         ),
-        "toc_row_bbox_map": f"template measured rows {summarize_rows(template_rows)}; actual measured rows {summarize_rows(actual_rows)}",
+        "toc_row_bbox_map": (
+            f"template measured rows {summarize_rows(template_rows)}; "
+            f"actual measured rows {summarize_rows(actual_rows)}; "
+            f"raw template rows before title filter {summarize_rows(template_raw_rows)}; "
+            f"raw actual rows before title filter {summarize_rows(actual_raw_rows)}"
+        ),
         "toc_per_level_left_indent_x": (
             f"template measured row-left x values={sorted({row[0] for row in template_rows})[:8]}; "
             f"actual measured row-left x values={sorted({row[0] for row in actual_rows})[:8]}"
@@ -1102,6 +1226,8 @@ def main() -> int:
     template_pages = image_paths(Path(args.template_pages).resolve())
     actual_pages = image_paths(Path(args.actual_pages).resolve())
     sample_pages = parse_sample_pages(Path(args.sample_self_check).resolve() if args.sample_self_check else None)
+    sample_pages["__template_pages_dir__"] = str(Path(args.template_pages).resolve())  # type: ignore[assignment]
+    sample_pages["__actual_pages_dir__"] = str(Path(args.actual_pages).resolve())  # type: ignore[assignment]
     crop_dir = Path(args.crop_dir).resolve()
 
     geometry_surfaces: dict[str, dict[str, str]] = {}

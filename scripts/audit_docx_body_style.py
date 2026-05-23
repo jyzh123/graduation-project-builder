@@ -24,8 +24,17 @@ def sha256_file(path: Path) -> str:
             digest.update(chunk)
     return digest.hexdigest()
 
-HEADING_NUMBER_RE = re.compile(r"^(?:第\s*[0-9一二三四五六七八九十]+\s*章|\d+(?:\.\d+){0,3})\s*\S")
 CJK_NUMERAL_CLASS = "\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341"
+CHAPTER_NUMERAL_CLASS = "\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341"
+CHAPTER_PREFIX_RE = re.compile(rf"^\s*\u7b2c\s*[0-9{CHAPTER_NUMERAL_CLASS}]+\s*\u7ae0")
+CHAPTER_HEADING_RE = re.compile(
+    rf"^\s*\u7b2c\s*[0-9{CHAPTER_NUMERAL_CLASS}]+\s*\u7ae0(?:\s+\S|$)"
+)
+SECTION_HEADING_RE = re.compile(r"^\s*(?:\d+\s+\S|\d+(?:\.\d+){1,3}\s*\S)")
+HEADING_NUMBER_RE = re.compile(
+    rf"^(?:\d+\s+\S|\d+(?:\.\d+){{1,3}}\s*\S|"
+    rf"\u7b2c\s*[0-9{CHAPTER_NUMERAL_CLASS}]+\s*\u7ae0(?:\s+\S|$))"
+)
 CAPTION_RE = re.compile(
     rf"^\s*(?:\u56fe|\u8868)\s*"
     rf"(?:\d+|[{CJK_NUMERAL_CLASS}]+)"
@@ -104,8 +113,25 @@ def is_toc_heading_text(text: str) -> bool:
 
 
 def contains_chapter_heading_marker(text: str) -> bool:
-    normalized = normalize_space(text)
-    return bool(re.match(r"^\s*第[0-9一二三四五六七八九十]+章(?:\s|$)", normalized))
+    return bool(CHAPTER_HEADING_RE.match(text or ""))
+
+
+def normalized_heading_text(text: str) -> str:
+    return (text or "").strip().replace("\uff0e", ".").replace("\u3002", ".")
+
+
+def contains_numeric_heading_marker(text: str) -> bool:
+    stripped = normalized_heading_text(text)
+    if re.match(r"^\d+\s+\S", stripped):
+        return True
+    match = re.match(r"^(\d+(?:\.\d+){1,3})", stripped)
+    if not match:
+        return False
+    rest = stripped[match.end(1):].lstrip()
+    if not rest:
+        return False
+    # Decimal values and percentages are prose, not section headings.
+    return rest[0] not in ".%％、，,。；;:：)）]】"
 
 
 def visible_text_fragments(node: ET.Element) -> list[str]:
@@ -546,17 +572,16 @@ def mixed_script_body_contamination_records(body_paragraphs: list[dict[str, obje
 
 def is_heading_like(text: str, style_name: str, style_id: str | None, node: ET.Element | None = None) -> bool:
     lowered_style = (style_name or style_id or "").lower()
-    normalized = normalize_space(text)
     numbering_level = paragraph_numbering_level(node) if node is not None else None
     return (
         lowered_style.startswith("heading")
         or "heading" in lowered_style
-        or bool(normalized and HEADING_NUMBER_RE.match(normalized))
+        or contains_numeric_heading_marker(text)
         or contains_chapter_heading_marker(text)
         or (
             numbering_level is not None
             and numbering_level <= 3
-            and bool(normalized)
+            and bool(normalize_space(text))
             and not is_static_toc_leader_entry(text)
         )
     )
@@ -566,13 +591,32 @@ def heading_level_from_text(text: str, node: ET.Element | None = None) -> int | 
     numbering_level = paragraph_numbering_level(node) if node is not None else None
     if numbering_level is not None and numbering_level <= 3:
         return numbering_level
-    stripped = (text or "").strip().replace("\uff0e", ".").replace("\u3002", ".")
-    if re.match(r"^\u7b2c\s*[0-9一二三四五六七八九十]+\s*\u7ae0(?:\s|$)", stripped):
+    stripped = normalized_heading_text(text)
+    if CHAPTER_HEADING_RE.match(stripped):
         return 0
-    match = re.match(r"^(\d+(?:\.\d+){0,3})\s+\S", stripped)
+    match = re.match(r"^(\d+(?:\.\d+){0,3})(?:\s+\S|\S)", stripped)
     if not match:
         return None
     return min(match.group(1).count("."), 2)
+
+
+def is_body_heading_text(text: str, style_name: str, style_id: str | None, node: ET.Element | None = None) -> bool:
+    """Return True only for real body heading lines, not prose mentioning a chapter."""
+
+    stripped = normalized_heading_text(text)
+    if not stripped:
+        return False
+    if is_static_toc_leader_entry(stripped) or is_formal_caption_text(stripped):
+        return False
+    if contains_chapter_heading_marker(stripped) or contains_numeric_heading_marker(stripped):
+        return True
+    numbering_level = paragraph_numbering_level(node) if node is not None else None
+    if numbering_level is not None and numbering_level <= 3 and not looks_like_body_prose(stripped):
+        return True
+    lowered_style = (style_name or style_id or "").lower()
+    if ("heading" in lowered_style or lowered_style.startswith("heading")) and not looks_like_body_prose(stripped):
+        return True
+    return False
 
 
 def is_figure_caption_text(text: str) -> bool:
@@ -712,7 +756,7 @@ def heading_contamination_records(
             continue
 
         heading_family = style_is_heading_family(styles, style_id, style_name) or paragraph_has_outline_level(child) or paragraph_has_numbering(child)
-        heading_text = is_heading_like(text, style_name, style_id, child)
+        heading_text = is_body_heading_text(text, style_name, style_id, child)
         if heading_text:
             main_body_started = True
             continue
@@ -781,7 +825,7 @@ def body_paragraphs(docx_path: Path) -> tuple[list[dict[str, object]], dict[str,
             or (style_id or "").lower().startswith("toc")
         ):
             continue
-        if is_heading_like(text, style_name, style_id, child):
+        if is_body_heading_text(text, style_name, style_id, child):
             main_body_started = True
             continue
         if not main_body_started:
@@ -1178,7 +1222,7 @@ def body_heading_line_metric_records(docx_path: Path) -> list[dict[str, object]]
             or (style_id or "").lower().startswith("toc")
         ):
             continue
-        if not is_heading_like(text, style_name, style_id, child):
+        if not is_body_heading_text(text, style_name, style_id, child):
             continue
 
         metrics = paragraph_instance_metrics(child)
@@ -1267,7 +1311,7 @@ def body_surface_direct_metric_records(docx_path: Path) -> list[dict[str, object
             )
         ):
             continue
-        if text and is_heading_like(text, style_name, style_id, child):
+        if text and is_body_heading_text(text, style_name, style_id, child):
             main_body_started = True
             previous_main_paragraph_had_picture = False
         if not main_body_started:
@@ -1407,7 +1451,7 @@ def font_alias_list_records(docx_path: Path) -> list[dict[str, object]]:
                 )
             ):
                 continue
-            if text and is_heading_like(text, style_name, style_id, paragraph):
+            if text and is_body_heading_text(text, style_name, style_id, paragraph):
                 main_body_started = True
             if not main_body_started:
                 continue

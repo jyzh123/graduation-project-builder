@@ -580,8 +580,23 @@ def collect_toc_metrics(docx_path: Path) -> dict[str, TocMetrics]:
         styles = load_styles(zf)
     body = document.find(".//w:body", NS)
     paragraphs = body.findall(".//w:p", NS) if body is not None else []
+    toc_sdt = next(
+        (
+            sdt
+            for sdt in document.findall(".//w:sdt", NS)
+            if re.search(
+                r"\bTOC\b",
+                " ".join(node.text or "" for node in sdt.findall(".//w:instrText", NS)),
+                re.IGNORECASE,
+            )
+        ),
+        None,
+    )
+    if toc_sdt is not None:
+        content = toc_sdt.find(".//w:sdtContent", NS)
+        paragraphs = content.findall("./w:p", NS) if content is not None else toc_sdt.findall(".//w:p", NS)
     result: dict[str, TocMetrics] = {}
-    in_toc = False
+    in_toc = toc_sdt is not None
     for paragraph in paragraphs:
         if is_toc_title(paragraph, styles):
             result["title"] = paragraph_metric(paragraph, styles, "title")
@@ -767,7 +782,23 @@ def collect_toc_metrics(docx_path: Path) -> dict[str, TocMetrics]:
             raise ValueError(f"{docx_path} lacks word/document.xml")
         styles = load_styles(zf)
     body = document.find(".//w:body", NS)
-    paragraphs = body.findall("w:p", NS) if body is not None else []
+    toc_sdt = next(
+        (
+            sdt
+            for sdt in document.findall(".//w:sdt", NS)
+            if re.search(
+                r"\bTOC\b",
+                " ".join(node.text or "" for node in sdt.findall(".//w:instrText", NS)),
+                re.IGNORECASE,
+            )
+        ),
+        None,
+    )
+    if toc_sdt is not None:
+        content = toc_sdt.find(".//w:sdtContent", NS)
+        paragraphs = content.findall("./w:p", NS) if content is not None else toc_sdt.findall(".//w:p", NS)
+    else:
+        paragraphs = body.findall("w:p", NS) if body is not None else []
     title_indices = [idx for idx, paragraph in enumerate(paragraphs) if is_toc_title(paragraph, styles)]
     best_score = -1
     best: dict[str, TocMetrics] = {}

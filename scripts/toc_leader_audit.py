@@ -182,7 +182,11 @@ def run_tab_segments(paragraph: ET.Element) -> tuple[int, list[str]]:
             tab_count += 1
             segments.append("")
         elif node.tag == W + "t":
-            segments[-1] += node.text or ""
+            for index, part in enumerate((node.text or "").split("\t")):
+                if index:
+                    tab_count += 1
+                    segments.append("")
+                segments[-1] += part
     return tab_count, segments
 
 
@@ -196,11 +200,15 @@ def looks_like_toc_entry_without_tab(paragraph: ET.Element, styles: dict[str, St
     text = paragraph_text(paragraph)
     if not trailing_page_number_from_text(text):
         return False
+    if re.search(r"(?:\.{3,}|\u2026{2,})\s*(?:\d+|[ivxlcdmIVXLCDM]+)\s*$", text or ""):
+        return True
     style_id = paragraph_style_id(paragraph)
     style_name = compact_text(styles.get(style_id, StyleInfo(style_id, "", None)).name)
     if "toc" in style_name or style_id in {"11", "21", "31"}:
         return True
     label = re.sub(r"(\d+|[ivxlcdmIVXLCDM]+)\s*$", "", text or "").strip()
+    if compact_text(toc_visible_label(text)) in {compact_text(label) for label in TAIL_BLOCK_LABELS.values()}:
+        return True
     if compact_text(label) in {"\u6458\u8981", "abstract"}:
         return True
     return bool(
@@ -233,6 +241,16 @@ def body_children(root: ET.Element) -> list[ET.Element]:
     return list(body)
 
 
+def sdt_content(element: ET.Element) -> ET.Element | None:
+    if element.tag != W + "sdt":
+        return None
+    return element.find("w:sdtContent", NS)
+
+
+def direct_paragraphs(element: ET.Element) -> list[ET.Element]:
+    return [child for child in list(element) if child.tag == W + "p"]
+
+
 def child_text(element: ET.Element) -> str:
     return "".join(node.text or "" for node in element.findall(".//w:t", NS)).strip()
 
@@ -260,15 +278,51 @@ def is_toc_entry_candidate(paragraph: ET.Element, styles: dict[str, StyleInfo]) 
 def collect_toc_entry_paragraphs(root: ET.Element, styles: dict[str, StyleInfo]) -> tuple[list[ET.Element], list[str]]:
     children = body_children(root)
     title_index: int | None = None
+    title_paragraph: ET.Element | None = None
+    toc_container: ET.Element | None = None
     for index, child in enumerate(children):
         if child.tag == W + "p" and is_toc_title(child, styles):
             title_index = index
+            title_paragraph = child
+            break
+        content = sdt_content(child)
+        if content is not None:
+            for paragraph in direct_paragraphs(content):
+                if is_toc_title(paragraph, styles):
+                    title_index = index
+                    title_paragraph = paragraph
+                    toc_container = content
+                    break
+        if title_index is not None:
             break
     if title_index is None:
         return [], []
 
     entries: list[ET.Element] = []
     issues: list[str] = []
+    if toc_container is not None:
+        seen_title = False
+        for paragraph in direct_paragraphs(toc_container):
+            if paragraph is title_paragraph:
+                seen_title = True
+                continue
+            if not seen_title:
+                continue
+            text = paragraph_text(paragraph)
+            tab_count, _segments = run_tab_segments(paragraph)
+            if is_toc_entry_candidate(paragraph, styles):
+                entries.append(paragraph)
+                continue
+            if not text.strip():
+                continue
+            if tab_count and not page_number_after_last_tab(paragraph):
+                issues.append(f"TOC candidate paragraph lacks page number after final tab: {text[:80]}")
+                continue
+            issues.append(f"TOC content-control range contains non-entry paragraph: {text[:80]}")
+        if not entries:
+            issues.append("TOC entry block has no tabbed entry paragraphs after TOC title")
+        return entries, issues
+
     body_start_index = first_body_heading_index(children, title_index + 1, styles)
     scan_end = body_start_index if body_start_index is not None else len(children)
     for child in children[title_index + 1 : scan_end]:
@@ -323,18 +377,18 @@ def audit_required_tail_entries(root: ET.Element, entries: list[ET.Element]) -> 
     for key, label in TAIL_BLOCK_LABELS.items():
         if key in body_tail and key not in entry_positions:
             issues.append(f"TOC is missing required tail-block entry: {label}")
-    if (
-        "references" in body_tail
-        and "acknowledgement" in body_tail
-        and "references" in entry_positions
-        and "acknowledgement" in entry_positions
-        and entry_positions["references"] > entry_positions["acknowledgement"]
-    ):
-        issues.append("TOC tail-block order is invalid: references must appear before acknowledgement")
+    body_order = sorted(body_tail, key=body_tail.get)
+    toc_order = sorted((key for key in body_order if key in entry_positions), key=entry_positions.get)
+    if len(toc_order) == len(body_order) and toc_order != body_order:
+        expected = " before ".join(TAIL_BLOCK_LABELS[key] for key in body_order)
+        found = " before ".join(TAIL_BLOCK_LABELS[key] for key in toc_order)
+        issues.append(f"TOC tail-block order does not match body tail order: expected {expected}; found {found}")
     return (
         {
             "body_tail_blocks": body_tail,
             "toc_tail_entries": entry_positions,
+            "body_tail_order": body_order,
+            "toc_tail_order": toc_order,
             "required_tail_labels": TAIL_BLOCK_LABELS,
         },
         issues,
@@ -354,7 +408,7 @@ def audit_docx_toc_dotted_leaders(docx_path: Path) -> tuple[dict[str, object], l
     entries, collection_issues = collect_toc_entry_paragraphs(root, styles)
     tail_payload, tail_issues = audit_required_tail_entries(root, entries)
     audits: list[TocEntryAudit] = []
-    paragraphs = body_paragraphs(root)
+    paragraphs = root.findall(".//w:p", NS)
     page_column_positions: set[str] = set()
     for paragraph in entries:
         paragraph_index = paragraphs.index(paragraph) + 1 if paragraph in paragraphs else -1

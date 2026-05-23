@@ -1098,6 +1098,8 @@ def validate_common_figure_entry_contract(key: str, entry: dict[str, Any]) -> li
 
 
 def validate_template_sample_priority_contract(key: str, entry: dict[str, Any]) -> list[str]:
+    if _is_preserved_existing_figure_entry(entry):
+        return []
     issues: list[str] = []
     template_baseline = _entry_value(
         entry,
@@ -1329,6 +1331,39 @@ def _segment_intersects_rect(
     return u2 - u1 > 0.01
 
 
+def _structural_edge_boundary_orthogonal_issues(edge: dict[str, Any], visible_by_id: dict[str, dict[str, Any]]) -> list[str]:
+    issues: list[str] = []
+    edge_id = str(edge.get("id") or "<missing>")
+    source = str(edge.get("source") or "")
+    target = str(edge.get("target") or "")
+    style = str(edge.get("style") or "")
+    values = style_map(style)
+    edge_style = str(values.get("edgeStyle") or "").strip().lower()
+    rounded = str(values.get("rounded") or "").strip().lower()
+    curved = str(values.get("curved") or "").strip().lower()
+    if source not in visible_by_id or target not in visible_by_id:
+        issues.append(
+            "structural connector is not boundary-bound to real visible source and target nodes: "
+            f"edge `{edge_id}` source=`{source or '<missing>'}` target=`{target or '<missing>'}`"
+        )
+    if edge_style != "orthogonaledgestyle":
+        issues.append(
+            "structural connector must use orthogonal right-angle routing: "
+            f"edge `{edge_id}` edgeStyle=`{values.get('edgeStyle') or '<missing>'}`"
+        )
+    if rounded != "0":
+        issues.append(
+            "structural connector must use square right-angle bends with rounded=0: "
+            f"edge `{edge_id}` rounded=`{values.get('rounded') or '<missing>'}`"
+        )
+    if curved in {"1", "true"}:
+        issues.append(
+            "structural connector must not use curved routing: "
+            f"edge `{edge_id}` curved=`{values.get('curved')}`"
+        )
+    return issues
+
+
 def drawio_structural_geometry_report(drawio: Path, *, family: str = "structure") -> dict[str, Any]:
     vertices, vertex_issues = drawio_vertices(drawio)
     edges, edge_issues = _drawio_edges(drawio)
@@ -1343,14 +1378,22 @@ def drawio_structural_geometry_report(drawio: Path, *, family: str = "structure"
         issues.append("structural draw.io source has no visible shape vertices")
     if not edges and not line_segments:
         issues.append("structural draw.io source has no connector edges or line segments")
+    boundary_orthogonal_issues: list[str] = []
     for edge in edges:
         source = str(edge.get("source") or "")
         target = str(edge.get("target") or "")
+        boundary_orthogonal_issues.extend(_structural_edge_boundary_orthogonal_issues(edge, visible_by_id))
         if source in router_ids or target in router_ids:
-            issues.append(
+            boundary_orthogonal_issues.append(
                 "structural connector uses invisible point/router vertex, which can create line routing through node boxes: "
                 f"edge `{edge.get('id')}` source=`{source or '<missing>'}` target=`{target or '<missing>'}`"
             )
+    for segment in line_segments:
+        boundary_orthogonal_issues.append(
+            "structural connector line is source/targetless; use a boundary-bound orthogonal edge instead: "
+            f"line `{segment.get('id')}`"
+        )
+    issues.extend(boundary_orthogonal_issues)
     for index, left in enumerate(visible_vertices):
         for right in visible_vertices[index + 1 :]:
             if str(left.get("id") or "") in container_ids or str(right.get("id") or "") in container_ids:
@@ -1410,6 +1453,8 @@ def drawio_structural_geometry_report(drawio: Path, *, family: str = "structure"
         "visible_vertex_count": len(visible_vertices),
         "edge_count": len(edges),
         "line_segment_count": len(line_segments),
+        "boundary_orthogonal_connector_verdict": "fail" if boundary_orthogonal_issues else "pass",
+        "boundary_orthogonal_connector_issues": boundary_orthogonal_issues,
         "vertices": [
             {
                 "id": node["id"],
@@ -1597,6 +1642,8 @@ def validate_non_er_structural_geometry_report(report_path: Path, drawio: Path) 
         issues.append(f"non-ER structural figure geometry report draw.io path mismatch: {report_path}")
     if report.get("verdict") != "pass":
         issues.append(f"non-ER structural figure geometry report verdict is not pass: {report_path}")
+    if report.get("boundary_orthogonal_connector_verdict") != "pass":
+        issues.append(f"non-ER structural figure geometry report boundary/orthogonal connector verdict is not pass: {report_path}")
     report_issues = report.get("issues")
     if report_issues not in ([], None):
         issues.append(f"non-ER structural figure geometry report still lists issues: {report_path}")
@@ -2036,6 +2083,43 @@ def _find_authorization_for_final(
 
 def _manifest_authorized_drawing_changes(manifest: dict[str, Any]) -> list[dict[str, str]]:
     authorized: list[dict[str, str]] = []
+    top_level_authorizations = manifest.get("drawing_authorizations")
+    if isinstance(top_level_authorizations, list):
+        for index, entry in enumerate(top_level_authorizations, start=1):
+            if not isinstance(entry, dict):
+                continue
+            authorization = _entry_value(
+                entry,
+                (
+                    "explicit_drawing_authorization_source",
+                    "drawing_authorization_source",
+                    "authorization_source",
+                    "task_card",
+                ),
+            )
+            if not authorization:
+                continue
+            authorized.append(
+                {
+                    "entry_key": f"drawing_authorizations[{index}]",
+                    "original_drawing_sha256": _entry_value(
+                        entry,
+                        ("original_drawing_sha256", "source_drawing_sha256", "original_drawing_object_sha256"),
+                    ).lower(),
+                    "final_drawing_sha256": _entry_value(
+                        entry,
+                        ("final_drawing_sha256", "final_drawing_object_sha256"),
+                    ).lower(),
+                    "original_owner_part": _entry_value(
+                        entry,
+                        ("original_drawing_owner_part", "original_owner_part", "source_drawing_owner_part"),
+                    ),
+                    "final_owner_part": _entry_value(
+                        entry,
+                        ("final_drawing_owner_part", "final_owner_part"),
+                    ),
+                }
+            )
     for collection_name in ("figures", "diagrams"):
         collection = manifest.get(collection_name)
         if not isinstance(collection, dict):
@@ -2090,8 +2174,6 @@ def _drawing_non_media_changed(source: dict[str, Any], final: dict[str, Any]) ->
         "drawing_kind",
         "extent_signature",
         "relationship_ids",
-        "next_text",
-        "next_is_figure_caption",
     )
     return any(str(source.get(field, "")) != str(final.get(field, "")) for field in compared_fields)
 
@@ -2881,7 +2963,14 @@ def _front_matter_drawing_preserved_from_source(final_docx: Path, source_docx: P
     final_rows = {key: value for key, value in final_drawings.items() if key.startswith(prefix)}
     if not final_rows:
         return False
-    return all(source_drawings.get(key) == value for key, value in final_rows.items())
+    compared_fields = ("drawing_kind", "extent_signature", "relationship_ids", "media_signature")
+    for key, final_row in final_rows.items():
+        source_row = source_drawings.get(key)
+        if source_row is None:
+            return False
+        if any(str(source_row.get(field, "")) != str(final_row.get(field, "")) for field in compared_fields):
+            return False
+    return True
 
 
 def _max_extent_cx_from_signature(extent_signature: str) -> int:
@@ -3064,8 +3153,6 @@ def _drawing_surface_preservation_signature(row: dict[str, Any]) -> tuple[str, .
         str(row.get("extent_signature", "")),
         str(row.get("relationship_ids", "")),
         str(row.get("media_signature", "")),
-        str(row.get("next_text", "")),
-        str(row.get("next_is_figure_caption", "")),
     )
 
 

@@ -38,6 +38,9 @@ Use this file for durable template-following, TOC, heading, front-matter, and la
 - For legacy `.doc` school templates, assume the visible TOC may be driven by direct paragraph formatting rather than rich modern TOC styles, and extract the visible paragraph metrics from the template pages before styling the refreshed TOC.
 - When a script claims to search only body headings or body paragraphs, do not accept style-name filtering alone as sufficient TOC exclusion. The targeting logic must also exclude TOC content-control paragraphs such as `w:sdt` / `InToc=True` so body rebuild steps cannot land inside the TOC block.
 - When the canonical builder creates or updates a static TOC from a template, it must clone the template TOC entry paragraphs and preserve their run/tab/page-number structure; a `para.text` rewrite that keeps only the visible words is still a failed TOC build.
+- When the active template shows a live TOC, TOC content control, or field-backed TOC cache, the target manuscript must derive its TOC from that same template-owned structure or record an explicit blocked static-fallback exception. A semantically correct handwritten list, default Word/WPS refreshed TOC, or static paragraph block is not acceptable for `1:1` template alignment.
+- TOC evidence must record the template TOC implementation type, source paragraph/control path, field instruction when present, style/direct-format donor, per-level paragraph metrics, visible-run typography for entry/tab/page-number runs, and rendered page occupancy rhythm. A pass claim that lacks any one of those template-vs-target fields must fail closed.
+- If the teacher screenshot shows a Word/WPS live TOC selection/content-control frame or grey selected entry blocks, treat that as evidence of the expected TOC editing surface, not as incidental UI decoration. The repaired DOCX must preserve the template's editable TOC behavior unless the final record explicitly says the TOC remains blocked.
 
 ### FB-LAYOUT-003 (legacy 15). Thesis Figures Must Stay In The Narrative Flow (Mandatory)
 
@@ -732,10 +735,11 @@ Use this file for durable template-following, TOC, heading, front-matter, and la
 - Treat this as a dedicated failure class rather than as a generic chapter-start or heading-style issue.
 - When the school format requires the sequence `参考文献` before `致谢`, the DOCX body order, TOC order, and rendered opener pages must all follow that order. A manuscript with `致谢` before `参考文献`, or with both titles on the same rendered page, is not acceptable.
 - Tail-block title repair must set a single opener owner, such as paragraph-owned `w:pageBreakBefore`, and remove redundant hard page-break runs on the title. A title that relies on leftover inline hard breaks is not a verified opener owner.
+- The formal `references` opener must be rendered after the previous real content block, not only after a generic tail-block marker. Evidence must record the previous content physical page, the `references` physical page, and `references_prior_block_separation_verdict=pass`; the same page is a failure even if the title paragraph still has a page-start owner in XML.
 - Required workflow for each touched tail block:
   1. lock the approved title baseline paragraph instance
   2. lock one page-start owner only for that opener
-  3. verify the page immediately before the opener and the opener page on rendered output
+  3. verify the page immediately before the opener, the previous real content page, and the opener page on rendered output
   4. verify that the DOCX or office-application state still shows that intended opener owner rather than a one-off rendered coincidence
 - If a tail-block title shares a page with the prior block, depends on duplicate owners, or no longer has a verified opener owner, the repair fails.
 
@@ -770,6 +774,8 @@ Rendered Header/Footer Acceptance Detail
   - school logo/image relationship geometry
 - Do not rebuild cover fields by applying the title paragraph style or a generic cover style to every row.
 - If the visible values need to change, replace only the field text inside the accepted donor structure and preserve the donor paragraph/run properties.
+- The visible underline geometry is part of the donor structure. Do not let the underline length expand or shrink with the replacement text; every value line must keep the locked donor span, line weight, and baseline position.
+- If the donor uses the same underline geometry across multiple cover rows, preserve that equality. A cover row whose underline becomes shorter or longer than the other rows because the value text changed is a failed repair.
 - After regeneration, export the exact final DOCX to rendered pages and inspect at least the cover page plus the next front-matter page.
 - A cover repair fails if the first page looks visually fixed but the generator still contains the same hand-built cover logic that will damage the cover on the next rebuild.
 
@@ -790,6 +796,7 @@ Rendered Header/Footer Acceptance Detail
 
 - When a current user correction says the cover, table, TOC, header, or body format still differs from the template, treat that correction as a live template-alignment incident, not as a cosmetic preference.
 - For cover pages, value fields must be replaced inside the original value area while preserving the donor underline, row baseline, label cell, field-row alignment, spacer rows, and page-break ownership. A cover page that visually lacks the fill-in underline at the value position is still failed even when the text is correct.
+- Cover underline geometry must be verified as a rendered width baseline, not inferred from text length. The repaired cover is invalid if the underline length changes per row, even when the typed content fits neatly.
 - For thesis tables, the active donor decides whether the table title is an external paragraph or an in-table first merged title row. Do not move an in-table donor title outside the grid, and do not move an external donor title into a cell.
 - Three-line-table evidence must separately record the top rule, header separator rule, any donor-required body middle rule, bottom rule, title mode, width, cell typography, and rendered crop metrics. A table with only a top and bottom rule cannot pass when the donor shows a header separator or a middle rule.
 - If a detector, fallback memory, or script assumes `caption inside table = failure`, it must first exempt donor-backed `first_merged_row` table titles. Otherwise the detector is unsafe for templates that place table titles inside the table.
@@ -827,7 +834,26 @@ Rendered Header/Footer Acceptance Detail
 - Cover repair must clone the accepted local donor structure and replace only variable text. It must not rebuild the cover from generic paragraphs, flatten cover tables, lose title wrapping, remove school text/logo/banner objects, or damage declaration blocks.
 - Abstract repair must keep the official label/content split. Chinese `摘要`/`关键词` and English `Abstract`/`Key words` surfaces must not inherit body normalization, heading normalization, or bibliography formatting.
 - Header/footer repair must verify section-level bindings, odd/even or first-page differences, link-to-previous state, visible header/footer text, and page-number field behavior across front matter, TOC, body, references, acknowledgement, and appendix when present.
+- Header repair must compare the template's full visible header string, not only the semantic chapter title. If the template's right header displays a chapter-number component plus title, such as `第一章 绪论`, `第二章 照明系统设计`, or an equivalent numbered pattern, a target header that shows only `绪论` or only `照明系统设计` is a hard failure.
+- Header evidence must record the expected display-string source, chapter-number component, chapter-title component, observed rendered string, section/header part source, and verdict for the first page of each chapter plus at least one later body page and every present tail-block family.
 - Cover, header, and front-matter horizontal rules must be template-proven before they are kept. A target-only paragraph border, table border, header bottom border, shape line, or imported donor residue must be removed when the active template or approved donor does not show the same rendered line in the same page region. Header-line evidence must identify the concrete OOXML source, such as `w:pBdr/w:bottom`, and compare template versus target values instead of relying on the line looking formal.
 - Page-number repair must preserve a Word/WPS page-number field when the template uses one. Hand-typed page numbers or page numbers that only look correct before field refresh are failed.
 - Whole-document blank-page review must classify whether a blank or near-empty page is template-owned, odd/even-section-owned, or abnormal. Abnormal blank pages caused by duplicate page-break owners, stale section breaks, empty paragraphs, field refresh, or oversized blocks must be fixed before handoff.
 - A repair that changes body text or body style without freezing and diffing these donor families is a style-blast-radius repair and cannot pass as a local body-font fix.
+
+### FB-LAYOUT-072. Inserted Or Replaced Body Prose Must Not Inherit Heading, Caption, Or Title Formatting (Mandatory)
+
+- When adding, expanding, rewriting, cleaning, or replacing thesis body paragraphs, clone or preserve the nearest valid body paragraph's paragraph properties and run properties unless the active template or teacher instruction explicitly requires another body donor.
+- This rule applies even when a cleanup is described as text-only and does not lengthen the paragraph. A whole-paragraph text replacement that leaves the paragraph visually different from neighboring body prose is a failed repair.
+- Inserted or replaced body prose must not inherit chapter-title, heading, TOC, caption, cover, abstract-title, reference-title, acknowledgement-title, figure-caption, table-caption, or title-page formatting.
+- Treat these as hard failures: body prose rendered bold/oversized like a heading; body prose centered like a title or caption; body prose assigned an outline level or heading/caption style; body prose appears in the TOC; body prose keeps wrong line spacing, first-line indent, paragraph alignment, font size, or run formatting compared with the local body donor; body prose starts a page as a title-like orphan immediately before a chapter opener; body prose changes the next chapter opener's visual hierarchy.
+- If a rewrite or cleanup touches an existing paragraph, compare the final paragraph against neighboring same-family body paragraphs and repair both paragraph properties and character run properties before handoff. Do not accept a paragraph whose text is correct but whose visible Word/WPS style differs from surrounding body text.
+- Acceptance must compare inserted or replaced body paragraphs against a local body donor using both DOCX paragraph/run metrics and rendered page images. A pass based only on style names, XML counts, package counts, or PDF existence is invalid, and a user screenshot or report of visible body-style mismatch overrides XML-only evidence.
+- If a content expansion, cleanup, or style normalization changes pagination or appears near a figure/table/caption, the format lane must review the touched pages, the previous/next rendered pages, and any chapter opener moved by the change before handoff.
+
+### FB-LAYOUT-073. Thesis Deliverables Must Not Retain Blue Or Theme-Colored Visible Text Unless The Active Template Requires It (Mandatory)
+
+- A thesis DOCX/PDF handoff must not leave visible heading, title, caption, citation, TOC, body, reference, acknowledgement, header, footer, or page-number text in blue or another theme accent color unless the locked active template or official school requirement explicitly requires that exact color.
+- Do not treat PDF export, reference count, image count, or successful Office validation as proof of font-color correctness. Word built-in styles such as `Heading 1`, `Heading 2`, `Heading 3`, `Title`, `Caption`, and `Hyperlink` can keep blue theme colors in `styles.xml` even when direct body runs look black.
+- Before final thesis handoff after generation, whole-thesis revision, format repair, figure insertion, citation repair, or style normalization, run the canonical font-color audit on the exact final DOCX. The audit must inspect both direct run colors and the colors of styles actually used in the manuscript.
+- If the audit finds a used style or direct run with non-black visible color, repair that style/run to black, clear theme-color attributes, rerender the PDF, and rerun the audit on the exact final DOCX. A handoff with known non-black visible text is a failed format repair unless the active template evidence proves that color is required.

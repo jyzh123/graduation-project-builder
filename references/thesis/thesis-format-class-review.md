@@ -52,6 +52,7 @@ Check these separately when they are present, touched, user-reported, or can be 
 - TOC level-1 entries
 - TOC level-2 entries
 - TOC level-3 entries
+- TOC implementation family and live-field/content-control structure
 - TOC tabs, dotted leaders, and page-number column
 - level-1 headings
 - level-2 headings
@@ -76,6 +77,9 @@ Check these separately when they are present, touched, user-reported, or can be 
 - appendix title
 - appendix body
 - headers
+- header left fixed/school token
+- header right full display string
+- header chapter-number component
 - footers
 - page numbers
 - whole-document pagination
@@ -119,7 +123,7 @@ The inventory is mandatory even for a local repair because local edits can move 
 
 The front-matter coverage matrix must prove cover, declaration/title front matter, Chinese abstract, Chinese keywords, English abstract, English keywords, and TOC visual structure. The end-matter coverage matrix must prove references title, reference entries, acknowledgement when present, appendix when present, header/footer, and page numbers. The final acceptance record must name both matrix paths and must carry explicit verdict fields for cover style, abstract and keyword surfaces, TOC visual baseline, reference-entry format, and appendix format.
 
-The high-risk thesis format surface matrix is separate from the general inventory. It must include cover style, Chinese abstract title/body/keyword line, English abstract title/body/keyword line, TOC title/entries/dotted leaders/page-number column, body heading levels, references title/entries, acknowledgement title/body, and appendix title/body. The final acceptance record must name the matrix path and carry an overall high-risk thesis format surface verdict. If any of those rows is missing, unchecked, marked blocked, or contradicted by rendered evidence, the run must not be handed off as fixed.
+The high-risk thesis format surface matrix is separate from the general inventory. It must include cover style, Chinese abstract title/body/keyword line, English abstract title/body/keyword line, TOC title/entries/dotted leaders/page-number column, TOC implementation family/live-field structure when the template exposes one, body heading levels, header full display string including chapter-number component when the template uses one, references title/entries, acknowledgement title/body, and appendix title/body. The final acceptance record must name the matrix path and carry an overall high-risk thesis format surface verdict. If any of those rows is missing, unchecked, marked blocked, or contradicted by rendered evidence, the run must not be handed off as fixed.
 
 If the source manuscript or comment-carrier DOCX includes review comments or tracked changes, add `review_comments_and_change_marks` to the high-risk matrix and prove source-to-final preservation or explicit user-approved removal. A final copy may not silently drop comment parts or tracked-change parts while the comments surface still exists in the source.
 
@@ -133,7 +137,7 @@ Every thesis generation, thesis revision, and thesis format repair record must i
 
 - a high-risk thesis format surface matrix path
 - a high-risk thesis format surface verdict
-- row-level verdicts for cover style, Chinese abstract title/body/keyword line, English abstract title/body/keyword line, TOC title/entries/dotted leaders/page-number column, body heading levels, references title/entries, acknowledgement title/body, and appendix title/body
+- row-level verdicts for cover style, Chinese abstract title/body/keyword line, English abstract title/body/keyword line, TOC title/entries/dotted leaders/page-number column, TOC implementation family/live-field structure when present, body heading levels, header full display string and chapter-number component when present, references title/entries, acknowledgement title/body, and appendix title/body
 - evidence records for abstract and TOC rows that confirm the exact protected surface, not only the surrounding page class or a raw screenshot
 
 This gate is required even when the active request names only one paragraph, one heading, or one figure. It exists because these front-matter and end-matter surfaces have repeatedly been omitted by local-only repairs.
@@ -197,6 +201,7 @@ When headings are touched, verify:
 Verify:
 
 - order is correct
+- implementation family matches the locked template when the template uses a live field or content-control TOC
 - indentation reflects heading depth
 - dotted leaders are correct when required
 - page numbers align

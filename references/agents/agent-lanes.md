@@ -119,6 +119,12 @@
 - The audit must reject handoff when any evidence or helper report states that comments, tracked changes, or citation runs were stripped, cleaned, accepted, or regenerated without explicit user approval and a source-to-final controlled-change ledger.
 - The audit must reject a citation audit that has `result: pass` but lacks exact final DOCX SHA256 binding, source-to-final citation-marker run evidence after text mutation, or regeneration after the last DOCX write.
 
+### AGENT-AUDIT-004. Audit Lane Must Enforce Rendered Review After Content Expansion (Mandatory)
+- When the `content-worker` lane inserts, expands, rewrites, or lengthens thesis body paragraphs, the `audit` lane must reject final handoff unless the `format-worker` lane reviewed rendered page images from the exact post-mutation output.
+- The audit must parse, not path-check, the content-mutation rendered review record and confirm it names touched paragraph/page ids, rendered page images, body donor comparison, heading/title contamination checks, and pass-shaped machine-vision verdicts.
+- The audit must reject XML/package-count-only, PDF-export-only, page-count-only, style-name-only, manual-only, sampled-only, stale, or `not checked` evidence for body paragraph insertion or expansion.
+- A multi-agent claim is not valid when content and format workers return before post-mutation rendered evidence exists, even if the final controller summary says format was preserved.
+
 #### Action Cycle Audit Requirement
 - An action cycle is any observable behavior taken under this skill, including reading files, searching, classifying a task, selecting references, creating a checklist, planning, running tools, editing files, generating outputs, validating, or reporting completion.
 - Each action cycle must have an audit entry that names the action category, action owner, skill rules considered, expected outcome, checks performed, verdict, and blockers.

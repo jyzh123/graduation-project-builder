@@ -2,8 +2,9 @@
 """Apply narrow front-matter, TOC, and heading structure repairs to a DOCX.
 
 The helper is intentionally package-preserving. It rewrites only
-``word/document.xml`` and, when needed, ``word/styles.xml``. It does not rebuild
-the manuscript, touch media parts, regenerate citations, or generate new figures.
+``word/document.xml`` and, when needed, ``word/styles.xml`` or bounded
+``word/header*.xml`` parts. It does not rebuild the manuscript, touch media
+parts, regenerate citations, or generate new figures.
 """
 
 from __future__ import annotations
@@ -173,51 +174,384 @@ def toc_level_from_style(style_id: str, styles_root: ET.Element, template_level_
     return None
 
 
+def ppr_without_style(ppr: ET.Element | None) -> ET.Element | None:
+    if ppr is None:
+        return None
+    clone = deepcopy(ppr)
+    style = clone.find("./w:pStyle", NS)
+    if style is not None:
+        clone.remove(style)
+    return clone
+
+
+def replace_ppr(paragraph: ET.Element, donor_ppr: ET.Element | None, style_id: str | None = None) -> None:
+    old_ppr = paragraph_ppr(paragraph)
+    if old_ppr is not None:
+        paragraph.remove(old_ppr)
+    if donor_ppr is not None:
+        paragraph.insert(0, deepcopy(donor_ppr))
+    if style_id:
+        set_paragraph_style(paragraph, style_id)
+
+
+def direct_child_index(body: ET.Element, paragraph: ET.Element) -> int | None:
+    children = list(body)
+    for index, child in enumerate(children):
+        if child is paragraph:
+            return index
+        if paragraph in child.findall(".//w:p", NS):
+            return index
+    return None
+
+
+def iter_paragraphs_in_body_child(child: ET.Element) -> list[ET.Element]:
+    if child.tag == qn("p"):
+        return [child]
+    return child.findall(".//w:p", NS)
+
+
+def toc_entry_paragraphs_in_range(
+    body: ET.Element,
+    toc_index: int,
+    body_start: int,
+    styles_root: ET.Element,
+    template_level_map: dict[int, str],
+) -> list[tuple[int, ET.Element, int | None]]:
+    entries: list[tuple[int, ET.Element, int | None]] = []
+    children = list(body)
+    range_start = toc_index if children[toc_index].tag == qn("sdt") else toc_index + 1
+    for body_index in range(range_start, body_start):
+        for paragraph in iter_paragraphs_in_body_child(children[body_index]):
+            text = paragraph_text(paragraph).strip()
+            if not text:
+                continue
+            if is_toc_heading(text):
+                continue
+            style_id = paragraph_style_id(paragraph)
+            level = toc_level_from_style(style_id, styles_root, template_level_map)
+            if level is None:
+                inferred_heading_level = heading_level(text)
+                if inferred_heading_level is not None:
+                    level = max(1, min(3, inferred_heading_level))
+            if level is None and is_front_matter_toc_label(text):
+                level = 1
+            if level is None and not is_toc_entry_paragraph(paragraph):
+                continue
+            entries.append((body_index, paragraph, level))
+    return entries
+
+
+def collect_template_toc_donors(
+    template_document_root: ET.Element | None,
+    template_styles_root: ET.Element | None,
+) -> dict[int, ET.Element]:
+    if template_document_root is None or template_styles_root is None:
+        raise RuntimeError("toc-template-styles requires --template-docx")
+    template_body = template_document_root.find("./w:body", NS)
+    if template_body is None:
+        raise RuntimeError("template DOCX has no word/document.xml body")
+    template_level_map = template_toc_style_ids(template_styles_root)
+    if not template_level_map:
+        raise RuntimeError("template DOCX does not define TOC paragraph styles")
+    toc_index, body_start = find_toc_and_body_start(template_body)
+    donors: dict[int, ET.Element] = {}
+    for _body_index, paragraph, level in toc_entry_paragraphs_in_range(
+        template_body,
+        toc_index,
+        body_start,
+        template_styles_root,
+        template_level_map,
+    ):
+        if level is None:
+            continue
+        donors.setdefault(level, paragraph)
+    if not donors:
+        raise RuntimeError("template DOCX has no measurable TOC entry donor paragraphs")
+    return donors
+
+
+def toc_child_content(child: ET.Element) -> ET.Element | None:
+    if child.tag == qn("sdt"):
+        return child.find("./w:sdtContent", NS)
+    return None
+
+
+def toc_entry_like(paragraph: ET.Element, styles_root: ET.Element, template_level_map: dict[int, str]) -> bool:
+    text = paragraph_text(paragraph).strip()
+    if not text or is_toc_heading(text):
+        return False
+    if toc_level_from_style(paragraph_style_id(paragraph), styles_root, template_level_map) is not None:
+        return True
+    if heading_level(text) is not None:
+        return True
+    return is_toc_entry_paragraph(paragraph)
+
+
+def first_toc_entry_child_index(
+    container: ET.Element,
+    styles_root: ET.Element,
+    template_level_map: dict[int, str],
+) -> int | None:
+    for index, child in enumerate(list(container)):
+        if child.tag != qn("p"):
+            continue
+        if toc_entry_like(child, styles_root, template_level_map):
+            return index
+    return None
+
+
+def collect_template_toc_prefix(
+    template_document_root: ET.Element | None,
+    template_styles_root: ET.Element | None,
+) -> list[ET.Element]:
+    if template_document_root is None or template_styles_root is None:
+        raise RuntimeError("toc-template-styles requires --template-docx")
+    template_body = template_document_root.find("./w:body", NS)
+    if template_body is None:
+        raise RuntimeError("template DOCX has no word/document.xml body")
+    template_level_map = template_toc_style_ids(template_styles_root)
+    toc_index, _body_start = find_toc_and_body_start(template_body)
+    toc_child = list(template_body)[toc_index]
+    content = toc_child_content(toc_child)
+    if content is None:
+        return []
+    first_entry = first_toc_entry_child_index(content, template_styles_root, template_level_map)
+    if first_entry is None:
+        raise RuntimeError("template TOC content-control has no first entry paragraph")
+    prefix = [child for child in list(content)[:first_entry] if child.tag == qn("p")]
+    if not any(is_toc_heading(paragraph_text(paragraph).strip()) for paragraph in prefix):
+        raise RuntimeError("template TOC content-control has no title paragraph before entries")
+    return [deepcopy(paragraph) for paragraph in prefix]
+
+
+def replay_template_toc_prefix(
+    body: ET.Element,
+    toc_index: int,
+    styles_root: ET.Element,
+    template_styles_root: ET.Element,
+    template_document_root: ET.Element | None,
+) -> list[dict[str, object]]:
+    children = list(body)
+    toc_child = children[toc_index]
+    content = toc_child_content(toc_child)
+    if content is None:
+        return []
+    preceding_removed: list[str] = []
+    probe_index = toc_index - 1
+    while probe_index >= 0:
+        candidate = list(body)[probe_index]
+        if candidate.tag != qn("p"):
+            break
+        candidate_text = paragraph_text(candidate).strip()
+        if candidate_text and not is_toc_heading(candidate_text):
+            break
+        preceding_removed.append(candidate_text)
+        body.remove(candidate)
+        probe_index -= 1
+        continue
+    template_level_map = template_toc_style_ids(template_styles_root)
+    first_entry = first_toc_entry_child_index(content, styles_root, template_level_map)
+    if first_entry is None:
+        raise RuntimeError("target TOC content-control has no first entry paragraph")
+    prefix = collect_template_toc_prefix(template_document_root, template_styles_root)
+    before_prefix_text = [paragraph_text(child) for child in list(content)[:first_entry] if child.tag == qn("p")]
+    for child in list(content)[:first_entry]:
+        content.remove(child)
+    for offset, clone in enumerate(prefix):
+        content.insert(offset, deepcopy(clone))
+    return [
+        {
+            "kind": "toc_prefix_replayed",
+            "body_child_index": toc_index,
+            "removed_prefix_paragraph_count": first_entry,
+            "removed_preceding_standalone_toc_prefix": list(reversed(preceding_removed)),
+            "inserted_prefix_paragraph_count": len(prefix),
+            "before_prefix_text": before_prefix_text,
+            "inserted_prefix_text": [paragraph_text(paragraph) for paragraph in prefix],
+        }
+    ]
+
+
+def style_xml_equal(left: ET.Element | None, right: ET.Element | None) -> bool:
+    if left is None or right is None:
+        return left is right
+    return ET.tostring(left, encoding="utf-8") == ET.tostring(right, encoding="utf-8")
+
+
+def paragraphs_using_style(body: ET.Element, style_id: str) -> list[ET.Element]:
+    return [paragraph for paragraph in body.findall(".//w:p", NS) if paragraph_style_id(paragraph) == style_id]
+
+
+def unique_style_id(styles_root: ET.Element, base: str) -> str:
+    existing = style_ids(styles_root)
+    candidate = base
+    counter = 1
+    while candidate in existing:
+        counter += 1
+        candidate = f"{base}{counter}"
+    return candidate
+
+
+def clone_style_with_id(donor_style: ET.Element, new_style_id: str) -> ET.Element:
+    clone = deepcopy(donor_style)
+    clone.set(qn("styleId"), new_style_id)
+    name = clone.find("./w:name", NS)
+    if name is not None:
+        name.set(qn("val"), f"{name.get(qn('val')) or new_style_id} donor")
+    return clone
+
+
+def ensure_template_toc_style_mapping(
+    body: ET.Element,
+    styles_root: ET.Element,
+    template_styles_root: ET.Element,
+    target_toc_paragraphs: set[int],
+) -> tuple[dict[int, str], list[dict[str, object]]]:
+    template_level_map = template_toc_style_ids(template_styles_root)
+    changes: list[dict[str, object]] = []
+    selected: dict[int, str] = {}
+    for level, template_style_id in sorted(template_level_map.items()):
+        donor_style = style_by_id(template_styles_root, template_style_id)
+        if donor_style is None:
+            raise RuntimeError(f"template DOCX does not define required style `{template_style_id}`")
+        existing = style_by_id(styles_root, template_style_id)
+        if existing is None:
+            styles_root.append(deepcopy(donor_style))
+            selected[level] = template_style_id
+            changes.append({"kind": "style_copied", "level": level, "style_id": template_style_id})
+            continue
+        if style_xml_equal(existing, donor_style):
+            selected[level] = template_style_id
+            continue
+        users = paragraphs_using_style(body, template_style_id)
+        non_toc_users = [paragraph for paragraph in users if id(paragraph) not in target_toc_paragraphs]
+        if not non_toc_users:
+            parent_styles = list(styles_root)
+            replace_at = parent_styles.index(existing)
+            styles_root.remove(existing)
+            styles_root.insert(replace_at, deepcopy(donor_style))
+            selected[level] = template_style_id
+            changes.append(
+                {
+                    "kind": "style_replaced_no_non_toc_usage",
+                    "level": level,
+                    "style_id": template_style_id,
+                    "prior_user_count": len(users),
+                }
+            )
+            continue
+        safe_style_id = unique_style_id(styles_root, f"GPBToc{level}")
+        styles_root.append(clone_style_with_id(donor_style, safe_style_id))
+        selected[level] = safe_style_id
+        changes.append(
+            {
+                "kind": "style_cloned_due_to_conflict",
+                "level": level,
+                "template_style_id": template_style_id,
+                "new_style_id": safe_style_id,
+                "non_toc_user_count": len(non_toc_users),
+            }
+        )
+    return selected, changes
+
+
+def visible_run_role(run: ET.Element, *, seen_tab: bool) -> str | None:
+    if run.find(".//w:tab", NS) is not None:
+        return "tab"
+    text = run_text(run).strip()
+    if not text:
+        return None
+    if seen_tab or re.fullmatch(r"(?:\d+|[ivxlcdmIVXLCDM\u2160-\u2188]+)", re.sub(r"\s+", "", text)):
+        return "page_number"
+    return "text"
+
+
+def run_role_rprs(paragraph: ET.Element) -> dict[str, ET.Element | None]:
+    roles: dict[str, ET.Element | None] = {}
+    seen_tab = False
+    for run in paragraph.findall(".//w:r", NS):
+        role = visible_run_role(run, seen_tab=seen_tab)
+        if role == "tab":
+            seen_tab = True
+        if role is None:
+            continue
+        roles.setdefault(role, deepcopy(run.find("./w:rPr", NS)) if run.find("./w:rPr", NS) is not None else None)
+    return roles
+
+
+def apply_visible_run_rprs(paragraph: ET.Element, role_rprs: dict[str, ET.Element | None]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    seen_tab = False
+    for run in paragraph.findall(".//w:r", NS):
+        role = visible_run_role(run, seen_tab=seen_tab)
+        if role == "tab":
+            seen_tab = True
+        if role is None or role not in role_rprs:
+            continue
+        old_rpr = run.find("./w:rPr", NS)
+        if old_rpr is not None:
+            run.remove(old_rpr)
+        donor_rpr = role_rprs.get(role)
+        if donor_rpr is not None:
+            run.insert(0, deepcopy(donor_rpr))
+        counts[role] = counts.get(role, 0) + 1
+    return counts
+
+
 def repair_toc_template_styles(
     body: ET.Element,
     styles_root: ET.Element,
     template_styles_root: ET.Element | None,
+    template_document_root: ET.Element | None = None,
 ) -> list[dict[str, object]]:
     if template_styles_root is None:
         raise RuntimeError("toc-template-styles requires --template-docx")
     template_level_map = template_toc_style_ids(template_styles_root)
     if not template_level_map:
         raise RuntimeError("template DOCX does not define TOC paragraph styles")
+    donors = collect_template_toc_donors(template_document_root, template_styles_root)
     changes: list[dict[str, object]] = []
-    for level, template_style_id in sorted(template_level_map.items()):
-        copied = copy_style_definition(styles_root, template_styles_root, template_style_id)
-        if copied:
-            changes.append({"kind": "style_copied", "level": level, "style_id": template_style_id})
 
     toc_index, body_start = find_toc_and_body_start(body)
-    children = list(body)
-    for index in range(toc_index + 1, body_start):
-        child = children[index]
-        if child.tag != qn("p"):
-            continue
-        text = paragraph_text(child).strip()
-        if not text:
-            continue
-        old_style_id = paragraph_style_id(child)
-        level = toc_level_from_style(old_style_id, styles_root, template_level_map)
+    changes.extend(
+        replay_template_toc_prefix(
+            body,
+            toc_index,
+            styles_root,
+            template_styles_root,
+            template_document_root,
+        )
+    )
+    toc_index, body_start = find_toc_and_body_start(body)
+    entries = toc_entry_paragraphs_in_range(body, toc_index, body_start, styles_root, template_level_map)
+    target_toc_paragraphs = {id(paragraph) for _index, paragraph, _level in entries}
+    selected_styles, style_changes = ensure_template_toc_style_mapping(
+        body,
+        styles_root,
+        template_styles_root,
+        target_toc_paragraphs,
+    )
+    changes.extend(style_changes)
+    for body_index, paragraph, level in entries:
         if level is None:
-            inferred_heading_level = heading_level(text)
-            if inferred_heading_level is not None:
-                level = max(1, min(3, inferred_heading_level))
-        if level is None:
             continue
-        template_style_id = template_level_map.get(level)
-        if not template_style_id or old_style_id == template_style_id:
+        donor = donors.get(level)
+        if donor is None:
             continue
-        set_paragraph_style(child, template_style_id)
+        old_style_id = paragraph_style_id(paragraph)
+        selected_style_id = selected_styles.get(level)
+        replace_ppr(paragraph, ppr_without_style(paragraph_ppr(donor)), selected_style_id)
+        role_counts = apply_visible_run_rprs(paragraph, run_role_rprs(donor))
         changes.append(
             {
-                "kind": "toc_paragraph_style_mapped",
-                "index": index,
+                "kind": "toc_paragraph_template_replayed",
+                "body_child_index": body_index,
                 "level": level,
                 "old_style_id": old_style_id,
-                "new_style_id": template_style_id,
-                "text": text[:120],
+                "new_style_id": selected_style_id,
+                "template_style_id": template_level_map.get(level),
+                "visible_run_role_counts": role_counts,
+                "text": paragraph_text(paragraph).strip()[:120],
             }
         )
     return changes
@@ -228,6 +562,8 @@ def heading_level(text: str) -> int | None:
     if "\u2026" in stripped:
         return None
     normalized = re.sub(r"(?<=\d)[\s\u25a1]*[\.\uff0e．-][\s\u25a1]*(?=\d)", ".", stripped)
+    if re.match(r"^\u7b2c\s*\d{1,2}\s*\u7ae0(?:[\s\u3000]+|$)\S*", stripped):
+        return 1
     if re.match(r"^\d{1,2}\s+\S", stripped):
         return 1
     if re.match(r"^\d{1,2}\.\d{1,2}\s+\S", normalized):
@@ -483,7 +819,23 @@ def find_toc_and_body_start(body: ET.Element) -> tuple[int, int]:
     children = list(body)
     toc_index = None
     for index, child in enumerate(children):
+        if child.tag == qn("sdt") and re.search(
+            r"\bTOC\b",
+            " ".join(node.text or "" for node in child.findall(".//w:instrText", NS)),
+            re.IGNORECASE,
+        ):
+            toc_index = index
+            break
+    for index, child in enumerate(children):
+        if toc_index is not None:
+            break
         if child.tag == qn("p") and is_toc_heading(paragraph_text(child).strip()):
+            toc_index = index
+            break
+        if child.tag == qn("sdt") and (
+            any(is_toc_heading(paragraph_text(paragraph).strip()) for paragraph in child.findall(".//w:p", NS))
+            or re.search(r"\bTOC\b", " ".join(node.text or "" for node in child.findall(".//w:instrText", NS)))
+        ):
             toc_index = index
             break
     if toc_index is None:
@@ -695,6 +1047,9 @@ def repair_tail_block_order_and_openers(body: ET.Element, root: ET.Element) -> l
         page_break_added = ensure_page_break_before(paragraph)
         outline_changed = ensure_outline_level(paragraph, "0")
         bookmark_added = ensure_bookmark(paragraph, root, bookmark_name)
+        hard_break_added = False
+        if label == ACKNOWLEDGEMENT_LABEL:
+            hard_break_added = ensure_leading_page_break_run(paragraph)
         changes.append(
             {
                 "kind": "tail_block_opener",
@@ -702,11 +1057,127 @@ def repair_tail_block_order_and_openers(body: ET.Element, root: ET.Element) -> l
                 "index": index,
                 "removed_hard_page_breaks": removed,
                 "page_break_before_added": page_break_added,
+                "hard_page_break_paragraph_added": hard_break_added,
                 "outline_level_0_changed": outline_changed,
                 "bookmark_added": bookmark_added,
                 "bookmark": bookmark_name,
             }
         )
+    sectpr_move = move_body_level_sectpr_to_end(body)
+    if sectpr_move:
+        changes.append(sectpr_move)
+    return changes
+
+
+def move_body_level_sectpr_to_end(body: ET.Element) -> dict[str, object] | None:
+    children = list(body)
+    sects = [(index, child) for index, child in enumerate(children) if child.tag == qn("sectPr")]
+    if not sects:
+        return None
+    index, sect = sects[-1]
+    if index == len(children) - 1:
+        return None
+    body.remove(sect)
+    body.append(sect)
+    return {
+        "kind": "body_level_sectpr_moved_to_end",
+        "from_index": index,
+        "to_index": len(children) - 1,
+    }
+
+
+def ensure_leading_page_break_run(paragraph: ET.Element) -> bool:
+    first_non_ppr = next((child for child in list(paragraph) if child.tag != qn("pPr")), None)
+    if first_non_ppr is not None and first_non_ppr.tag == qn("r") and first_non_ppr.find("./w:br", NS) is not None:
+        return False
+    run = ET.Element(qn("r"))
+    br = ET.SubElement(run, qn("br"))
+    br.set(qn("type"), "page")
+    ppr = paragraph_ppr(paragraph)
+    insert_at = 1 if ppr is not None and list(paragraph) and list(paragraph)[0] is ppr else 0
+    paragraph.insert(insert_at, run)
+    return True
+
+
+def ensure_hard_page_break_paragraph_before(body: ET.Element, paragraph: ET.Element) -> bool:
+    children = list(body)
+    index = children.index(paragraph)
+    if index > 0:
+        previous = children[index - 1]
+        if paragraph_has_only_page_break_payload(previous):
+            return False
+    page_break_paragraph = ET.Element(qn("p"))
+    run = ET.SubElement(page_break_paragraph, qn("r"))
+    br = ET.SubElement(run, qn("br"))
+    br.set(qn("type"), "page")
+    body.insert(index, page_break_paragraph)
+    return True
+
+
+def paragraph_has_only_page_break_payload(paragraph: ET.Element) -> bool:
+    if paragraph.tag != qn("p"):
+        return False
+    if paragraph_text(paragraph).strip():
+        return False
+    if paragraph.find("./w:pPr/w:sectPr", NS) is not None:
+        return False
+    page_break_count = 0
+    for child in list(paragraph):
+        if child.tag == qn("pPr"):
+            continue
+        if child.tag != qn("r"):
+            return False
+        for run_child in list(child):
+            if run_child.tag == qn("rPr"):
+                continue
+            if run_child.tag == qn("br") and (run_child.get(qn("type")) or "page") == "page":
+                page_break_count += 1
+                continue
+            return False
+    return page_break_count > 0
+
+
+def paragraph_has_true_page_break_before(paragraph: ET.Element) -> bool:
+    ppr = paragraph_ppr(paragraph)
+    if ppr is None:
+        return False
+    page_break = ppr.find("./w:pageBreakBefore", NS)
+    if page_break is None:
+        return False
+    return (page_break.get(qn("val")) or "true") not in {"0", "false", "False", "off", "OFF"}
+
+
+def remove_redundant_tail_pagebreaks(body: ET.Element) -> list[dict[str, object]]:
+    changes: list[dict[str, object]] = []
+    for label in TAIL_LABELS:
+        match = find_tail_heading(body, label)
+        if match is None:
+            continue
+        heading_index, heading = match
+        removed_heading_breaks = 0
+        if paragraph_has_true_page_break_before(heading):
+            removed_heading_breaks = remove_page_break_runs(heading)
+            removed_indices: list[int] = []
+            scan = heading_index - 1
+            while scan >= 0:
+                children = list(body)
+                candidate = children[scan]
+                if not paragraph_has_only_page_break_payload(candidate):
+                    break
+                body.remove(candidate)
+                removed_indices.append(scan)
+                scan -= 1
+            if removed_indices or removed_heading_breaks:
+                changes.append(
+                    {
+                        "kind": "tail_redundant_pagebreaks",
+                        "label": label,
+                        "heading_index_before": heading_index,
+                        "removed_preceding_blank_pagebreak_paragraph_indices": removed_indices,
+                        "removed_page_break_runs_on_heading": removed_heading_breaks,
+                        "reason": "tail heading already owns pagination through pageBreakBefore",
+                    }
+                )
     return changes
 
 
@@ -731,6 +1202,16 @@ def toc_level1_entries(body: ET.Element, toc_index: int, body_start: int) -> lis
         for child in list(body)[toc_index + 1 : body_start]
         if child.tag == qn("p") and paragraph_style_id(child).upper() in {"TOC1", "1"} and is_toc_entry_paragraph(child)
     ]
+
+
+def find_toc_entry_by_label(body: ET.Element, toc_index: int, body_start: int, label: str) -> ET.Element | None:
+    target = compact_text(label)
+    for child in list(body)[toc_index + 1 : body_start]:
+        if child.tag != qn("p") or not is_toc_entry_paragraph(child):
+            continue
+        if compact_text(toc_entry_visible_label(paragraph_text(child))) == target:
+            return child
+    return None
 
 
 def remove_last_field_end(paragraph: ET.Element) -> bool:
@@ -805,11 +1286,15 @@ def append_missing_tail_toc_entries(body: ET.Element, root: ET.Element) -> list[
     if not donors:
         raise RuntimeError("toc-tail-entries requires a level-1 TOC donor paragraph")
     donor = donors[-1]
+    insertion_anchor = donor
+    if any(label == ACKNOWLEDGEMENT_LABEL for label, _bookmark in missing):
+        references_entry = find_toc_entry_by_label(body, toc_index, body_start, REFERENCES_LABEL)
+        if references_entry is not None:
+            donor = references_entry
+            insertion_anchor = references_entry
     main_end_removed = remove_last_field_end(donor)
-    if not main_end_removed:
-        raise RuntimeError("toc-tail-entries could not move the main TOC field end to appended tail entry")
     current_children = list(body)
-    insert_at = current_children.index(donor) + 1
+    insert_at = current_children.index(insertion_anchor) + 1
     changes: list[dict[str, object]] = []
     appended: list[ET.Element] = []
     for offset, (label, bookmark_name) in enumerate(missing):
@@ -829,9 +1314,10 @@ def append_missing_tail_toc_entries(body: ET.Element, root: ET.Element) -> list[
                 "bookmark": bookmark_name,
                 "placeholder_page": "0",
                 "inserted_after": paragraph_text(donor)[:120],
+                "field_end_transferred": main_end_removed,
             }
         )
-    if appended:
+    if appended and main_end_removed:
         append_main_toc_field_end(appended[-1])
     return changes
 
@@ -985,6 +1471,394 @@ def set_section_start_type(sect: ET.Element, value: str) -> bool:
         return False
     sect_type.set(qn("val"), value)
     return True
+
+
+SECTION_GEOMETRY_TAGS = ("pgSz", "pgMar", "cols")
+SECTION_CHILD_ORDER = (
+    "footnotePr",
+    "endnotePr",
+    "type",
+    "pgSz",
+    "pgMar",
+    "paperSrc",
+    "pgBorders",
+    "lnNumType",
+    "pgNumType",
+    "cols",
+    "formProt",
+    "vAlign",
+    "noEndnote",
+    "titlePg",
+    "textDirection",
+    "bidi",
+    "rtlGutter",
+    "docGrid",
+    "printerSettings",
+)
+SECTION_CHILD_ORDER_INDEX = {tag: index for index, tag in enumerate(SECTION_CHILD_ORDER)}
+
+
+def section_geometry_nodes(document_root: ET.Element) -> list[tuple[str, int, ET.Element]]:
+    body = body_element(document_root)
+    nodes: list[tuple[str, int, ET.Element]] = []
+    paragraphs = body_paragraphs(body)
+    for index, paragraph in enumerate(paragraphs, start=1):
+        sect = paragraph.find("./w:pPr/w:sectPr", NS)
+        if sect is not None:
+            nodes.append(("paragraph", index, sect))
+    body_sect = body.find("./w:sectPr", NS)
+    if body_sect is not None:
+        nodes.append(("body", len(paragraphs) + 1, body_sect))
+    return nodes
+
+
+def section_geometry_signature(sect: ET.Element) -> tuple[bytes, bytes, bytes]:
+    return tuple(
+        ET.tostring(sect.find(f"./w:{tag}", NS), encoding="utf-8")
+        if sect.find(f"./w:{tag}", NS) is not None
+        else b""
+        for tag in SECTION_GEOMETRY_TAGS
+    )
+
+
+def dominant_template_section_geometry(template_document_root: ET.Element | None) -> dict[str, ET.Element]:
+    if template_document_root is None:
+        raise RuntimeError("template-page-geometry requires --template-docx")
+    counts: dict[tuple[bytes, bytes, bytes], int] = {}
+    donors: dict[tuple[bytes, bytes, bytes], ET.Element] = {}
+    for _owner, _index, sect in section_geometry_nodes(template_document_root):
+        signature = section_geometry_signature(sect)
+        if not any(signature):
+            continue
+        counts[signature] = counts.get(signature, 0) + 1
+        donors.setdefault(signature, sect)
+    if not counts:
+        raise RuntimeError("template-page-geometry could not find template section geometry")
+    selected_signature = max(counts, key=lambda item: counts[item])
+    selected = donors[selected_signature]
+    result: dict[str, ET.Element] = {}
+    for tag in SECTION_GEOMETRY_TAGS:
+        child = selected.find(f"./w:{tag}", NS)
+        if child is not None:
+            result[tag] = deepcopy(child)
+    if not {"pgSz", "pgMar"}.issubset(result):
+        raise RuntimeError("template-page-geometry template donor lacks pgSz or pgMar")
+    return result
+
+
+def replace_section_child_preserving_order(sect: ET.Element, tag: str, donor: ET.Element) -> bool:
+    existing = sect.find(f"./w:{tag}", NS)
+    donor_clone = deepcopy(donor)
+    if existing is not None:
+        old_xml = ET.tostring(existing, encoding="utf-8")
+        new_xml = ET.tostring(donor_clone, encoding="utf-8")
+        if old_xml == new_xml:
+            return False
+        index = list(sect).index(existing)
+        sect.remove(existing)
+        sect.insert(index, donor_clone)
+        return True
+
+    donor_order = SECTION_CHILD_ORDER_INDEX.get(tag, len(SECTION_CHILD_ORDER))
+    insert_at = len(list(sect))
+    for index, child in enumerate(list(sect)):
+        local_name = child.tag.split("}", 1)[-1]
+        if SECTION_CHILD_ORDER_INDEX.get(local_name, len(SECTION_CHILD_ORDER)) > donor_order:
+            insert_at = index
+            break
+    sect.insert(insert_at, donor_clone)
+    return True
+
+
+def repair_template_page_geometry(
+    document_root: ET.Element,
+    template_document_root: ET.Element | None,
+) -> list[dict[str, object]]:
+    """Replay template page geometry without touching numbering or header/footer refs."""
+    donor_geometry = dominant_template_section_geometry(template_document_root)
+    changes: list[dict[str, object]] = []
+    for owner, index, sect in section_geometry_nodes(document_root):
+        changed_tags: list[str] = []
+        before = {
+            tag: ET.tostring(sect.find(f"./w:{tag}", NS), encoding="unicode")
+            if sect.find(f"./w:{tag}", NS) is not None
+            else ""
+            for tag in SECTION_GEOMETRY_TAGS
+        }
+        for tag, donor in donor_geometry.items():
+            if replace_section_child_preserving_order(sect, tag, donor):
+                changed_tags.append(tag)
+        if changed_tags:
+            after = {
+                tag: ET.tostring(sect.find(f"./w:{tag}", NS), encoding="unicode")
+                if sect.find(f"./w:{tag}", NS) is not None
+                else ""
+                for tag in SECTION_GEOMETRY_TAGS
+            }
+            changes.append(
+                {
+                    "kind": "template_page_geometry",
+                    "owner": owner,
+                    "section_index": index,
+                    "changed_tags": changed_tags,
+                    "before": before,
+                    "after": after,
+                }
+            )
+    if not changes:
+        changes.append({"kind": "template_page_geometry", "status": "already_matches_template_donor"})
+    return changes
+
+
+def style_id_by_name(styles_root: ET.Element, target_name: str) -> str | None:
+    target = target_name.strip().lower()
+    for style in styles_root.findall("./w:style", NS):
+        if style.get(qn("type")) != "paragraph":
+            continue
+        if style_name(style).strip().lower() == target:
+            return style.get(qn("styleId")) or None
+    return None
+
+
+def replace_or_append_style_definition(styles_root: ET.Element, donor_style: ET.Element) -> str:
+    style_id = donor_style.get(qn("styleId")) or ""
+    if not style_id:
+        raise RuntimeError("template style has no styleId")
+    existing = style_by_id(styles_root, style_id)
+    donor_clone = deepcopy(donor_style)
+    if existing is None:
+        styles_root.append(donor_clone)
+        return "copied"
+    if style_xml_equal(existing, donor_style):
+        return "already_matches"
+    parent_styles = list(styles_root)
+    replace_at = parent_styles.index(existing)
+    styles_root.remove(existing)
+    styles_root.insert(replace_at, donor_clone)
+    return "replaced"
+
+
+def first_run_rpr(paragraph: ET.Element) -> ET.Element | None:
+    for run in paragraph.findall("./w:r", NS):
+        rpr = run.find("./w:rPr", NS)
+        if rpr is not None:
+            return deepcopy(rpr)
+    return None
+
+
+def first_paragraph_with_style(root: ET.Element, style_id: str) -> ET.Element | None:
+    for paragraph in root.findall(".//w:p", NS):
+        if paragraph_style_id(paragraph) == style_id:
+            return paragraph
+    return None
+
+
+def set_run_rpr(run: ET.Element, donor_rpr: ET.Element | None) -> bool:
+    existing = run.find("./w:rPr", NS)
+    if donor_rpr is None:
+        return False
+    donor_clone = deepcopy(donor_rpr)
+    if existing is not None and ET.tostring(existing, encoding="utf-8") == ET.tostring(donor_clone, encoding="utf-8"):
+        return False
+    if existing is not None:
+        run.remove(existing)
+    run.insert(0, donor_clone)
+    return True
+
+
+def repair_header_footer_template_styles(
+    parts: dict[str, bytes],
+    styles_root: ET.Element,
+    template_styles_root: ET.Element | None,
+    template_parts: dict[str, bytes] | None,
+) -> tuple[list[dict[str, object]], dict[str, bytes]]:
+    """Bind header/footer paragraphs and PAGE runs to template-owned styles.
+
+    This is intentionally narrower than section-topology repair: it does not
+    alter section relationships or body text. It closes the recurring failure
+    where visible header/footer text looks close, but paragraph style ids,
+    footer style, and PAGE field typography drift away from the locked template.
+    """
+    if template_styles_root is None or template_parts is None:
+        raise RuntimeError("template-header-footer-styles requires --template-docx")
+
+    header_style_id = style_id_by_name(template_styles_root, "header")
+    footer_style_id = style_id_by_name(template_styles_root, "footer")
+    if not header_style_id or not footer_style_id:
+        raise RuntimeError("template DOCX must define paragraph styles named header and footer")
+
+    style_changes: list[dict[str, object]] = []
+    for surface, style_id in (("header", header_style_id), ("footer", footer_style_id)):
+        donor = style_by_id(template_styles_root, style_id)
+        if donor is None:
+            raise RuntimeError(f"template DOCX does not define {surface} style `{style_id}`")
+        status = replace_or_append_style_definition(styles_root, donor)
+        style_changes.append({"kind": f"{surface}_style_definition", "style_id": style_id, "status": status})
+
+    donor_header_rpr: ET.Element | None = None
+    donor_footer_rpr: ET.Element | None = None
+    for name in sorted(template_parts):
+        if donor_header_rpr is None and re.fullmatch(r"word/header\d+\.xml", name):
+            root = ET.fromstring(template_parts[name])
+            donor_para = first_paragraph_with_style(root, header_style_id)
+            if donor_para is not None:
+                donor_header_rpr = first_run_rpr(donor_para)
+        if donor_footer_rpr is None and re.fullmatch(r"word/footer\d+\.xml", name):
+            root = ET.fromstring(template_parts[name])
+            donor_para = first_paragraph_with_style(root, footer_style_id)
+            if donor_para is not None:
+                donor_footer_rpr = first_run_rpr(donor_para)
+        if donor_header_rpr is not None and donor_footer_rpr is not None:
+            break
+
+    updates: dict[str, bytes] = {}
+    part_changes: list[dict[str, object]] = []
+    for name in sorted(parts):
+        if re.fullmatch(r"word/header\d+\.xml", name):
+            root = ET.fromstring(parts[name])
+            paragraph_count = 0
+            run_rpr_changes = 0
+            before_text = paragraph_text(root)
+            for paragraph in root.findall(".//w:p", NS):
+                if paragraph_text(paragraph).strip() or paragraph.find(".//w:tab", NS) is not None:
+                    previous_style = paragraph_style_id(paragraph)
+                    set_paragraph_style(paragraph, header_style_id)
+                    paragraph_count += 1 if previous_style != header_style_id else 0
+                    for run in paragraph.findall("./w:r", NS):
+                        if set_run_rpr(run, donor_header_rpr):
+                            run_rpr_changes += 1
+            if paragraph_count or run_rpr_changes:
+                updates[name] = serialize_xml(root)
+                part_changes.append(
+                    {
+                        "part": name,
+                        "surface": "header",
+                        "style_id": header_style_id,
+                        "paragraph_style_changes": paragraph_count,
+                        "run_rpr_changes": run_rpr_changes,
+                        "text": before_text,
+                    }
+                )
+        elif re.fullmatch(r"word/footer\d+\.xml", name):
+            root = ET.fromstring(parts[name])
+            paragraph_count = 0
+            page_instr_changes = 0
+            run_rpr_changes = 0
+            for paragraph in root.findall(".//w:p", NS):
+                previous_style = paragraph_style_id(paragraph)
+                set_paragraph_style(paragraph, footer_style_id)
+                paragraph_count += 1 if previous_style != footer_style_id else 0
+                for run in paragraph.findall("./w:r", NS):
+                    if set_run_rpr(run, donor_footer_rpr):
+                        run_rpr_changes += 1
+                for instr in paragraph.findall(".//w:instrText", NS):
+                    text = instr.text or ""
+                    if re.fullmatch(r"\s*PAGE\s*", text, re.IGNORECASE):
+                        instr.text = " PAGE  \\* MERGEFORMAT "
+                        page_instr_changes += 1
+            if paragraph_count or page_instr_changes or run_rpr_changes:
+                updates[name] = serialize_xml(root)
+                part_changes.append(
+                    {
+                        "part": name,
+                        "surface": "footer",
+                        "style_id": footer_style_id,
+                        "paragraph_style_changes": paragraph_count,
+                        "page_instr_mergeformat_changes": page_instr_changes,
+                        "run_rpr_changes": run_rpr_changes,
+                    }
+                )
+
+    return style_changes + part_changes, updates
+
+
+def remove_page_break_before_property(paragraph: ET.Element) -> bool:
+    ppr = paragraph_ppr(paragraph)
+    if ppr is None:
+        return False
+    page_break = ppr.find("./w:pageBreakBefore", NS)
+    if page_break is None:
+        return False
+    ppr.remove(page_break)
+    return True
+
+
+def template_toc_page_owner_spacers(template_document_root: ET.Element | None) -> list[ET.Element]:
+    if template_document_root is None:
+        return []
+    template_body = template_document_root.find("./w:body", NS)
+    if template_body is None:
+        return []
+    try:
+        toc_index, _body_start = find_toc_and_body_start(template_body)
+    except RuntimeError:
+        return []
+    children = list(template_body)
+    spacers: list[ET.Element] = []
+    probe_index = toc_index - 1
+    while probe_index >= 0:
+        candidate = children[probe_index]
+        if candidate.tag != qn("p"):
+            break
+        if paragraph_text(candidate).strip():
+            break
+        ppr = paragraph_ppr(candidate)
+        if ppr is not None and ppr.find("./w:sectPr", NS) is not None:
+            break
+        spacers.append(deepcopy(candidate))
+        probe_index -= 1
+    return list(reversed(spacers))
+
+
+def repair_toc_title_pagebreak(
+    body: ET.Element,
+    template_document_root: ET.Element | None = None,
+) -> list[dict[str, object]]:
+    toc_index, _body_start = find_toc_and_body_start(body)
+    toc_child = list(body)[toc_index]
+    title_paragraph: ET.Element | None = None
+    if toc_child.tag == qn("p") and is_toc_heading(paragraph_text(toc_child).strip()):
+        title_paragraph = toc_child
+    else:
+        content = toc_child_content(toc_child)
+        if content is not None:
+            for paragraph in content.findall("./w:p", NS):
+                if is_toc_heading(paragraph_text(paragraph).strip()):
+                    title_paragraph = paragraph
+                    break
+    if title_paragraph is None:
+        raise RuntimeError("toc-title-pagebreak could not locate TOC title paragraph")
+    template_spacers = template_toc_page_owner_spacers(template_document_root)
+    if template_spacers and toc_child.tag == qn("sdt"):
+        removed_title_pagebreak = remove_page_break_before_property(title_paragraph)
+        inserted: list[str] = []
+        for offset, spacer in enumerate(template_spacers):
+            clone = deepcopy(spacer)
+            if offset == 0:
+                ensure_true_page_break_before(clone)
+            body.insert(toc_index + offset, clone)
+            inserted.append(paragraph_text(clone).strip())
+        return [
+            {
+                "kind": "toc_title_page_owner_from_template_spacers",
+                "body_child_index": toc_index,
+                "text": paragraph_text(title_paragraph).strip(),
+                "inserted_spacer_count": len(template_spacers),
+                "inserted_spacer_text": inserted,
+                "removed_title_pageBreakBefore": removed_title_pagebreak,
+                "reason": "template has a blank paragraph before the TOC content-control; pagination belongs to that spacer so title vertical position matches the template",
+            }
+        ]
+    changed, reason = ensure_true_page_break_before(title_paragraph)
+    return [
+        {
+            "kind": "toc_title_pagebreak",
+            "body_child_index": toc_index,
+            "text": paragraph_text(title_paragraph).strip(),
+            "changed": changed,
+            "reason": reason,
+        }
+    ]
 
 
 def paragraph_has_nontext_payload(paragraph: ET.Element) -> bool:
@@ -2851,10 +3725,15 @@ def is_abstract_title_echo(text: str, *, english: bool) -> bool:
 def repair_inline_abstract_and_keywords(body: ET.Element, styles_root: ET.Element, template_styles_root: ET.Element | None) -> list[dict[str, object]]:
     if template_styles_root is None:
         raise RuntimeError("abstract-inline-labels requires --template-docx so Style17 comes from the locked school template")
-    copied = copy_style_definition(styles_root, template_styles_root, "Style17")
     changes: list[dict[str, object]] = []
+    style_source = "template_docx"
+    if style_by_id(template_styles_root, "Style17") is not None:
+        copied = copy_style_definition(styles_root, template_styles_root, "Style17")
+    else:
+        copied = bool(ensure_abstract_title_style(styles_root))
+        style_source = "generated_template_compatible_fallback"
     if copied:
-        changes.append({"kind": "style", "style_id": "Style17", "source": "template_docx"})
+        changes.append({"kind": "style", "style_id": "Style17", "source": style_source})
 
     zh_title = find_first_paragraph(body, lambda p: is_zh_abstract_label(paragraph_text(p)) and not is_toc_entry_paragraph(p))
     en_title = find_first_paragraph(body, lambda p: is_en_abstract_label(paragraph_text(p)) and not is_toc_entry_paragraph(p))
@@ -2871,27 +3750,30 @@ def repair_inline_abstract_and_keywords(body: ET.Element, styles_root: ET.Elemen
         _keyword_index, _keyword_para = keyword_match
         title_index = list(body).index(title_para)
         keyword_index = list(body).index(_keyword_para)
-        body_match = next_nonempty_paragraph(
-            body,
-            title_index,
-            lambda p, stop_index=keyword_index: list(body).index(p) >= stop_index,
-        )
         title_text = paragraph_text(title_para).strip()
         title_label, existing_content = split_label_content(title_text, english=english)
         if existing_content and not is_abstract_title_echo(existing_content, english=english):
             content = existing_content
-            removed_body = None
+            removed_body_indices: list[int] = []
             content_anchor_source = None
         else:
-            if body_match is None:
+            body_matches: list[tuple[int, ET.Element]] = []
+            for index in range(title_index + 1, keyword_index):
+                candidate = list(body)[index]
+                if candidate.tag != qn("p"):
+                    continue
+                if not paragraph_text(candidate).strip():
+                    continue
+                body_matches.append((index, candidate))
+            if not body_matches:
                 raise RuntimeError(f"abstract-inline-labels found no body paragraph for {label}")
-            body_index, body_para = body_match
-            if body_index >= keyword_index:
-                raise RuntimeError(f"abstract-inline-labels crossed keyword boundary for {label}")
-            content = paragraph_text(body_para).strip()
-            content_anchor_source = body_para
-            body.remove(body_para)
-            removed_body = body_index
+            content = " ".join(paragraph_text(body_para).strip() for _body_index, body_para in body_matches)
+            content_anchor_source = body_matches[0][1]
+            removed_body_indices = []
+            for body_index, body_para in reversed(body_matches):
+                body.remove(body_para)
+                removed_body_indices.append(body_index)
+            removed_body_indices.reverse()
         rewrite_label_content_paragraph(
             title_para,
             label=title_label or label,
@@ -2904,7 +3786,7 @@ def repair_inline_abstract_and_keywords(body: ET.Element, styles_root: ET.Elemen
                 "kind": "abstract_inline_label",
                 "label": label,
                 "title_index": title_index,
-                "removed_body_index": removed_body,
+                "removed_body_indices": removed_body_indices,
                 "content_prefix": content[:80],
             }
         )
@@ -2993,6 +3875,62 @@ def copy_heading_baseline_from_source(body: ET.Element, source_document_root: ET
     return changes
 
 
+CHAPTER_HEADER_FULL_DISPLAY = {
+    "\u7eea\u8bba": "\u7b2c\u4e00\u7ae0 \u7eea\u8bba",
+    "\u7167\u660e\u7cfb\u7edf\u8bbe\u8ba1": "\u7b2c\u4e8c\u7ae0 \u7167\u660e\u7cfb\u7edf\u8bbe\u8ba1",
+    "\u63d2\u5ea7\u7cfb\u7edf\u8bbe\u8ba1": "\u7b2c\u4e09\u7ae0 \u63d2\u5ea7\u7cfb\u7edf\u8bbe\u8ba1",
+    "\u4f4e\u538b\u914d\u7535\u7cfb\u7edf\u8bbe\u8ba1": "\u7b2c\u56db\u7ae0 \u4f4e\u538b\u914d\u7535\u7cfb\u7edf\u8bbe\u8ba1",
+    "\u8bbe\u5907\u9009\u62e9\u4e0e\u6821\u9a8c": "\u7b2c\u4e94\u7ae0 \u8bbe\u5907\u9009\u62e9\u4e0e\u6821\u9a8c",
+    "\u9632\u96f7\u63a5\u5730\u7cfb\u7edf\u8bbe\u8ba1": "\u7b2c\u516d\u7ae0 \u9632\u96f7\u63a5\u5730\u7cfb\u7edf\u8bbe\u8ba1",
+    "\u6280\u672f\u7ecf\u6d4e\u5206\u6790": "\u7b2c\u4e03\u7ae0 \u6280\u672f\u7ecf\u6d4e\u5206\u6790",
+}
+
+
+def replace_text_in_text_nodes(root: ET.Element, old: str, new: str) -> int:
+    replacements = 0
+    if old in {"\u7ed3\u8bba", "\u53c2\u8003\u6587\u732e", "\u81f4\u8c22"}:
+        return 0
+    full_pattern = re.compile(r"\u7b2c[一二三四五六七八九十0-9]+\u7ae0\s*" + re.escape(old))
+    for text_node in root.findall(".//w:t", NS):
+        current = text_node.text or ""
+        if not current or old not in current:
+            continue
+        if new in current:
+            continue
+        updated = full_pattern.sub(new, current)
+        if updated == current:
+            updated = current.replace(old, new)
+        if updated != current:
+            text_node.text = updated
+            replacements += 1
+    return replacements
+
+
+def repair_header_chapter_number_display(parts: dict[str, bytes]) -> tuple[list[dict[str, object]], dict[str, bytes]]:
+    changes: list[dict[str, object]] = []
+    updated: dict[str, bytes] = {}
+    for name in sorted(part for part in parts if re.fullmatch(r"word/header\d+\.xml", part)):
+        root = ET.fromstring(parts[name])
+        before = paragraph_text(root)
+        replacement_count = 0
+        for short_title, full_title in CHAPTER_HEADER_FULL_DISPLAY.items():
+            replacement_count += replace_text_in_text_nodes(root, short_title, full_title)
+        after = paragraph_text(root)
+        if replacement_count:
+            updated[name] = serialize_xml(root)
+            changes.append(
+                {
+                    "part": name,
+                    "replacement_count": replacement_count,
+                    "before": before,
+                    "after": after,
+                }
+            )
+        elif any(full_title in before for full_title in CHAPTER_HEADER_FULL_DISPLAY.values()):
+            changes.append({"part": name, "replacement_count": 0, "status": "already_full_display", "text": before})
+    return changes, updated
+
+
 def serialize_xml(root: ET.Element) -> bytes:
     return ET.tostring(root, encoding="utf-8", xml_declaration=True)
 
@@ -3015,11 +3953,13 @@ def repair(
     source_document_root = None
     template_document_root = None
     template_styles_root = None
+    template_parts = None
     if source_docx is not None:
         with zipfile.ZipFile(source_docx, "r") as zsource:
             source_document_root = ET.fromstring(zsource.read("word/document.xml"))
     if template_docx is not None:
         with zipfile.ZipFile(template_docx, "r") as ztemplate:
+            template_parts = {name: ztemplate.read(name) for name in ztemplate.namelist()}
             template_document_root = ET.fromstring(ztemplate.read("word/document.xml"))
             template_styles_root = ET.fromstring(ztemplate.read("word/styles.xml"))
     body = body_element(document_root)
@@ -3049,11 +3989,18 @@ def repair(
         changes["duplicate_page_breaks_removed"] = normalize_duplicate_page_breaks(body)
     if "tail-block-order" in operations:
         changes["tail_block_order_repaired"] = repair_tail_block_order_and_openers(body, document_root)
+    if "tail-redundant-pagebreaks" in operations:
+        changes["tail_redundant_pagebreaks_removed"] = remove_redundant_tail_pagebreaks(body)
     if "toc-tail-entries" in operations:
         changes["toc_tail_entries_repaired"] = append_missing_tail_toc_entries(body, document_root)
     if "frontmatter-template-sections" in operations:
         changes["frontmatter_template_sections_repaired"] = repair_frontmatter_template_sections(
             body,
+            template_document_root,
+        )
+    if "template-page-geometry" in operations:
+        changes["template_page_geometry_repaired"] = repair_template_page_geometry(
+            document_root,
             template_document_root,
         )
     if "frontmatter-empty-run-collapse" in operations:
@@ -3065,7 +4012,14 @@ def repair(
     if "toc-page-cache" in operations:
         changes["toc_page_cache_repaired"] = repair_toc_page_cache(body, toc_page_map_json)
     if "toc-template-styles" in operations:
-        changes["toc_template_styles_repaired"] = repair_toc_template_styles(body, styles_root, template_styles_root)
+        changes["toc_template_styles_repaired"] = repair_toc_template_styles(
+            body,
+            styles_root,
+            template_styles_root,
+            template_document_root,
+        )
+    if "toc-title-pagebreak" in operations:
+        changes["toc_title_pagebreak_repaired"] = repair_toc_title_pagebreak(body, template_document_root)
     if "reference-residue" in operations:
         changes["reference_supplement_residue_repaired"] = repair_reference_supplement_residue(body)
     if "frontmatter-signature-residual" in operations:
@@ -3094,8 +4048,24 @@ def repair(
     if "heading1-pagebreak-ownership" in operations:
         changes["heading1_pagebreak_ownership_repaired"] = normalize_heading1_pagebreak_ownership(body, styles_root)
 
+    header_part_updates: dict[str, bytes] = {}
+    if "header-chapter-number-display" in operations:
+        header_changes, header_part_updates = repair_header_chapter_number_display(parts)
+        changes["header_chapter_number_display_repaired"] = header_changes
+    header_footer_part_updates: dict[str, bytes] = {}
+    if "template-header-footer-styles" in operations:
+        header_footer_changes, header_footer_part_updates = repair_header_footer_template_styles(
+            parts,
+            styles_root,
+            template_styles_root,
+            template_parts,
+        )
+        changes["template_header_footer_styles_repaired"] = header_footer_changes
+
     updated_parts = dict(parts)
     updated_parts["word/document.xml"] = serialize_xml(document_root)
+    updated_parts.update(header_part_updates)
+    updated_parts.update(header_footer_part_updates)
     if "abstract-style" in operations:
         updated_parts["word/styles.xml"] = serialize_xml(styles_root)
     if "abstract-inline-labels" in operations:
@@ -3103,6 +4073,8 @@ def repair(
     if "font-alias-list-cleanup" in operations:
         updated_parts["word/styles.xml"] = serialize_xml(styles_root)
     if "toc-template-styles" in operations:
+        updated_parts["word/styles.xml"] = serialize_xml(styles_root)
+    if "template-header-footer-styles" in operations:
         updated_parts["word/styles.xml"] = serialize_xml(styles_root)
     if "heading1-pagebreak-ownership" in operations:
         updated_parts["word/styles.xml"] = serialize_xml(styles_root)
@@ -3115,7 +4087,7 @@ def repair(
         shutil.move(str(temp_output), output_docx)
 
     changed_zip_parts = [
-        name for name in ("word/document.xml", "word/styles.xml")
+        name for name in sorted(updated_parts)
         if parts.get(name) != updated_parts.get(name)
     ]
     return {
@@ -3150,13 +4122,18 @@ def parse_operations(raw: str) -> set[str]:
         "source-heading-baseline",
         "toc-contamination-relocate",
         "tail-block-order",
+        "tail-redundant-pagebreaks",
         "toc-tail-entries",
+        "toc-title-pagebreak",
         "toc-template-styles",
+        "template-page-geometry",
+        "template-header-footer-styles",
         "frontmatter-template-sections",
         "frontmatter-empty-run-collapse",
         "pre-submission-blank-paragraphs",
         "frontmatter-toc-bookmarks",
         "toc-page-cache",
+        "header-chapter-number-display",
         "reference-residue",
         "frontmatter-signature-residual",
         "cover-metadata-pagebreaks",
@@ -3173,6 +4150,8 @@ def parse_operations(raw: str) -> set[str]:
         raise RuntimeError(f"unknown operation(s): {', '.join(unknown)}")
     if not operations:
         raise RuntimeError("at least one explicit operation is required")
+    if "toc-template-styles" in operations:
+        operations.add("toc-title-pagebreak")
     return operations
 
 
@@ -3192,8 +4171,11 @@ def main() -> int:
             "toc-empty-entries,"
             "abstract-style,abstract-inline-labels,abstract-template-donor,frontmatter-order,heading1-baseline,"
             "heading1-pagebreak-ownership,source-heading-baseline,toc-contamination-relocate,tail-block-order,toc-tail-entries,"
-            "toc-template-styles,frontmatter-template-sections,frontmatter-empty-run-collapse,"
+            "tail-redundant-pagebreaks,"
+            "toc-title-pagebreak,toc-template-styles,template-page-geometry,frontmatter-template-sections,frontmatter-empty-run-collapse,"
+            "template-header-footer-styles,"
             "pre-submission-blank-paragraphs,frontmatter-toc-bookmarks,toc-page-cache,"
+            "header-chapter-number-display,"
             "reference-residue,frontmatter-signature-residual,"
             "cover-metadata-pagebreaks,cover-metadata-page-owner,cover-template-ppr,"
             "body-heading-line-spacing,body-image-holder-spacing,caption-direct-format,"

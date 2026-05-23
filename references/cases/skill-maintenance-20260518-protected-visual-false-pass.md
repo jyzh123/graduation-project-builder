@@ -1,0 +1,24 @@
+# Skill Maintenance Case: Protected Visual False-Pass Closure
+
+- date: 2026-05-18
+- mode: skill-maintenance
+- trigger: user reported that TOC font/style, abstract font consistency, header horizontal line, and footer/page-number position were visibly wrong but had been allowed through a prior thesis handoff.
+- root cause: prose rules required rendered protected-surface evidence, but generator/validator/selftest coverage still allowed structural checks, missing detector rows, or caveated pass wording to look deliverable.
+- canonical owner: `references/user-feedback/maintenance-and-structure.md` rule `EXEC-MAINT-075`
+- final-QA owner: `references/user-feedback/final-qa-and-tooling.md` rule `QA-FINAL-057`
+- changed enforcement:
+  - `scripts/sample_self_check.py` emits `header-footer.page-number-template-contract`.
+  - `scripts/generate_thesis_acceptance_record.py` and `scripts/validate_skill_gate_record_gate.py` share the required detector set.
+  - missing/failed font audit, required detector evidence, strict validator result, or protected visual geometry evidence blocks pass-shaped handoff fields.
+  - `passed with limitations`, `structural pass only`, and similar greenwashing wording is rejected.
+- targeted selftests:
+  - `sample_self_check_header_footer_page_number_detector_required_rejected`
+  - `acceptance_generator_missing_header_footer_page_number_detector_rejected`
+  - `passed_with_limitations_rejected`
+  - `user_reported_abstract_header_footer_visual_geometry_missing_rejected`
+  - `user_reported_visual_geometry_valid`
+  - `acceptance_generator_validator_failure_rewrites_handoff_blocked`
+- validation:
+  - `python -m py_compile ...` passed for changed scripts.
+  - `scripts/check_utf8_clean.py --root <skill-root> --json` passed.
+  - `scripts/validate_skill_gate.py --skill-root <skill-root>` passed.

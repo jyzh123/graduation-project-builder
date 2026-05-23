@@ -10,6 +10,8 @@ __all__ = [
     "detect_format_repair_surfaces",
     "detect_review_evidence_surfaces",
     "check_docx_font_audit_report",
+    "check_docx_font_color_audit_report",
+    "check_docx_whole_format_gate_report",
     "format_repair_task_touches_surface",
     "validate_template_lock_fields",
     "check_project_local_helper_preflight_report",
@@ -625,6 +627,26 @@ def validate_template_lock_fields(
                 issues.append(f"{record_kind} template discovery report must record selected_template_fingerprint")
             elif fingerprint and selected_fingerprint.lower() != fingerprint.lower():
                 issues.append(f"{record_kind} template discovery report fingerprint does not match active template fingerprint")
+            if source_type == "project-auto-discovered":
+                authority_class = str(report.get("selected_template_authority_class") or "").strip().lower()
+                if authority_class not in {"official-format-spec", "project-template-candidate"}:
+                    issues.append(
+                        f"{record_kind} project-auto-discovered template authority class is too weak: {authority_class or 'blank'}"
+                    )
+                for candidate in report.get("candidates") or []:
+                    if not isinstance(candidate, dict):
+                        continue
+                    candidate_path = str(candidate.get("path") or "")
+                    if not candidate_path:
+                        continue
+                    resolved_candidate = resolve_record_path(candidate_path, discovery_report_path)
+                    if resolved_candidate.resolve() != active_template.resolve():
+                        continue
+                    if bool(candidate.get("under_codex")):
+                        issues.append(
+                            f"{record_kind} project-auto-discovered active template must not resolve to a .codex candidate: {resolved_candidate}"
+                        )
+                    break
 
     return issues
 
@@ -1141,6 +1163,167 @@ def check_docx_body_style_audit_report(report_path: Path, expected_final_docx_pa
             issues.append(
                 f"docx body style audit report sha256 in {report_path} does not match the exact rendered deliverable {expected_final_docx_path.resolve()}"
             )
+
+    return issues
+
+
+def check_docx_whole_format_gate_report(
+    report_path: Path,
+    expected_final_docx_path: Path | None = None,
+) -> list[str]:
+    issues: list[str] = []
+    issues.extend(validate_existing_path(report_path, require_nonempty_file=True))
+    if issues:
+        return issues
+
+    try:
+        payload = json.loads(report_path.read_text(encoding="utf-8-sig"))
+    except Exception as exc:
+        return [f"whole-format DOCX gate report is not valid JSON in {report_path}: {exc}"]
+    if not isinstance(payload, dict):
+        return [f"whole-format DOCX gate report must be a JSON object in {report_path}"]
+
+    if payload.get("schema") != "graduation-project-builder.docx-whole-format-gate.v1":
+        issues.append(f"whole-format DOCX gate report schema mismatch in {report_path}")
+    if payload.get("passed") is not True:
+        report_issues = payload.get("issues")
+        issues.append(f"whole-format DOCX gate report is not pass in {report_path}: {report_issues}")
+
+    raw_doc_path = str(payload.get("docx_path") or "")
+    resolved_doc_path: Path | None = None
+    if not raw_doc_path:
+        issues.append(f"whole-format DOCX gate report lacks docx_path in {report_path}")
+    else:
+        resolved_doc_path = Path(raw_doc_path)
+        if not resolved_doc_path.is_absolute():
+            resolved_doc_path = (report_path.parent / resolved_doc_path).resolve()
+        else:
+            resolved_doc_path = resolved_doc_path.resolve()
+        if not resolved_doc_path.exists():
+            issues.append(f"whole-format DOCX gate report targets a missing DOCX in {report_path}: {resolved_doc_path}")
+
+    report_sha = str(payload.get("docx_sha256") or "")
+    if not re.fullmatch(r"[0-9a-fA-F]{64}", report_sha):
+        issues.append(f"whole-format DOCX gate report must record a 64-hex docx_sha256 in {report_path}")
+    elif resolved_doc_path is not None and resolved_doc_path.exists():
+        actual_sha = sha256_file(resolved_doc_path)
+        if report_sha.lower() != actual_sha.lower():
+            issues.append(f"whole-format DOCX gate report sha256 does not match audited DOCX in {report_path}")
+
+    if expected_final_docx_path is not None and resolved_doc_path is not None:
+        if resolved_doc_path != expected_final_docx_path.resolve():
+            issues.append(
+                f"whole-format DOCX gate report in {report_path} targets {resolved_doc_path} "
+                f"instead of the exact final DOCX {expected_final_docx_path.resolve()}"
+            )
+        elif re.fullmatch(r"[0-9a-fA-F]{64}", report_sha):
+            expected_sha = sha256_file(expected_final_docx_path)
+            if report_sha.lower() != expected_sha.lower():
+                issues.append(
+                    f"whole-format DOCX gate report sha256 does not match the exact final DOCX "
+                    f"{expected_final_docx_path.resolve()}"
+                )
+
+    counts = payload.get("counts")
+    if isinstance(counts, dict):
+        required_minimums = {
+            "section_count": 3,
+            "live_toc_field_count": 1,
+            "footer_page_field_count": 1,
+        }
+        for key, minimum in required_minimums.items():
+            try:
+                value = int(counts.get(key))
+            except (TypeError, ValueError):
+                issues.append(f"whole-format DOCX gate report count '{key}' is missing or non-integer in {report_path}")
+                continue
+            if value < minimum:
+                issues.append(
+                    f"whole-format DOCX gate report count '{key}' is below release minimum {minimum} in {report_path}: {value}"
+                )
+        try:
+            builder_style_count = int(counts.get("builder_style_visible_paragraph_count"))
+        except (TypeError, ValueError):
+            issues.append(
+                f"whole-format DOCX gate report count 'builder_style_visible_paragraph_count' is missing or non-integer in {report_path}"
+            )
+        else:
+            if builder_style_count != 0:
+                issues.append(
+                    f"whole-format DOCX gate report still shows builder-owned visible styles in {report_path}: {builder_style_count}"
+                )
+    else:
+        issues.append(f"whole-format DOCX gate report lacks counts object in {report_path}")
+
+    return issues
+
+
+def check_docx_font_color_audit_report(
+    report_path: Path,
+    expected_final_docx_path: Path | None = None,
+) -> list[str]:
+    issues: list[str] = []
+    issues.extend(validate_existing_path(report_path, require_nonempty_file=True))
+    if issues:
+        return issues
+
+    try:
+        payload = json.loads(report_path.read_text(encoding="utf-8-sig"))
+    except Exception as exc:
+        return [f"font-color DOCX audit report is not valid JSON in {report_path}: {exc}"]
+    if not isinstance(payload, dict):
+        return [f"font-color DOCX audit report must be a JSON object in {report_path}"]
+
+    if payload.get("schema") != "graduation-project-builder.docx-font-color-audit.v1":
+        issues.append(f"font-color DOCX audit report schema mismatch in {report_path}")
+    if payload.get("passed") is not True:
+        issues.append(
+            f"font-color DOCX audit report is not pass in {report_path}: "
+            f"nonblack_color_count={payload.get('nonblack_color_count')}"
+        )
+
+    raw_doc_path = str(payload.get("docx_path") or "")
+    resolved_doc_path: Path | None = None
+    if not raw_doc_path:
+        issues.append(f"font-color DOCX audit report lacks docx_path in {report_path}")
+    else:
+        resolved_doc_path = Path(raw_doc_path)
+        if not resolved_doc_path.is_absolute():
+            resolved_doc_path = (report_path.parent / resolved_doc_path).resolve()
+        else:
+            resolved_doc_path = resolved_doc_path.resolve()
+        if not resolved_doc_path.exists():
+            issues.append(f"font-color DOCX audit report targets a missing DOCX in {report_path}: {resolved_doc_path}")
+
+    report_sha = str(payload.get("docx_sha256") or "")
+    if not re.fullmatch(r"[0-9a-fA-F]{64}", report_sha):
+        issues.append(f"font-color DOCX audit report must record a 64-hex docx_sha256 in {report_path}")
+    elif resolved_doc_path is not None and resolved_doc_path.exists():
+        actual_sha = sha256_file(resolved_doc_path)
+        if report_sha.lower() != actual_sha.lower():
+            issues.append(f"font-color DOCX audit report sha256 does not match audited DOCX in {report_path}")
+
+    try:
+        nonblack_count = int(payload.get("nonblack_color_count"))
+    except (TypeError, ValueError):
+        issues.append(f"font-color DOCX audit report nonblack_color_count is missing or non-integer in {report_path}")
+    else:
+        if nonblack_count != 0:
+            issues.append(f"font-color DOCX audit report found visible non-black/theme-colored text in {report_path}")
+
+    if expected_final_docx_path is not None and resolved_doc_path is not None:
+        if resolved_doc_path != expected_final_docx_path.resolve():
+            issues.append(
+                f"font-color DOCX audit report in {report_path} targets {resolved_doc_path} "
+                f"instead of the exact final DOCX {expected_final_docx_path.resolve()}"
+            )
+        elif re.fullmatch(r"[0-9a-fA-F]{64}", report_sha):
+            expected_sha = sha256_file(expected_final_docx_path)
+            if report_sha.lower() != expected_sha.lower():
+                issues.append(
+                    f"font-color DOCX audit report sha256 does not match the exact final DOCX "
+                    f"{expected_final_docx_path.resolve()}"
+                )
 
     return issues
 

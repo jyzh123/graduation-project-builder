@@ -30,6 +30,8 @@ try:
         check_thesis_citation_audit_report,
         check_docx_body_style_audit_report,
         check_docx_font_audit_report,
+        check_docx_font_color_audit_report,
+        check_docx_whole_format_gate_report,
         check_humanizer_evidence_record,
         format_repair_task_touches_surface,
         sha256_file,
@@ -59,6 +61,7 @@ try:
         validate_review_artifact_reports,
     )
     from .audit_docx_formula_objects import audit_docx as audit_formula_objects
+    from .audit_thesis_citations import audit_docx as audit_body_citations
     from .audit_thesis_comment_resolution import (
         collect_comment_snapshot,
         has_all_comments_claim,
@@ -97,6 +100,8 @@ except ImportError:
         check_thesis_citation_audit_report,
         check_docx_body_style_audit_report,
         check_docx_font_audit_report,
+        check_docx_font_color_audit_report,
+        check_docx_whole_format_gate_report,
         check_humanizer_evidence_record,
         format_repair_task_touches_surface,
         sha256_file,
@@ -126,6 +131,7 @@ except ImportError:
         validate_review_artifact_reports,
     )
     from audit_docx_formula_objects import audit_docx as audit_formula_objects
+    from audit_thesis_citations import audit_docx as audit_body_citations
     from audit_thesis_comment_resolution import (
         collect_comment_snapshot,
         has_all_comments_claim,
@@ -151,12 +157,73 @@ COMMENTS_NS = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/mai
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 W = f"{{{W_NS}}}"
 THESIS_MODES = {"thesis-only", "format-repair-only", "program-plus-thesis"}
+THESIS_ONLY_SOURCE_ROLE_PREFIXES = {
+    "- comment-resolution source DOCX path:",
+    "- comment-resolution source DOCX SHA256:",
+    "- figure source DOCX path:",
+    "- figure source DOCX SHA256:",
+}
 THESIS_WORKFLOWS = {
     "new-thesis-production",
     "whole-thesis-revision",
     "local-surface-repair",
     "content-only-paragraph-revision",
     "audit-only",
+}
+MECHANICAL_CAD_ACCEPTANCE_SCHEMA_VALUE = "graduation-project-builder.mechanical-cad-acceptance.v2"
+MECHANICAL_CAD_ACCEPTANCE_HEADINGS = (
+    "# Mechanical CAD Acceptance Template",
+    "## Outputs",
+    "## Audit Evidence",
+    "## Rendered Review",
+    "## Scope",
+    "## Validation",
+)
+MECHANICAL_CAD_ACCEPTANCE_PREFIXES = (
+    "- acceptance schema:",
+    "- task mode:",
+    "- subtask:",
+    "- exact final delivery package path:",
+    "- exact final delivery package sha256:",
+    "- exact audited CAD package path:",
+    "- exact audited CAD package sha256:",
+    "- exact DWG package path:",
+    "- exact DWG package sha256:",
+    "- exact combined PDF path:",
+    "- exact combined PDF sha256:",
+    "- mechanical drawing package audit path:",
+    "- mechanical drawing package audit verdict:",
+    "- mechanical drawing rendered review evidence paths:",
+    "- mechanical drawing rendered no-overlap verdict:",
+    "- mechanical drawing boundary clearance verdict:",
+    "- mechanical drawing detail density verdict:",
+    "- mechanical drawing title block/table/notes isolation verdict:",
+    "- mechanical drawing annotation margin clearance verdict:",
+    "- mechanical drawing local crowding verdict:",
+    "- mechanical drawing text/table/frame overlap verdict:",
+    "- mechanical drawing entity-count-only false-pass verdict:",
+    "- thesis DOCX mutation verdict:",
+    "- validation command:",
+    "- validation result:",
+)
+MECHANICAL_CAD_PASS_VALUES = {"pass", "passed", "yes", "true", "ok"}
+MECHANICAL_CAD_NO_OVERLAP_VALUES = MECHANICAL_CAD_PASS_VALUES | {
+    "no-overlap",
+    "no_overlap",
+    "no overlap",
+    "clear",
+}
+MECHANICAL_CAD_ENTITY_ONLY_REJECT_VALUES = {
+    "not-used",
+    "not_used",
+    "not-used-as-acceptance",
+    "not_used_as_acceptance",
+    "not-entity-only",
+    "not_entity_only",
+    "rejected",
+    "visual-reviewed",
+    "visual_reviewed",
+    "blocked",
 }
 FULL_SCOPE_TOKENS = (
     "whole thesis",
@@ -259,6 +326,7 @@ PASS_SHAPED_HANDOFF_TOKENS = (
 )
 REQUIRED_SAMPLE_SELF_CHECK_DETECTORS = (
     "header.presence-contract",
+    "header-footer.page-number-template-contract",
     "figure.scope-manifest-contract",
     "figure.family-style-contract",
     "figure.image-dimension-contract",
@@ -440,6 +508,13 @@ BODY_OPENER_HEADER_TITLE_EVIDENCE_TOKENS = (
 USER_REPORTED_VISUAL_SURFACE_TOKENS = (
     "toc",
     "table of contents",
+    "abstract",
+    "keyword",
+    "header",
+    "footer",
+    "page number",
+    "page-number",
+    "page_numbers",
     "references",
     "bibliography",
     "body",
@@ -449,6 +524,11 @@ USER_REPORTED_VISUAL_SURFACE_TOKENS = (
     "page break",
     "pagination",
     "\u76ee\u5f55",
+    "\u6458\u8981",
+    "\u5173\u952e\u8bcd",
+    "\u9875\u7709",
+    "\u9875\u811a",
+    "\u9875\u7801",
     "\u53c2\u8003\u6587\u732e",
     "\u6b63\u6587",
     "\u5b57\u4f53",
@@ -528,14 +608,86 @@ USER_REPORTED_VISUAL_EVIDENCE_TOKENS = (
     "surface",
     "final verdict",
 )
+CONTENT_MUTATION_VISUAL_TRIGGER_TOKENS = (
+    "content expansion",
+    "expand content",
+    "body expansion",
+    "text mutation",
+    "body paragraph insertion",
+    "inserted body paragraph",
+    "inserted paragraph",
+    "body paragraph rewrite",
+    "content-only-paragraph-revision",
+    "visible chinese characters",
+    "word count",
+    "lengthen",
+    "rewrite body",
+    "\u6269\u5199",
+    "\u5b57\u6570",
+    "\u6b63\u6587\u6269\u5199",
+    "\u6b63\u6587\u6bb5\u843d",
+    "\u63d2\u5165\u6bb5\u843d",
+    "\u6dfb\u52a0\u6bb5\u843d",
+    "\u6539\u5199",
+)
+CONTENT_MUTATION_VISUAL_REQUIRED_FIELDS = (
+    "- content mutation rendered-page review path:",
+    "- content mutation machine-vision verdict:",
+    "- inserted body heading-contamination verdict:",
+    "- touched-page/blast-radius machine-vision evidence paths:",
+    "- format lane post-mutation rendered audit verdict:",
+)
+CONTENT_MUTATION_VISUAL_BAD_TOKENS = {
+    "failed",
+    "missing",
+    "not checked",
+    "sample only",
+    "sampled-only",
+    "stale",
+    "xml only",
+    "xml-only",
+    "structure only",
+    "structure-only",
+    "pdf export only",
+    "pdf-export-only",
+    "page count only",
+    "page-count-only",
+    "manual only",
+    "manual-only",
+    "manual visual only",
+    "no machine vision",
+    "without machine vision",
+    "page-image existence",
+    "page image existence",
+    "blocked",
+    "title-like",
+    "heading-like remains",
+}
+CONTENT_MUTATION_VISUAL_EVIDENCE_TOKENS = (
+    "machine-vision",
+    "rendered",
+    "exact output",
+    "touched paragraph",
+    "touched page",
+    "body donor",
+    "body-vs-heading",
+    "heading contamination",
+    "final verdict",
+)
 BIBLIOGRAPHY_COMMENT_TOKENS = ("references", "reference format", "bibliography", "literature")
 FORBIDDEN_PASS_WITH_CAVEAT_TOKENS = (
     "passed with caveats",
     "pass with caveats",
+    "passed with limitations",
+    "pass with limitation",
     "mostly passed",
     "near pass",
     "sampled, not every paragraph",
     "sampled rendered review",
+    "structural pass only",
+    "structure-only pass",
+    "font audit limitation accepted",
+    "donor limitation accepted",
 )
 FORBIDDEN_STATIC_TOC_PASS_TOKENS = (
     "static toc fallback",
@@ -686,6 +838,34 @@ SURFACE_LEDGER_REQUIREMENTS = {
             "\u7ae0\u9996",
             "\u7eea\u8bba",
             "\u7ed3\u8bba",
+        ),
+    ),
+    "header-footer-page-number": (
+        (
+            "header",
+            "footer",
+            "page number",
+            "page-number",
+            "page_numbers",
+            "running header",
+            "header line",
+            "horizontal line",
+            "footer position",
+            "\u9875\u7709",
+            "\u9875\u811a",
+            "\u9875\u7801",
+            "\u6a2a\u7ebf",
+        ),
+        (
+            "header",
+            "footer",
+            "page number",
+            "header line",
+            "horizontal line",
+            "\u9875\u7709",
+            "\u9875\u811a",
+            "\u9875\u7801",
+            "\u6a2a\u7ebf",
         ),
     ),
     "pagination": (
@@ -1053,6 +1233,11 @@ AGENT_RUN_MANIFEST_REQUIRED_PREFIXES = (
     "- toc_visible_run_typography_verdict:",
     "- whole_document_pagination_evidence_path:",
     "- whole_document_pagination_verdict:",
+    "- content_mutation_rendered_review_path:",
+    "- content_mutation_machine_vision_verdict:",
+    "- inserted_body_heading_contamination_verdict:",
+    "- touched_page_blast_radius_machine_vision_evidence_paths:",
+    "- format_lane_post_mutation_rendered_audit_verdict:",
     "- protected_surface_reviewed_output_sha256:",
     "- protected_surface_contract_verdict:",
     "- lane_task_card_paths:",
@@ -1139,6 +1324,11 @@ FORMAT_TASK_CARD_REQUIRED_PREFIXES = (
     "- toc_visible_run_typography_verdict:",
     "- whole_document_pagination_evidence_path:",
     "- whole_document_pagination_verdict:",
+    "- content_mutation_rendered_review_path:",
+    "- content_mutation_machine_vision_verdict:",
+    "- inserted_body_heading_contamination_verdict:",
+    "- touched_page_blast_radius_machine_vision_evidence_paths:",
+    "- format_lane_post_mutation_rendered_audit_verdict:",
     "- protected_surface_reviewed_output_sha256:",
     "- protected_surface_contract_verdict:",
 )
@@ -1169,6 +1359,11 @@ AGENT_PROTECTED_FIELD_TO_GATE_PREFIX = {
     "- toc_visible_run_typography_verdict:": "- TOC visible-run typography verdict:",
     "- whole_document_pagination_evidence_path:": "- whole-document pagination evidence path:",
     "- whole_document_pagination_verdict:": "- whole-document pagination verdict:",
+    "- content_mutation_rendered_review_path:": "- content mutation rendered-page review path:",
+    "- content_mutation_machine_vision_verdict:": "- content mutation machine-vision verdict:",
+    "- inserted_body_heading_contamination_verdict:": "- inserted body heading-contamination verdict:",
+    "- touched_page_blast_radius_machine_vision_evidence_paths:": "- touched-page/blast-radius machine-vision evidence paths:",
+    "- format_lane_post_mutation_rendered_audit_verdict:": "- format lane post-mutation rendered audit verdict:",
     "- protected_surface_reviewed_output_sha256:": "- protected-surface reviewed output sha256:",
     "- protected_surface_contract_verdict:": "- protected-surface evidence contract verdict:",
     "- protected-surface evidence contract path:": "- protected-surface evidence contract path:",
@@ -1193,6 +1388,8 @@ AGENT_PROTECTED_PATH_PREFIXES = {
     "- toc_paragraph_and_typography_evidence_paths:",
     "- toc_visible_run_typography_evidence_paths:",
     "- whole_document_pagination_evidence_path:",
+    "- content_mutation_rendered_review_path:",
+    "- touched_page_blast_radius_machine_vision_evidence_paths:",
     "- protected-surface evidence contract path:",
     "- protected-surface evidence map:",
     "- all-surface paragraph-dialog / typography evidence record paths:",
@@ -1279,6 +1476,300 @@ def skill_lock_blocked_evidence_ok(value: str) -> bool:
     if contains_any(normalized, {"known caveat", "remaining risk", "residual", "deferred", "ignored", "handwave"}):
         return False
     return skill_lock_passish(normalized) or normalized.startswith("escalated") or normalized.startswith("blocked handoff")
+
+
+def _mechanical_cad_field_maps(record_lines: list[str]) -> tuple[dict[str, str], dict[str, str], list[str]]:
+    values: dict[str, str] = {}
+    raw_values: dict[str, str] = {}
+    issues: list[str] = []
+    for prefix in MECHANICAL_CAD_ACCEPTANCE_PREFIXES:
+        lines = find_lines_with_prefix(record_lines, prefix)
+        if len(lines) != 1:
+            issues.append(f"mechanical CAD acceptance record must contain exactly one '{prefix}' line")
+            continue
+        values[prefix] = parse_line_value(lines[0])
+        raw_values[prefix] = raw_line_value(lines[0])
+    return values, raw_values, issues
+
+
+def _mechanical_cad_passish(value: str) -> bool:
+    return normalize(value).lower() in MECHANICAL_CAD_PASS_VALUES
+
+
+def _mechanical_cad_resolve_file(
+    *,
+    record_path: Path,
+    raw_value: str,
+    label: str,
+    required_suffixes: set[str] | None = None,
+) -> tuple[Path | None, list[str]]:
+    issues: list[str] = []
+    raw_paths = split_path_values(raw_value)
+    if not raw_paths:
+        return None, [f"mechanical CAD acceptance {label} must name a file path"]
+    resolved = resolve_record_path(raw_paths[0], record_path)
+    issues.extend(validate_existing_path(resolved, require_nonempty_file=True))
+    if required_suffixes is not None and resolved.suffix.lower() not in required_suffixes:
+        issues.append(
+            f"mechanical CAD acceptance {label} must use one of {sorted(required_suffixes)}: {resolved}"
+        )
+    return resolved, issues
+
+
+def _mechanical_cad_validate_sha(path: Path | None, expected: str, label: str) -> list[str]:
+    if path is None:
+        return []
+    value = normalize(expected).upper()
+    if not re.fullmatch(r"[0-9A-F]{64}", value):
+        return [f"mechanical CAD acceptance {label} SHA256 must be a 64-hex value"]
+    actual = sha256_file(path).upper()
+    if actual != value:
+        return [f"mechanical CAD acceptance {label} SHA256 mismatch: expected={value} actual={actual} path={path}"]
+    return []
+
+
+def _mechanical_cad_gate_record_arg(command_text: str) -> str:
+    match = re.search(r"--gate-record(?:=|\s+)(\"[^\"]+\"|'[^']+'|`[^`]+`|\S+)", command_text)
+    if match:
+        return match.group(1).strip().strip("`").strip('"').strip("'")
+    return ""
+
+
+def _mechanical_cad_validate_validation_command(command_text: str, record_path: Path) -> list[str]:
+    issues: list[str] = []
+    normalized_command = normalize(command_text)
+    if "validate_skill_gate" not in normalized_command or "--gate-record" not in normalized_command:
+        issues.append("mechanical CAD acceptance validation command must call validate_skill_gate with --gate-record")
+        return issues
+    gate_record_arg = _mechanical_cad_gate_record_arg(command_text)
+    if not gate_record_arg:
+        issues.append("mechanical CAD acceptance validation command must name the exact gate record")
+        return issues
+    referenced = resolve_record_path(gate_record_arg, record_path)
+    try:
+        if referenced.resolve() != record_path.resolve():
+            issues.append(f"mechanical CAD acceptance validation command --gate-record must point to this record: {referenced}")
+    except OSError:
+        issues.append(f"mechanical CAD acceptance validation command --gate-record could not be resolved: {gate_record_arg}")
+    return issues
+
+
+def _mechanical_cad_audit_path_value(report: dict[str, object], key: str) -> str:
+    value = report.get(key)
+    if isinstance(value, str):
+        return value
+    candidate = report.get("candidate")
+    if isinstance(candidate, dict):
+        nested = candidate.get(key)
+        if isinstance(nested, str):
+            return nested
+    return ""
+
+
+def _mechanical_cad_acceptance_to_report_field(prefix: str) -> str:
+    mapping = {
+        "- mechanical drawing rendered no-overlap verdict:": "no_overlap_verdict",
+        "- mechanical drawing boundary clearance verdict:": "boundary_clearance_verdict",
+        "- mechanical drawing detail density verdict:": "detail_density_verdict",
+        "- mechanical drawing title block/table/notes isolation verdict:": "title_block_table_notes_isolation_verdict",
+        "- mechanical drawing annotation margin clearance verdict:": "annotation_margin_clearance_verdict",
+        "- mechanical drawing local crowding verdict:": "local_crowding_verdict",
+        "- mechanical drawing text/table/frame overlap verdict:": "no_overlap_verdict",
+    }
+    return mapping.get(prefix, "")
+
+
+def check_mechanical_cad_acceptance_record(record_path: Path, record_lines: list[str]) -> list[str]:
+    issues: list[str] = []
+    normalized_lines = {normalize(line) for line in record_lines if normalize(line)}
+    for heading in MECHANICAL_CAD_ACCEPTANCE_HEADINGS:
+        if heading not in normalized_lines:
+            issues.append(f"mechanical CAD acceptance record missing marker: {heading}")
+
+    values, raw_values, field_issues = _mechanical_cad_field_maps(record_lines)
+    issues.extend(field_issues)
+    if field_issues:
+        return issues
+
+    if values["- acceptance schema:"] != MECHANICAL_CAD_ACCEPTANCE_SCHEMA_VALUE:
+        issues.append(
+            "mechanical CAD acceptance schema must be "
+            f"{MECHANICAL_CAD_ACCEPTANCE_SCHEMA_VALUE}: {values['- acceptance schema:'] or 'missing'}"
+        )
+    if not is_explicit(values["- task mode:"]) or is_explicit_none(values["- task mode:"]):
+        issues.append("mechanical CAD acceptance task mode must be explicit")
+    if not is_explicit(values["- subtask:"]) or is_explicit_none(values["- subtask:"]):
+        issues.append("mechanical CAD acceptance subtask must be explicit")
+
+    final_zip, final_zip_issues = _mechanical_cad_resolve_file(
+        record_path=record_path,
+        raw_value=raw_values["- exact final delivery package path:"],
+        label="final delivery package",
+        required_suffixes={".zip"},
+    )
+    audited_package, audited_package_issues = _mechanical_cad_resolve_file(
+        record_path=record_path,
+        raw_value=raw_values["- exact audited CAD package path:"],
+        label="audited CAD package",
+        required_suffixes={".zip"},
+    )
+    dwg_zip, dwg_zip_issues = _mechanical_cad_resolve_file(
+        record_path=record_path,
+        raw_value=raw_values["- exact DWG package path:"],
+        label="DWG package",
+        required_suffixes={".zip"},
+    )
+    combined_pdf, combined_pdf_issues = _mechanical_cad_resolve_file(
+        record_path=record_path,
+        raw_value=raw_values["- exact combined PDF path:"],
+        label="combined PDF",
+        required_suffixes={".pdf"},
+    )
+    audit_report_path, audit_report_issues = _mechanical_cad_resolve_file(
+        record_path=record_path,
+        raw_value=raw_values["- mechanical drawing package audit path:"],
+        label="audit report",
+        required_suffixes={".json"},
+    )
+    issues.extend(final_zip_issues)
+    issues.extend(audited_package_issues)
+    issues.extend(dwg_zip_issues)
+    issues.extend(combined_pdf_issues)
+    issues.extend(audit_report_issues)
+    issues.extend(
+        _mechanical_cad_validate_sha(
+            final_zip,
+            values["- exact final delivery package sha256:"],
+            "final delivery package",
+        )
+    )
+    issues.extend(
+        _mechanical_cad_validate_sha(
+            audited_package,
+            values["- exact audited CAD package sha256:"],
+            "audited CAD package",
+        )
+    )
+    issues.extend(
+        _mechanical_cad_validate_sha(
+            dwg_zip,
+            values["- exact DWG package sha256:"],
+            "DWG package",
+        )
+    )
+    issues.extend(
+        _mechanical_cad_validate_sha(
+            combined_pdf,
+            values["- exact combined PDF sha256:"],
+            "combined PDF",
+        )
+    )
+
+    if not _mechanical_cad_passish(values["- mechanical drawing package audit verdict:"]):
+        issues.append("mechanical CAD acceptance audit verdict must be pass-shaped")
+    if normalize(values["- mechanical drawing rendered no-overlap verdict:"]).lower() not in MECHANICAL_CAD_NO_OVERLAP_VALUES:
+        issues.append("mechanical CAD acceptance rendered no-overlap verdict must be pass/no-overlap")
+    for key in (
+        "- mechanical drawing boundary clearance verdict:",
+        "- mechanical drawing detail density verdict:",
+        "- mechanical drawing title block/table/notes isolation verdict:",
+        "- mechanical drawing annotation margin clearance verdict:",
+        "- mechanical drawing local crowding verdict:",
+    ):
+        if not _mechanical_cad_passish(values[key]):
+            issues.append(f"mechanical CAD acceptance {key[2:]} must be pass-shaped")
+    if normalize(values["- mechanical drawing text/table/frame overlap verdict:"]).lower() not in MECHANICAL_CAD_NO_OVERLAP_VALUES:
+        issues.append("mechanical CAD acceptance text/table/frame overlap verdict must be pass/no-overlap")
+    if (
+        normalize(values["- mechanical drawing entity-count-only false-pass verdict:"]).lower()
+        not in MECHANICAL_CAD_ENTITY_ONLY_REJECT_VALUES
+    ):
+        issues.append("mechanical CAD acceptance must reject entity-count-only acceptance")
+    thesis_docx_value = normalize(values["- thesis DOCX mutation verdict:"]).lower()
+    if thesis_docx_value not in {"not-touched", "none", "not-applicable", "paused"}:
+        issues.append("mechanical CAD acceptance must not imply thesis DOCX mutation in the CAD-only lane")
+
+    rendered_paths = split_path_values(raw_values["- mechanical drawing rendered review evidence paths:"])
+    if not rendered_paths:
+        issues.append("mechanical CAD acceptance must bind rendered review evidence paths")
+    for raw_path in rendered_paths:
+        rendered_path = resolve_record_path(raw_path, record_path)
+        issues.extend(validate_existing_path(rendered_path, require_nonempty_file=True))
+        if rendered_path.suffix.lower() not in IMAGE_EXTENSIONS | PDF_EXTENSIONS:
+            issues.append(f"mechanical CAD rendered review evidence must be image/PDF: {rendered_path}")
+
+    if audit_report_path is not None and not audit_report_issues:
+        try:
+            report = json.loads(audit_report_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            issues.append(f"mechanical CAD audit report is not valid UTF-8 JSON: {audit_report_path} ({exc})")
+        else:
+            if report.get("schema") != "graduation-project-builder.mechanical-drawing-package-audit.v4":
+                issues.append("mechanical CAD audit report must use v4 mechanical drawing package schema")
+            if report.get("passed") is not True:
+                issues.append("mechanical CAD audit report must have passed=true")
+            if report.get("issues") not in ([], None):
+                issues.append("mechanical CAD audit report must not carry unresolved issues")
+            report_path_value = _mechanical_cad_audit_path_value(report, "package_path")
+            report_sha_value = _mechanical_cad_audit_path_value(report, "package_sha256") or _mechanical_cad_audit_path_value(report, "sha256")
+            if audited_package is not None and report_path_value:
+                try:
+                    if Path(report_path_value).resolve() != audited_package.resolve():
+                        issues.append("mechanical CAD audit report package_path differs from acceptance audited package path")
+                except OSError:
+                    issues.append("mechanical CAD audit report package_path could not be resolved")
+            if report_sha_value and report_sha_value.upper() != values["- exact audited CAD package sha256:"].upper():
+                issues.append("mechanical CAD audit report package SHA256 differs from acceptance audited package SHA256")
+            for key in ("density_verdict", "manufacturing_depth", "rendered_review_verdict"):
+                section = report.get(key)
+                if not isinstance(section, dict) or section.get("passed") is not True:
+                    issues.append(f"mechanical CAD audit report {key}.passed must be true")
+            candidate = report.get("candidate")
+            extension_counts = candidate.get("extension_counts") if isinstance(candidate, dict) else {}
+            if isinstance(extension_counts, dict):
+                if int(extension_counts.get(".dwg", 0)) <= 0:
+                    issues.append("mechanical CAD audit report must count real DWG files")
+                if int(extension_counts.get(".pdf", 0)) <= 0:
+                    issues.append("mechanical CAD audit report must count PDF drawings")
+            rendered_verdict = report.get("rendered_review_verdict")
+            if isinstance(rendered_verdict, dict) and int(rendered_verdict.get("accepted_review_count", 0)) <= 0:
+                issues.append("mechanical CAD audit report must bind at least one accepted rendered review")
+            rendered_candidate = candidate.get("rendered_review") if isinstance(candidate, dict) else None
+            if not isinstance(rendered_candidate, dict):
+                issues.append("mechanical CAD audit report candidate.rendered_review must exist")
+            else:
+                for prefix in (
+                    "- mechanical drawing rendered no-overlap verdict:",
+                    "- mechanical drawing boundary clearance verdict:",
+                    "- mechanical drawing detail density verdict:",
+                    "- mechanical drawing title block/table/notes isolation verdict:",
+                    "- mechanical drawing annotation margin clearance verdict:",
+                    "- mechanical drawing local crowding verdict:",
+                    "- mechanical drawing text/table/frame overlap verdict:",
+                ):
+                    report_field = _mechanical_cad_acceptance_to_report_field(prefix)
+                    if not report_field:
+                        continue
+                    report_value = normalize(str(rendered_candidate.get(report_field, ""))).lower()
+                    expected_value = normalize(values[prefix]).lower()
+                    if prefix in {
+                        "- mechanical drawing rendered no-overlap verdict:",
+                        "- mechanical drawing text/table/frame overlap verdict:",
+                    }:
+                        if report_value not in MECHANICAL_CAD_NO_OVERLAP_VALUES:
+                            issues.append(f"mechanical CAD audit report rendered_review.{report_field} must be pass/no-overlap")
+                    else:
+                        if report_value not in MECHANICAL_CAD_PASS_VALUES:
+                            issues.append(f"mechanical CAD audit report rendered_review.{report_field} must be pass-shaped")
+                    if expected_value != report_value:
+                        issues.append(
+                            f"mechanical CAD acceptance {prefix[2:]} differs from audit report rendered_review.{report_field}"
+                        )
+
+    issues.extend(_mechanical_cad_validate_validation_command(raw_values["- validation command:"], record_path))
+    if values["- validation result:"] != "pass":
+        issues.append("mechanical CAD acceptance validation result must be pass")
+    return issues
 
 
 def validate_skill_invocation_lock(
@@ -2767,6 +3258,10 @@ def review_inventory_source_docx_path(source_report_path: Path | None) -> Path |
     return None
 
 
+def citation_inventory_source_docx_path(source_report_path: Path | None) -> Path | None:
+    return review_inventory_source_docx_path(source_report_path)
+
+
 def docx_has_figure_caption(docx_path: Path | None) -> bool:
     if docx_path is None or not docx_path.exists() or docx_path.suffix.lower() != ".docx":
         return False
@@ -3001,9 +3496,26 @@ def validate_body_opener_header_title_evidence(
 
 def user_reported_visual_defect_required(user_issue_context: str) -> bool:
     lowered = user_issue_context.lower()
+    visual_context = {
+        "screenshot",
+        "visible",
+        "visual",
+        "rendered",
+        "looks",
+        "wrong",
+        "format",
+        "drift",
+        "abnormal",
+        "\u622a\u56fe",
+        "\u53ef\u89c1",
+        "\u89c6\u89c9",
+        "\u683c\u5f0f",
+        "\u5f02\u5e38",
+        "\u9519",
+    }
     toc_issue = contains_any(lowered, {"toc", "table of contents", "\u76ee\u5f55"}) and contains_any(
         lowered,
-        {"screenshot", "visible", "visual", "rendered", "looks", "wrong", "format", "drift", "\u622a\u56fe", "\u53ef\u89c1", "\u89c6\u89c9", "\u683c\u5f0f", "\u5f02\u5e38"},
+        visual_context,
     )
     references_pagination_issue = contains_any(
         lowered,
@@ -3017,9 +3529,32 @@ def user_reported_visual_defect_required(user_issue_context: str) -> bool:
         {"body font", "body size", "body style", "font", "font size", "typeface", "style abnormal", "\u5b57\u4f53", "\u5b57\u53f7", "\u6837\u5f0f"},
     ) and contains_any(
         lowered,
-        {"screenshot", "visible", "visual", "rendered", "wrong", "abnormal", "format", "drift", "\u622a\u56fe", "\u53ef\u89c1", "\u89c6\u89c9", "\u683c\u5f0f", "\u5f02\u5e38"},
+        visual_context,
     )
-    return toc_issue or references_pagination_issue or body_font_issue
+    abstract_issue = contains_any(lowered, {"abstract", "keyword", "\u6458\u8981", "\u5173\u952e\u8bcd"}) and contains_any(
+        lowered,
+        visual_context | {"font", "font size", "style", "\u5b57\u4f53", "\u5b57\u53f7", "\u6837\u5f0f", "\u7edf\u4e00"},
+    )
+    header_footer_page_number_issue = contains_any(
+        lowered,
+        {
+            "header",
+            "footer",
+            "page number",
+            "page-number",
+            "page_numbers",
+            "running header",
+            "header line",
+            "horizontal line",
+            "footer position",
+            "\u9875\u7709",
+            "\u9875\u811a",
+            "\u9875\u7801",
+            "\u6a2a\u7ebf",
+            "\u6807\u53f7",
+        },
+    ) and contains_any(lowered, visual_context | {"position", "line", "\u4f4d\u7f6e", "\u6a2a\u7ebf"})
+    return toc_issue or references_pagination_issue or body_font_issue or abstract_issue or header_footer_page_number_issue
 
 
 def validate_user_reported_visual_defect_evidence(
@@ -3057,6 +3592,40 @@ def validate_user_reported_visual_defect_evidence(
         ):
             issues.append(f"user-reported visual defect evidence contains blocked or substitute proof wording: {evidence_path}")
             break
+    return issues
+
+
+def thesis_content_mutation_visual_gate_required(context: str) -> bool:
+    lowered = context.lower()
+    if not contains_any(lowered, CONTENT_MUTATION_VISUAL_TRIGGER_TOKENS):
+        return False
+    if contains_any(lowered, {"audit-only", "no mutation", "read-only", "not-applicable"}):
+        return contains_any(lowered, {"content expansion", "body paragraph insertion", "\u6269\u5199", "\u5b57\u6570"})
+    return True
+
+
+def validate_content_mutation_rendered_evidence(
+    evidence_path: Path,
+    record_path: Path,
+) -> list[str]:
+    issues: list[str] = []
+    issues.extend(validate_existing_path(evidence_path, require_nonempty_file=True))
+    if issues:
+        return issues
+    text = read_optional_text(evidence_path)
+    lowered = text.lower()
+    missing_tokens = [
+        token
+        for token in CONTENT_MUTATION_VISUAL_EVIDENCE_TOKENS
+        if token not in lowered
+    ]
+    if missing_tokens:
+        issues.append(
+            "content expansion machine-vision evidence is missing required rendered body-contamination fields "
+            f"in {record_path}: {', '.join(missing_tokens)}"
+        )
+    if contains_any(lowered, CONTENT_MUTATION_VISUAL_BAD_TOKENS):
+        issues.append(f"content expansion machine-vision evidence contains blocked substitute proof wording: {evidence_path}")
     return issues
 
 
@@ -3132,6 +3701,11 @@ def check_gate_record(record_path: Path) -> list[str]:
     record_lines = read_lines(record_path)
     record_text_lower = "\n".join(record_lines).lower()
     if (
+        f"- acceptance schema: {MECHANICAL_CAD_ACCEPTANCE_SCHEMA_VALUE}" in record_text_lower
+        or "# mechanical cad acceptance template" in record_text_lower
+    ):
+        return check_mechanical_cad_acceptance_record(record_path, record_lines)
+    if (
         ("final acceptance" in record_text_lower or "final-acceptance" in record_path.name.lower())
         and contains_any(record_text_lower, SMOKE_SUMMARY_FINAL_ACCEPTANCE_TOKENS)
         and (
@@ -3184,6 +3758,23 @@ def check_gate_record(record_path: Path) -> list[str]:
                 break
     if task_mode in THESIS_MODES and final_docx_path is None:
         issues.append("thesis gate record exact output paths must name the final DOCX handed off")
+    final_docx_has_citation_surface = False
+    final_citation_surface_removed = False
+    if task_mode in THESIS_MODES and final_docx_path is not None and final_docx_path.exists():
+        try:
+            final_citation_audit = audit_body_citations(final_docx_path)
+        except Exception as exc:
+            issues.append(f"thesis gate record final DOCX citation audit could not run: {exc}")
+        else:
+            final_docx_has_citation_surface = (
+                final_citation_audit.body_citation_paragraph_count > 0
+                or final_citation_audit.bibliography_item_count > 0
+            )
+            if not final_docx_has_citation_surface and contains_any(
+                record_text_lower,
+                {"citation", "citations", "bibliography", "reference", "\u5f15\u7528", "\u53c2\u8003\u6587\u732e"},
+            ):
+                final_citation_surface_removed = True
     live_toc_required_lines = find_lines_with_prefix(record_lines, "- live TOC required this round?:")
     live_toc_required_value = parse_line_value(live_toc_required_lines[0]) if live_toc_required_lines else ""
     live_toc_required = live_toc_required_value.lower() in {"yes", "true", "required", "pass"}
@@ -3207,6 +3798,71 @@ def check_gate_record(record_path: Path) -> list[str]:
             verdict_value = parse_line_value(live_toc_field_verdict_lines[0]).lower()
             if live_toc_count <= 0 and "pass" in verdict_value and not toc_visible_passed:
                 issues.append("live TOC field verdict is pass-shaped while the final DOCX has no TOC field")
+    whole_format_path_prefix = "- final DOCX whole-format structural audit path:"
+    whole_format_verdict_prefix = "- final DOCX whole-format structural audit verdict:"
+    whole_format_required = task_mode in THESIS_MODES and selected_workflow in {
+        "new-thesis-production",
+        "whole-thesis-revision",
+    }
+    whole_format_path_lines = find_lines_with_prefix(record_lines, whole_format_path_prefix)
+    whole_format_verdict_lines = find_lines_with_prefix(record_lines, whole_format_verdict_prefix)
+    if whole_format_required:
+        if len(whole_format_path_lines) != 1:
+            issues.append(
+                f"whole-thesis gate records must contain exactly one '{whole_format_path_prefix}' line"
+            )
+        if len(whole_format_verdict_lines) != 1:
+            issues.append(
+                f"whole-thesis gate records must contain exactly one '{whole_format_verdict_prefix}' line"
+            )
+    if len(whole_format_path_lines) > 1:
+        issues.append(f"gate record must contain at most one '{whole_format_path_prefix}' line")
+    if len(whole_format_verdict_lines) > 1:
+        issues.append(f"gate record must contain at most one '{whole_format_verdict_prefix}' line")
+    if whole_format_path_lines:
+        whole_format_value = parse_line_value(whole_format_path_lines[0])
+        whole_format_raw = raw_line_value(whole_format_path_lines[0])
+        if whole_format_required and (not is_explicit(whole_format_value) or is_explicit_none(whole_format_value)):
+            issues.append("whole-thesis final acceptance must bind an exact-output whole-format structural audit path")
+        elif is_explicit(whole_format_value) and not is_explicit_none(whole_format_value):
+            whole_format_report = first_resolved_path(whole_format_raw, record_path)
+            if whole_format_report is None:
+                issues.append("whole-format structural audit path could not be resolved")
+            else:
+                issues.extend(check_docx_whole_format_gate_report(whole_format_report, final_docx_path))
+    if whole_format_verdict_lines:
+        whole_format_verdict = parse_line_value(whole_format_verdict_lines[0]).lower()
+        if whole_format_required and "pass" not in whole_format_verdict:
+            issues.append("whole-thesis final acceptance whole-format structural audit verdict must be pass-shaped")
+    font_color_path_prefix = "- final DOCX font-color audit path:"
+    font_color_verdict_prefix = "- final DOCX font-color audit verdict:"
+    font_color_required = task_mode in THESIS_MODES
+    font_color_path_lines = find_lines_with_prefix(record_lines, font_color_path_prefix)
+    font_color_verdict_lines = find_lines_with_prefix(record_lines, font_color_verdict_prefix)
+    if font_color_required:
+        if len(font_color_path_lines) != 1:
+            issues.append(f"thesis gate records must contain exactly one '{font_color_path_prefix}' line")
+        if len(font_color_verdict_lines) != 1:
+            issues.append(f"thesis gate records must contain exactly one '{font_color_verdict_prefix}' line")
+    if len(font_color_path_lines) > 1:
+        issues.append(f"gate record must contain at most one '{font_color_path_prefix}' line")
+    if len(font_color_verdict_lines) > 1:
+        issues.append(f"gate record must contain at most one '{font_color_verdict_prefix}' line")
+    if font_color_path_lines:
+        font_color_value = parse_line_value(font_color_path_lines[0])
+        font_color_raw = raw_line_value(font_color_path_lines[0])
+        if font_color_required and (not is_explicit(font_color_value) or is_explicit_none(font_color_value)):
+            issues.append("thesis final acceptance must bind an exact-output font-color audit path")
+        elif is_explicit(font_color_value) and not is_explicit_none(font_color_value):
+            font_color_report = first_resolved_path(font_color_raw, record_path)
+            if font_color_report is None:
+                issues.append("font-color audit path could not be resolved")
+            else:
+                issues.extend(check_docx_font_color_audit_report(font_color_report, final_docx_path))
+    if font_color_verdict_lines:
+        font_color_verdict = parse_line_value(font_color_verdict_lines[0]).lower()
+        if font_color_required and "pass" not in font_color_verdict:
+            issues.append("thesis final acceptance font-color audit verdict must be pass-shaped")
     if task_mode in THESIS_MODES and review_copy_path is not None and final_docx_path is not None:
         try:
             if review_copy_path.resolve() != final_docx_path.resolve():
@@ -3272,7 +3928,13 @@ def check_gate_record(record_path: Path) -> list[str]:
                 if value not in EXPLICIT_VALUES and value in PLACEHOLDER_VALUES:
                     issues.append(f"gate record has incomplete field: {normalize(line)}")
 
-    for prefix in FINAL_ACCEPTANCE_SCHEMA["single_prefixes"]:
+    active_single_prefixes = [
+        prefix
+        for prefix in FINAL_ACCEPTANCE_SCHEMA["single_prefixes"]
+        if task_mode in THESIS_MODES or prefix not in THESIS_ONLY_SOURCE_ROLE_PREFIXES
+    ]
+
+    for prefix in active_single_prefixes:
         lines = find_lines_with_prefix(record_lines, prefix)
         if len(lines) != 1:
             issues.append(f"gate record must contain exactly one '{prefix}' line")
@@ -3291,12 +3953,12 @@ def check_gate_record(record_path: Path) -> list[str]:
 
     gate_values = {
         prefix: parse_line_value(find_lines_with_prefix(record_lines, prefix)[0])
-        for prefix in FINAL_ACCEPTANCE_SCHEMA["single_prefixes"]
+        for prefix in active_single_prefixes
         if find_lines_with_prefix(record_lines, prefix)
     }
     gate_raw_values = {
         prefix: raw_line_value(find_lines_with_prefix(record_lines, prefix)[0])
-        for prefix in FINAL_ACCEPTANCE_SCHEMA["single_prefixes"]
+        for prefix in active_single_prefixes
         if find_lines_with_prefix(record_lines, prefix)
     }
     for prefix in FINAL_ACCEPTANCE_SCHEMA.get("repeated_prefix_counts", {}):
@@ -3308,7 +3970,7 @@ def check_gate_record(record_path: Path) -> list[str]:
             gate_raw_values.setdefault(prefix, raw_line_value(lines[0]))
     if any(
         len(find_lines_with_prefix(record_lines, prefix)) != 1
-        for prefix in FINAL_ACCEPTANCE_SCHEMA["single_prefixes"]
+        for prefix in active_single_prefixes
     ):
         return issues
     expected_surface_output_path = rendered_docx_path if task_mode in THESIS_MODES else None
@@ -3395,6 +4057,9 @@ def check_gate_record(record_path: Path) -> list[str]:
         comment_resolution_audit_report_path = first_resolved_path(
             gate_raw_values.get("- comment-resolution audit report path:", ""), record_path
         ) if is_explicit(gate_values.get("- comment-resolution audit report path:", "")) and not is_explicit_none(gate_values.get("- comment-resolution audit report path:", "")) else None
+        comment_resolution_source_docx_path = first_resolved_path(
+            gate_raw_values.get("- comment-resolution source DOCX path:", ""), record_path
+        ) if is_explicit(gate_values.get("- comment-resolution source DOCX path:", "")) and not is_explicit_none(gate_values.get("- comment-resolution source DOCX path:", "")) else None
         if source_review_artifact_inventory_path is not None and final_review_artifact_diff_path is not None:
             issues.extend(
                 validate_review_artifact_reports(
@@ -3403,6 +4068,64 @@ def check_gate_record(record_path: Path) -> list[str]:
                     expected_final_docx=rendered_docx_path,
                 )
             )
+        source_docx_has_citation_surface = False
+        citation_inventory_source_docx = citation_inventory_source_docx_path(source_body_citation_run_inventory_path)
+        if citation_inventory_source_docx is None:
+            citation_inventory_source_docx = review_inventory_source_docx_path(source_review_artifact_inventory_path)
+        if citation_inventory_source_docx is not None and citation_inventory_source_docx.exists():
+            try:
+                source_citation_audit = audit_body_citations(citation_inventory_source_docx)
+            except Exception as exc:
+                issues.append(f"thesis gate record source DOCX citation audit could not run: {exc}")
+            else:
+                source_docx_has_citation_surface = (
+                    source_citation_audit.body_citation_paragraph_count > 0
+                    or source_citation_audit.bibliography_item_count > 0
+                )
+        citation_evidence_required = (
+            final_docx_has_citation_surface
+            or source_docx_has_citation_surface
+            or final_citation_surface_removed
+        )
+        if citation_evidence_required:
+            verdict = gate_values.get("- body citation superscripts preservation verdict:", "")
+            if not is_explicit(verdict) or is_explicit_none(verdict) or not contains_any(verdict, {"pass", "passed"}):
+                issues.append(
+                    "thesis gate record with citations must record a passing body citation superscripts preservation verdict"
+                )
+            coupled_verdict = gate_values.get("- citation-reference coupled-chain verdict:", "")
+            if (
+                not is_explicit(coupled_verdict)
+                or is_explicit_none(coupled_verdict)
+                or not contains_any(coupled_verdict, {"pass", "passed"})
+                or contains_any(
+                    coupled_verdict,
+                    {
+                        "fail",
+                        "failed",
+                        "missing",
+                        "not checked",
+                        "pending",
+                        "blocked",
+                        "stale",
+                        "not-applicable",
+                        "not applicable",
+                    },
+                )
+            ):
+                issues.append(
+                    "thesis gate record with citations must record a passing citation-reference coupled-chain verdict"
+                )
+            if source_body_citation_run_inventory_path is None:
+                issues.append(
+                    "thesis gate record with citations must name a source body-citation run inventory path"
+                )
+            if final_body_citation_run_diff_path is None:
+                issues.append("thesis gate record with citations must name a final body-citation run diff path")
+            if citation_audit_source_to_final_run_diff_path is None:
+                issues.append(
+                    "thesis gate record with citations must name a citation audit source-to-final run diff path"
+                )
         if source_body_citation_run_inventory_path is not None and final_body_citation_run_diff_path is not None:
             issues.extend(
                 validate_citation_run_reports(
@@ -3441,11 +4164,15 @@ def check_gate_record(record_path: Path) -> list[str]:
             if (all_comments_claim or comment_revision_context) and comment_resolution_ledger_path is None:
                 issues.append("comment-driven or all-comments-resolved gate record lacks comment-resolution ledger path")
             if comment_resolution_ledger_path is not None:
+                comment_resolution_source_docx = (
+                    comment_resolution_source_docx_path
+                    or review_inventory_source_docx_path(source_review_artifact_inventory_path)
+                )
                 issues.extend(
                     validate_comment_resolution_ledger(
                         comment_resolution_ledger_path,
                         final_docx=rendered_docx_path,
-                        source_docx=review_inventory_source_docx_path(source_review_artifact_inventory_path),
+                        source_docx=comment_resolution_source_docx,
                         assert_all_resolved=all_comments_claim or comment_revision_context,
                     )
                 )
@@ -4060,7 +4787,7 @@ def check_gate_record(record_path: Path) -> list[str]:
                     issues.append(f"gate record lacks {prefix} for user-reported visual defect closure")
             visual_surfaces_value = gate_values.get("- user-reported visual defect surfaces:", "")
             if not contains_any(visual_surfaces_value, set(USER_REPORTED_VISUAL_SURFACE_TOKENS)):
-                issues.append("gate record user-reported visual defect surfaces must name TOC, references, body font, or pagination surfaces")
+                issues.append("gate record user-reported visual defect surfaces must name the reported protected visual surface family")
             visual_evidence_value = gate_values.get("- user-reported visual defect render-geometry evidence path:", "")
             if is_explicit(visual_evidence_value) and not is_explicit_none(visual_evidence_value):
                 for raw_path in split_path_values(
@@ -4084,6 +4811,51 @@ def check_gate_record(record_path: Path) -> list[str]:
                     USER_REPORTED_VISUAL_BAD_TOKENS,
                 ):
                     issues.append(f"gate record user-reported visual defect {label} must be pass with full rendered binding")
+        content_mutation_context = "\n".join(
+            [
+                explicit_override_text,
+                subtask_context,
+                selected_workflow,
+                gate_raw_values.get("- thesis mutation transaction subtype:", ""),
+                gate_raw_values.get("- thesis mutation transaction target surfaces:", ""),
+                gate_raw_values.get("- touched template-owned surface families:", ""),
+                gate_raw_values.get("- machine-vision summary by touched surface:", ""),
+                gate_raw_values.get("- thesis rendered-page verification summary:", ""),
+                format_task_context,
+            ]
+        )
+        if task_mode in {"thesis-only", "program-plus-thesis"} and thesis_content_mutation_visual_gate_required(
+            content_mutation_context
+        ):
+            for prefix in CONTENT_MUTATION_VISUAL_REQUIRED_FIELDS:
+                field_value = gate_values.get(prefix, "")
+                if not is_explicit(field_value) or is_explicit_none(field_value):
+                    issues.append(f"gate record lacks {prefix} for content expansion machine-vision/body contamination closure")
+            content_render_path_value = gate_values.get("- content mutation rendered-page review path:", "")
+            if is_explicit(content_render_path_value) and not is_explicit_none(content_render_path_value):
+                for raw_path in split_path_values(
+                    gate_raw_values.get("- content mutation rendered-page review path:", "")
+                ):
+                    evidence_path = resolve_record_path(raw_path, record_path)
+                    issues.extend(validate_content_mutation_rendered_evidence(evidence_path, record_path))
+            touched_blast_value = gate_values.get("- touched-page/blast-radius machine-vision evidence paths:", "")
+            if is_explicit(touched_blast_value) and not is_explicit_none(touched_blast_value):
+                for raw_path in split_path_values(
+                    gate_raw_values.get("- touched-page/blast-radius machine-vision evidence paths:", "")
+                ):
+                    evidence_path = resolve_record_path(raw_path, record_path)
+                    issues.extend(validate_content_mutation_rendered_evidence(evidence_path, record_path))
+            for prefix, label in (
+                ("- content mutation machine-vision verdict:", "content mutation machine-vision verdict"),
+                ("- inserted body heading-contamination verdict:", "inserted body heading-contamination verdict"),
+                ("- format lane post-mutation rendered audit verdict:", "format lane post-mutation rendered audit verdict"),
+            ):
+                verdict_value = gate_values.get(prefix, "")
+                if not surface_verdict_passes(verdict_value) or contains_any(
+                    verdict_value,
+                    CONTENT_MUTATION_VISUAL_BAD_TOKENS,
+                ):
+                    issues.append(f"gate record {label} must be pass with exact-output rendered machine-vision evidence")
         if abstract_indent_issue_required:
             for prefix in ENGLISH_ABSTRACT_INDENTATION_FIELDS:
                 matching_lines = find_lines_with_prefix(record_lines, prefix)
@@ -4153,9 +4925,13 @@ def check_gate_record(record_path: Path) -> list[str]:
                 else:
                     issues.append("gate record figure work requires a figure asset manifest path")
             else:
-                source_docx_for_figure_contract = review_inventory_source_docx_path(
-                    source_review_artifact_inventory_path
-                )
+                source_docx_for_figure_contract = first_resolved_path(
+                    gate_raw_values.get("- figure source DOCX path:", ""), record_path
+                ) if is_explicit(gate_values.get("- figure source DOCX path:", "")) and not is_explicit_none(gate_values.get("- figure source DOCX path:", "")) else None
+                if source_docx_for_figure_contract is None:
+                    source_docx_for_figure_contract = review_inventory_source_docx_path(
+                        source_review_artifact_inventory_path
+                    )
                 issues.extend(
                     validate_figure_contract_manifest(
                         manifest_path,

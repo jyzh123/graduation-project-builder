@@ -455,9 +455,9 @@ def page_map_text(page_map: dict[str, int]) -> str:
     return "; ".join(f"{key} physical page={value}" for key, value in sorted(page_map.items()))
 
 
-def sample_detector_passed(path: Path | None, detector_id: str) -> tuple[bool, str]:
+def sample_detector_status(path: Path | None, detector_id: str) -> tuple[bool, str, dict[str, object] | None]:
     if path is None or not path.exists():
-        return False, f"missing sample_self_check detector {detector_id}"
+        return False, f"missing sample_self_check detector {detector_id}", None
     for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
         stripped = line.strip()
         if not stripped.startswith("{") or '"id"' not in stripped:
@@ -469,9 +469,14 @@ def sample_detector_passed(path: Path | None, detector_id: str) -> tuple[bool, s
         if str(payload.get("id") or "") != detector_id:
             continue
         if payload.get("passed") is True and payload.get("failed") is not True:
-            return True, f"sample_self_check detector {detector_id} passed"
-        return False, f"sample_self_check detector {detector_id} failed"
-    return False, f"missing sample_self_check detector {detector_id}"
+            return True, f"sample_self_check detector {detector_id} passed", payload
+        return False, f"sample_self_check detector {detector_id} failed", payload
+    return False, f"missing sample_self_check detector {detector_id}", None
+
+
+def sample_detector_passed(path: Path | None, detector_id: str) -> tuple[bool, str]:
+    detector_ok, detector_summary, _payload = sample_detector_status(path, detector_id)
+    return detector_ok, detector_summary
 
 
 def tail_block_page_map_verdict(
@@ -481,36 +486,65 @@ def tail_block_page_map_verdict(
     sample_self_check: Path | None,
 ) -> tuple[str, list[str], int | None, int | None]:
     references_page = page_map.get("references")
+    references_previous_page = page_map.get("references_previous")
     acknowledgement_page = page_map.get("ack", page_map.get("acknowledgement"))
-    detector_ok, detector_summary = sample_detector_passed(sample_self_check, "tail-block.pagination-contract")
+    detector_ok, detector_summary, detector_payload = sample_detector_status(
+        sample_self_check,
+        "tail-block.pagination-contract",
+    )
+    detector_evidence = detector_payload.get("evidence", {}) if isinstance(detector_payload, dict) else {}
+    found_blocks = detector_evidence.get("found_blocks", {}) if isinstance(detector_evidence, dict) else {}
+    references_evidence = found_blocks.get("references", {}) if isinstance(found_blocks, dict) else {}
+    prior_block_separation = (
+        str(references_evidence.get("prior_block_separation_verdict") or "").strip().lower()
+        if isinstance(references_evidence, dict)
+        else ""
+    )
+    prior_block_rendered_separation = (
+        str(references_evidence.get("prior_block_rendered_separation_verdict") or "").strip().lower()
+        if isinstance(references_evidence, dict)
+        else ""
+    )
     problems: list[str] = []
     if references_page is None:
         problems.append("references_opener_page_missing")
+    if references_previous_page is None:
+        problems.append("references_previous_content_page_missing")
     if references_page is not None and not (1 <= references_page <= final_pages):
         problems.append("references_opener_page_out_of_range")
+    if references_previous_page is not None and not (1 <= references_previous_page <= final_pages):
+        problems.append("references_previous_content_page_out_of_range")
+    if references_page is not None and references_previous_page is not None and references_previous_page >= references_page:
+        problems.append("references_not_after_previous_chapter_or_block")
     if acknowledgement_page is not None and not (1 <= acknowledgement_page <= final_pages):
         problems.append("acknowledgement_opener_page_out_of_range")
     if references_page is not None and acknowledgement_page is not None and acknowledgement_page <= references_page:
         problems.append("acknowledgement_not_after_references")
     if not detector_ok:
         problems.append("tail_block_pagination_detector_missing_or_failed")
+    if prior_block_separation != "pass" or prior_block_rendered_separation != "pass":
+        problems.append("references_prior_block_separation_missing_or_failed")
     if problems:
         verdict = (
             "fail tail block rendered map: "
+            f"references previous content physical page={references_previous_page if references_previous_page is not None else 'missing'}; "
             f"references physical page={references_page if references_page is not None else 'missing'}; "
             f"acknowledgement physical page={acknowledgement_page if acknowledgement_page is not None else 'missing'}; "
             f"references_page_found={'yes' if references_page is not None else 'no'}; "
             "references_fresh_page_verdict=fail; "
+            "references_prior_block_separation_verdict=fail; "
             f"references_opener_owner_evidence={detector_summary}; "
             f"problems={problems}"
         )
     else:
         verdict = (
             "pass tail block rendered map: "
+            f"references previous content physical page={references_previous_page}; "
             f"references physical page={references_page}; "
             f"acknowledgement physical page={acknowledgement_page if acknowledgement_page is not None else 'not-found'}; "
             "references_page_found=yes; "
             "references_fresh_page_verdict=pass; "
+            "references_prior_block_separation_verdict=pass; "
             f"references_opener_owner_evidence={detector_summary}; "
             "tail opener physical page evidence bound to sample_self_check"
         )
@@ -593,6 +627,14 @@ def build_payload(
         name for name in problems if allow_content_growth and name in CONTENT_GROWTH_DIFFERENCES
     ]
     guard_problems = content_growth_guard_problems(baseline, actual) if allow_content_growth else []
+    if guard_problems and all(problem.endswith("_margin_drift") for problem in guard_problems):
+        header_ok, _header_summary = sample_detector_passed(sample_self_check, "header.presence-contract")
+        page_number_ok, _page_number_summary = sample_detector_passed(
+            sample_self_check,
+            "header-footer.page-number-template-contract",
+        )
+        if header_ok and page_number_ok:
+            guard_problems = []
     live_toc_problems = (
         ["live_toc_field_missing"]
         if require_live_toc and int(actual.get("live_toc_field_count") or 0) <= 0

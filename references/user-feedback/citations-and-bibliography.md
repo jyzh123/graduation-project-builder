@@ -143,6 +143,7 @@ Use this file for durable citation, bibliography, and citation-placement correct
 - the body citation markers still exist
 - the markers are superscript, black, and non-underlined
 - the internal hyperlink count equals the actual number of cited bibliography items in the body
+- A `w:instrText` field instruction such as `HYPERLINK \l "cite_ref_1"` is not visible clickable citation text. It must not count as a valid body citation hyperlink unless a `w:hyperlink` element wraps the visible `[n]` marker run.
 - If a later COM save strips or fails to persist the internal citation links, rerun citation-link rebuilding as its own finalizer instead of assuming the earlier citation pass already succeeded.
 
 ### FB-CITE-012 (legacy 56A). Internal Citation Links Must Not Expose Anchor Names As Visible Text (Mandatory)
@@ -299,6 +300,7 @@ Use this file for durable citation, bibliography, and citation-placement correct
 - bibliography numbering still matches body first-appearance order when numbering is in scope
 - Do not hand off a thesis where the reference list changed but the body still reflects the old citation mapping.
 - Treat `bibliography updated, body citations later` as a hard workflow failure rather than an acceptable intermediate completion state.
+- A bibliography mutation is also incomplete when the visible `参考文献` block changes page start, loses its first-page opener, or collapses onto the wrong page sequence after export. The rendered references page and the first continuation page, if any, must be rechecked in the same pass.
 
 ### FB-CITE-027 (legacy 96). Any Post-Audit Citation-Bearing Body Mutation Makes The Previous Citation Audit Stale (Mandatory)
 
@@ -315,6 +317,18 @@ Use this file for durable citation, bibliography, and citation-placement correct
   2. rerun `scripts/audit_thesis_citations.py` on the exact final or exact review-copy DOCX that will be handed off
   3. replace the old citation audit evidence path with the new report path
 - A citation audit report whose `document path` names a different DOCX from the exact rendered deliverable is invalid evidence, even if the report itself says `pass`.
+
+### FB-CITE-042. References Pagination Must Be Treated As Part Of The Bibliography Surface (Mandatory)
+
+- Do not treat references pagination as a side effect of citation repair.
+- The `参考文献` title paragraph, the first reference entry, and any continuation page are one coupled tail-block surface. If the opener page changes, page count changes, or the block merges into the prior tail block, the bibliography repair is still failing even if the entries themselves are correct.
+- After any bibliography or citation pass, inspect the rendered references page plus the next page, and compare the opener page against the locked donor. A page-fit failure is not cured by correct numbering alone.
+
+### FB-CITE-043. Citation Hyperlinks Must Resolve To Bibliography Entries, Not Cover Or Front Matter (Mandatory)
+
+- A citation hyperlink is not valid just because it is clickable.
+- The internal jump target for each body citation must resolve to the matching bibliography entry inside the `参考文献` block, not to the cover, abstract, TOC, header, footer, or any other front-matter surface.
+- If a body citation anchor points to a bookmark that lives before the bibliography opener, or to a bookmark that is not inside the bibliography entry range, treat the citation chain as failed even when the visible marker looks correct.
 
 ### FB-CITE-028. Citation Normalizers Must Preserve Bibliography Paragraph OOXML (Mandatory)
 
@@ -374,6 +388,8 @@ Use this file for durable citation, bibliography, and citation-placement correct
 - A citation audit pass must bind to the exact final DOCX path and SHA256. A report with only `document path` and `result: pass` is not enough for thesis handoff.
 - When a body paragraph containing citation markers is rewritten, the run must first inventory the source citation markers, then compare the post-edit final DOCX against that inventory.
 - Required citation-run evidence includes paragraph id or paragraph index, marker text, run index, `w:vertAlign=superscript`, font size, color, underline, bold/italic residue, hyperlink or bookmark host, punctuation-side placement, and first-appearance order.
+- The comparison must be occurrence-level, not citation-number-level. If a paragraph contains two visible `[14]` markers and only one remains superscript or hyperlink-hosted, the final citation surface fails even though the same citation number still has one valid run elsewhere.
+- If the source DOCX lacks stable paragraph ids, paragraph index alone is not enough to prove occurrence continuity. The source-to-final diff must also compare a normalized host paragraph text digest and fail when the same paragraph index keeps a valid-looking marker after the host sentence has changed.
 - A source citation marker may be renumbered or moved only through a citation-lane controlled-change ledger that explains the intended mapping and proves the final bibliography chain remains synchronized.
 - A final thesis must fail if citation markers are converted into plain body text, merged into a rewritten sentence run, lose superscript, gain hyperlink-blue or underline styling, or are audited only before a later DOCX mutation.
 

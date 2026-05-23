@@ -46,6 +46,7 @@ ERROR_CODES = {
     "forbidden": "BODY_CITATION_FORBIDDEN_SURFACE",
     "superscript": "BODY_CITATION_NOT_SUPERSCRIPT",
     "hyperlink": "BODY_CITATION_NOT_HYPERLINK",
+    "target": "BODY_CITATION_WRONG_HYPERLINK_TARGET",
     "visual": "BODY_CITATION_VISUAL_STYLE",
     "multi_marker": "BODY_CITATION_MULTI_MARKER_SENTENCE",
     "multi_number": "BODY_CITATION_MULTI_NUMBER_MARKER",
@@ -53,6 +54,7 @@ ERROR_CODES = {
     "coverage": "UNCITED_BIBLIOGRAPHY_ITEMS",
     "out_of_range": "BODY_CITATION_OUT_OF_RANGE",
     "bibliography_numbering": "BIBLIOGRAPHY_MANUAL_AND_AUTO_NUMBERING",
+    "anchor_leak": "BODY_CITATION_ANCHOR_LEAK",
 }
 
 
@@ -73,8 +75,10 @@ class CitationRecord:
     para_id: str
     surface: str
     numbers: list[int]
+    marker_count: int
     superscript_ok: bool
     hyperlink_ok: bool
+    target_ok: bool
     visual_style_ok: bool
     punctuation_ok: bool
     text: str
@@ -95,11 +99,13 @@ class AuditResult:
     forbidden_surface_hits: list[str]
     non_superscript_hits: list[str]
     non_hyperlink_hits: list[str]
+    wrong_hyperlink_target_hits: list[str]
     visual_style_failures: list[str]
     multi_marker_sentence_hits: list[str]
     multi_number_marker_hits: list[str]
     punctuation_failures: list[str]
     bibliography_numbering_conflicts: list[str]
+    visible_anchor_leaks: list[str]
     citation_records: list[CitationRecord]
 
 
@@ -140,6 +146,16 @@ def paragraph_id(paragraph: ET.Element) -> str:
         if key.endswith("paraId"):
             return value
     return ""
+
+
+def collect_bookmark_locations(paragraphs: list[ParagraphRecord]) -> dict[str, int]:
+    locations: dict[str, int] = {}
+    for record in paragraphs:
+        for bookmark in record.xml.findall(".//w:bookmarkStart", NS):
+            name = bookmark.attrib.get(f"{W}name", "")
+            if name and name not in locations:
+                locations[name] = record.index
+    return locations
 
 
 def load_style_map(docx_path: Path) -> dict[str, str]:
@@ -234,33 +250,66 @@ def extract_citation_numbers(text: str) -> list[int]:
     return [int(match) for match in re.findall(r"\[(\d+)\]", text)]
 
 
+def citation_marker_count(paragraph: ParagraphRecord, number: int) -> int:
+    target = f"[{number}]"
+    return sum(
+        1
+        for run in paragraph.xml.findall(".//w:r", NS)
+        if "".join((node.text or "") for node in run.iterfind(".//w:t", NS)) == target
+    )
+
+
 def run_has_superscript_citation(paragraph: ParagraphRecord, number: int) -> bool:
     target = f"[{number}]"
+    matched = 0
     for run in paragraph.xml.findall(".//w:r", NS):
         text = "".join((node.text or "") for node in run.iterfind(".//w:t", NS))
         if text != target:
             continue
+        matched += 1
         vert = run.find("./w:rPr/w:vertAlign", NS)
-        if vert is not None and vert.attrib.get(f"{W}val") == "superscript":
-            return True
-    return False
+        if vert is None or vert.attrib.get(f"{W}val") != "superscript":
+            return False
+    return matched > 0
 
 
 def run_has_hyperlink_citation(paragraph: ParagraphRecord, number: int) -> bool:
     target = f"[{number}]"
+    matched = 0
     for hyperlink in paragraph.xml.findall(".//w:hyperlink", NS):
         anchor = hyperlink.attrib.get(f"{W}anchor", "")
         if not anchor:
             continue
-        text = "".join((node.text or "") for node in hyperlink.iterfind(".//w:t", NS))
-        if text == target:
-            return True
-    bookmark_token = f'cite_ref_{number}'
-    for instr in paragraph.xml.findall(".//w:instrText", NS):
-        instr_text = instr.text or ""
-        if "HYPERLINK" in instr_text and bookmark_token in instr_text:
-            return True
-    return False
+        for run in hyperlink.findall(".//w:r", NS):
+            text = "".join((node.text or "") for node in run.iterfind(".//w:t", NS))
+            if text == target:
+                matched += 1
+    return matched == citation_marker_count(paragraph, number) and matched > 0
+
+
+def run_has_bibliography_target(
+    paragraph: ParagraphRecord,
+    number: int,
+    *,
+    bookmark_locations: dict[str, int],
+    bibliography_start: int,
+    bibliography_end: int,
+) -> bool:
+    target = f"[{number}]"
+    anchor = f"cite_ref_{number}"
+    target_count = citation_marker_count(paragraph, number)
+    matched = 0
+    for hyperlink in paragraph.xml.findall(".//w:hyperlink", NS):
+        if hyperlink.attrib.get(f"{W}anchor", "") != anchor:
+            continue
+        target_index = bookmark_locations.get(anchor)
+        if target_index is None or not (bibliography_start < target_index < bibliography_end):
+            continue
+        for run in hyperlink.findall(".//w:r", NS):
+            text = "".join((node.text or "") for node in run.iterfind(".//w:t", NS))
+            if text == target:
+                matched += 1
+    return matched == target_count and matched > 0
 
 
 def citation_runs(paragraph: ParagraphRecord, number: int) -> list[ET.Element]:
@@ -338,11 +387,19 @@ def find_bibliography_numbering_conflicts(bibliography: list[ParagraphRecord]) -
     return conflicts
 
 
+VISIBLE_ANCHOR_LEAK_RE = re.compile(r"\b(?:cite_ref|ref_anchor|bookmark)_\d+\b", re.IGNORECASE)
+
+
+def visible_anchor_leak_hits(record: ParagraphRecord) -> list[str]:
+    return sorted(set(match.group(0) for match in VISIBLE_ANCHOR_LEAK_RE.finditer(record.text or "")))
+
+
 def audit_docx(docx_path: Path, *, allow_uncited_bibliography: bool = False) -> AuditResult:
     paragraphs = iter_paragraphs(docx_path)
-    start, _ = find_bibliography_range(paragraphs)
+    start, end = find_bibliography_range(paragraphs)
     bibliography = extract_bibliography_entries(paragraphs)
     body_records = paragraphs[:start]
+    bookmark_locations = collect_bookmark_locations(paragraphs)
 
     seen: set[int] = set()
     unique_chain: list[int] = []
@@ -350,14 +407,22 @@ def audit_docx(docx_path: Path, *, allow_uncited_bibliography: bool = False) -> 
     forbidden_surface_hits: list[str] = []
     non_superscript_hits: list[str] = []
     non_hyperlink_hits: list[str] = []
+    wrong_hyperlink_target_hits: list[str] = []
     visual_style_failures: list[str] = []
     multi_marker_sentence_hits: list[str] = []
     multi_number_marker_hits: list[str] = []
     punctuation_failures: list[str] = []
     citation_records: list[CitationRecord] = []
     bibliography_numbering_conflicts = find_bibliography_numbering_conflicts(bibliography)
+    visible_anchor_leaks: list[str] = []
 
     for record in body_records:
+        leaks = visible_anchor_leak_hits(record)
+        if leaks:
+            visible_anchor_leaks.append(
+                f"paragraph {record.index + 1} exposes visible internal citation anchor text {leaks}: {record.text}"
+            )
+
         sentence_multi_marker_hits, sentence_multi_number_hits = sentence_marker_rule_violations(record.text)
         for sentence in sentence_multi_marker_hits:
             multi_marker_sentence_hits.append(
@@ -375,8 +440,19 @@ def audit_docx(docx_path: Path, *, allow_uncited_bibliography: bool = False) -> 
         surface = classify_surface(record)
         superscript_ok = all(run_has_superscript_citation(record, number) for number in numbers)
         hyperlink_ok = all(run_has_hyperlink_citation(record, number) for number in numbers)
+        target_ok = all(
+            run_has_bibliography_target(
+                record,
+                number,
+                bookmark_locations=bookmark_locations,
+                bibliography_start=start,
+                bibliography_end=end,
+            )
+            for number in numbers
+        )
         visual_style_ok = all(citation_visual_style_ok(record, number) for number in numbers)
         punctuation_ok = all(citation_is_before_punctuation(record.text, number) for number in numbers)
+        marker_count = sum(citation_marker_count(record, number) for number in sorted(set(numbers)))
 
         citation_records.append(
             CitationRecord(
@@ -384,8 +460,10 @@ def audit_docx(docx_path: Path, *, allow_uncited_bibliography: bool = False) -> 
                 para_id=record.para_id,
                 surface=surface,
                 numbers=numbers,
+                marker_count=marker_count,
                 superscript_ok=superscript_ok,
                 hyperlink_ok=hyperlink_ok,
+                target_ok=target_ok,
                 visual_style_ok=visual_style_ok,
                 punctuation_ok=punctuation_ok,
                 text=record.text,
@@ -405,6 +483,11 @@ def audit_docx(docx_path: Path, *, allow_uncited_bibliography: bool = False) -> 
         if not hyperlink_ok:
             non_hyperlink_hits.append(
                 f"paragraph {record.index + 1} has citation markers that are not wrapped as internal hyperlinks"
+            )
+
+        if not target_ok:
+            wrong_hyperlink_target_hits.append(
+                f"paragraph {record.index + 1} has citation hyperlinks that do not resolve to bibliography entries inside the references block"
             )
 
         if not visual_style_ok:
@@ -448,6 +531,8 @@ def audit_docx(docx_path: Path, *, allow_uncited_bibliography: bool = False) -> 
         error_codes.add(ERROR_CODES["superscript"])
     if non_hyperlink_hits:
         error_codes.add(ERROR_CODES["hyperlink"])
+    if wrong_hyperlink_target_hits:
+        error_codes.add(ERROR_CODES["target"])
     if visual_style_failures:
         error_codes.add(ERROR_CODES["visual"])
     if multi_marker_sentence_hits:
@@ -462,6 +547,8 @@ def audit_docx(docx_path: Path, *, allow_uncited_bibliography: bool = False) -> 
         error_codes.add(ERROR_CODES["out_of_range"])
     if bibliography_numbering_conflicts:
         error_codes.add(ERROR_CODES["bibliography_numbering"])
+    if visible_anchor_leaks:
+        error_codes.add(ERROR_CODES["anchor_leak"])
 
     return AuditResult(
         passed=not error_codes,
@@ -477,11 +564,13 @@ def audit_docx(docx_path: Path, *, allow_uncited_bibliography: bool = False) -> 
         forbidden_surface_hits=forbidden_surface_hits,
         non_superscript_hits=non_superscript_hits,
         non_hyperlink_hits=non_hyperlink_hits,
+        wrong_hyperlink_target_hits=wrong_hyperlink_target_hits,
         visual_style_failures=visual_style_failures,
         multi_marker_sentence_hits=multi_marker_sentence_hits,
         multi_number_marker_hits=multi_number_marker_hits,
         punctuation_failures=punctuation_failures,
         bibliography_numbering_conflicts=bibliography_numbering_conflicts,
+        visible_anchor_leaks=visible_anchor_leaks,
         citation_records=citation_records,
     )
 
@@ -515,8 +604,10 @@ def build_report(result: AuditResult, docx_path: Path) -> str:
                     f"- paragraph id: {record.para_id or 'none'}",
                     f"- surface: {record.surface}",
                     f"- citation numbers: {record.numbers}",
+                    f"- marker count: {record.marker_count}",
                     f"- superscript ok: {'yes' if record.superscript_ok else 'no'}",
                     f"- hyperlink ok: {'yes' if record.hyperlink_ok else 'no'}",
+                    f"- bibliography target ok: {'yes' if record.target_ok else 'no'}",
                     f"- visual style ok: {'yes' if record.visual_style_ok else 'no'}",
                     f"- punctuation ok: {'yes' if record.punctuation_ok else 'no'}",
                     f"- text: {record.text}",
@@ -532,11 +623,13 @@ def build_report(result: AuditResult, docx_path: Path) -> str:
         ("forbidden surface hits", result.forbidden_surface_hits),
         ("non-superscript hits", result.non_superscript_hits),
         ("non-hyperlink hits", result.non_hyperlink_hits),
+        ("wrong hyperlink target hits", result.wrong_hyperlink_target_hits),
         ("visual-style failures", result.visual_style_failures),
         ("multi-marker sentence hits", result.multi_marker_sentence_hits),
         ("multi-number marker hits", result.multi_number_marker_hits),
         ("punctuation failures", result.punctuation_failures),
         ("bibliography numbering conflicts", result.bibliography_numbering_conflicts),
+        ("visible anchor leaks", result.visible_anchor_leaks),
     ]
     any_findings = False
     for label, items in finding_groups:

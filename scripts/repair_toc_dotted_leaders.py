@@ -288,7 +288,8 @@ def append_run(paragraph: ET.Element, text: str = "", rpr: ET.Element | None = N
 
 def split_concatenated_entry_runs(paragraph: ET.Element) -> bool:
     tab_count, _segments = run_tab_segments(paragraph)
-    if tab_count:
+    text = paragraph_text(paragraph)
+    if tab_count and "\t" not in text:
         # Still remove direct underline and hyperlink character-style residue
         # from visible TOC runs. WPS/LibreOffice render Hyperlink style as
         # underlined even when no direct w:u is present on the run.
@@ -298,7 +299,7 @@ def split_concatenated_entry_runs(paragraph: ET.Element) -> bool:
             if remove_toc_hyperlink_residue(rpr):
                 changed = True
         return changed
-    split = split_static_toc_text(paragraph_text(paragraph))
+    split = split_static_toc_text(text)
     if split is None:
         return False
     label, page = split

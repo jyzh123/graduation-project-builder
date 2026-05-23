@@ -1920,9 +1920,11 @@ def _validate_whole_document_pagination_fields(
             )
         tail_block_map = str(payload.get("tail_block_opener_page_map", "")).lower()
         for token in (
+            "references previous content physical page=",
             "references physical page=",
             "references_page_found=yes",
             "references_fresh_page_verdict=pass",
+            "references_prior_block_separation_verdict=pass",
             "references_opener_owner_evidence=",
             "tail-block.pagination-contract",
         ):
@@ -1930,7 +1932,12 @@ def _validate_whole_document_pagination_fields(
                 issues.append(
                     f"surface evidence for {required_surface_id} DOCX pagination JSON tail_block_opener_page_map lacks {token}: {structure_path}"
                 )
-        if "references physical page=missing" in tail_block_map or "references_fresh_page_verdict=fail" in tail_block_map:
+        if (
+            "references previous content physical page=missing" in tail_block_map
+            or "references physical page=missing" in tail_block_map
+            or "references_fresh_page_verdict=fail" in tail_block_map
+            or "references_prior_block_separation_verdict=fail" in tail_block_map
+        ):
             issues.append(
                 f"surface evidence for {required_surface_id} DOCX pagination JSON records lost references pagination: {structure_path}"
             )
@@ -1948,9 +1955,11 @@ def _validate_whole_document_pagination_fields(
             )
     raw_tail_map = raw_values.get("- tail-block opener page map:", "").lower()
     for token in (
+        "references previous content physical page=",
         "references physical page=",
         "references_page_found=yes",
         "references_fresh_page_verdict=pass",
+        "references_prior_block_separation_verdict=pass",
         "references_opener_owner_evidence=",
         "tail-block.pagination-contract",
     ):

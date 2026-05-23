@@ -239,6 +239,7 @@
 - tail-block opener ownership baseline:
 - tail-block pagination restoration owner:
 - tail-block opener page-occupancy baseline:
+- references previous-content page separation baseline:
 - footer baseline source file path:
 - footer/page-number presentation target:
 - logical-page to physical-rendered-page mapping method:
@@ -414,6 +415,7 @@
 - chapter-start pagination checkpoints:
 - chapter format preservation checkpoints:
 - tail-block pagination checkpoints:
+- references prior-block separation checkpoints:
 - whole-document pagination checkpoints:
 - whole-document pagination verdict:
 - runtime screenshot route-caption-asset map path:

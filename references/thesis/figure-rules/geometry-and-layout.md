@@ -26,10 +26,23 @@ Every connector line must obey all of these rules:
 
 - it must start from a real source node boundary
 - it must end at a real target node boundary
+- it must be a boundary-bound draw.io edge with real visible `source` and `target` nodes, not a free line, center-to-center line, invisible router point, or source/targetless manual segment
+- it must use orthogonal routing with right-angle bends; in draw.io terms use `edgeStyle=orthogonalEdgeStyle` with `rounded=0`, and redraw any connector that needs a diagonal or curved leg
 - it must not extend beyond the intended target or point into empty space
 - it must not terminate at a location where no node or relation symbol exists
 - it must not cross through boxes, diamonds, ellipses, or text unless the sample explicitly requires that layout
 - it must not merge into nearby borders in a way that makes the target ambiguous
+
+### Boundary-To-Boundary Orthogonal Connector Law
+
+For thesis flowcharts and structural figures, connector geometry is a hard acceptance surface, not a visual preference.
+
+- A connector may leave a shape only from that shape's perimeter and may enter the next shape only at the next shape's perimeter.
+- A connector must never run through the interior of its source, target, an intermediate process box, a decision diamond, an ellipse, an unrelated group frame, or any text-bearing node.
+- A connector must not borrow a box border, page edge, or container frame as a routing lane.
+- A connector must be drawn as an orthogonal draw.io edge between visible nodes. Freehand lines, center-to-center strokes, invisible point routers, and source/targetless `mxPoint` routes are rejected.
+- Every bend must be a right angle. If a route appears to need a diagonal, curved, or rounded corner to avoid another node, the layout must be expanded or rearranged instead.
+- When an edge cannot connect boundary-to-boundary without crossing a frame, the figure must be relaid out before export; do not hide the violation by making the line thinner, moving it behind the box, or relying on arrowheads.
 
 ### Separation Rule
 
@@ -49,8 +62,10 @@ After drawing a structural figure, explicitly verify:
 
 1. every line has a valid destination
 2. every branch corresponds to a real node or relation symbol
-3. no connector visually collides with text or shape borders
-4. the final geometry still matches the stored sample style
+3. every connector is a boundary-to-boundary orthogonal edge with right-angle bends
+4. no connector visually collides with text or shape borders
+5. no connector route crosses the interior of any unrelated frame, box, diamond, ellipse, or text node
+6. the final geometry still matches the stored sample style
 
 If any of these checks fail, the figure must be redrawn or relaid out before insertion.
 
@@ -150,8 +165,9 @@ For every structural figure, explicitly check:
 
 1. branch lines are closed to the real child span in tree figures
 2. ER relations and attributes use separate spatial channels
-3. no node border is crossed by an unrelated connector
-4. no connector endpoint appears to target empty space or an unintended symbol
+3. every connector uses boundary-to-boundary orthogonal routing with right-angle bends
+4. no node border is crossed by an unrelated connector
+5. no connector endpoint appears to target empty space, a node interior, or an unintended symbol
 
 ### ER Side-Channel Preference
 
@@ -195,6 +211,20 @@ For every thesis ER diagram, the figure lane must produce a source-scale geometr
 The canonical source-scale validator is `scripts/validate_structural_figure_geometry.py`. For ER figures, `scripts/thesis_figure_contract.py` must also reject a manifest when an ER draw.io source has a relation diamond overlapping an attribute ellipse, a relation-attribute clearance below the threshold, a missing geometry validation report, missing source-scale bbox evidence, missing inserted-scale geometry/collision evidence, missing dense-zone crop evidence, or any non-pass collision / overlap / source-to-inserted geometry verdict.
 
 Do not accept ER geometry from prose claims, full-page screenshots, source-image existence, or manual local zoom alone. Missing `geometry_validation_report`, missing source-scale shape bounding boxes, missing inserted-scale collision evidence, missing dense-zone crop evidence, missing relation-attribute collision verdict, or missing selftest coverage is an enforcement gap and blocks final acceptance.
+
+### CORE-FIGURE-009. Structural Connectors Must Be Boundary-Bound And Orthogonal (Mandatory)
+
+Every draw.io-backed structural figure family, including flowcharts, use-case diagrams, architecture diagrams, module trees, and ER diagrams, must pass the boundary-to-boundary orthogonal connector law before insertion or handoff.
+
+The canonical geometry check must reject:
+
+- connectors without real visible source and target node ids
+- connectors that use invisible point/router vertices to route through or around nodes
+- connectors that omit `edgeStyle=orthogonalEdgeStyle` or use rounded, curved, diagonal, or freehand routing
+- source/targetless line segments that substitute for real node-to-node edges
+- any connector path that crosses the interior of a non-endpoint box, diamond, ellipse, unrelated group frame, or text-bearing node
+
+For non-ER structural figures, `scripts/validate_structural_figure_geometry.py --family flowchart|structure|use-case` must write the source-scale geometry report before Word insertion. For ER diagrams, the same script may still use the ER-specific family, but ER-specific checks do not replace the boundary-to-boundary orthogonal connector law.
 
 ## Use-Case Diagram Lane Rule
 

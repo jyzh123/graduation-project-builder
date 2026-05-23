@@ -198,6 +198,8 @@ The final acceptance record must name:
 - rendered-page evidence paths
 - TOC visual-geometry evidence path and verdict when TOC is present or user-reported
 - TOC paragraph-and-typography metric evidence path and verdict when TOC is present or user-reported
+- TOC implementation family/live-field parity evidence path and verdict when the template contains a TOC field, content control, or editable TOC cache
+- header expected display string source, rendered full-display evidence path, and chapter-number preservation verdict when headers are present or user-reported
 - whole-document pagination evidence path and verdict for every thesis-format, thesis-revision, thesis-generation, or full-paper audit run
 - exact output path and SHA256
 - audit verdict and open blockers
@@ -267,6 +269,8 @@ For figure/table caption surfaces, absence of a formal caption donor in the temp
 For direct DOCX metric validation, `body_text` means real body prose only. TOC rows, page-number rows, figure/table captions, image-holder paragraphs, keyword lines, and front-matter abstract surfaces must be excluded from `body_text`; Chinese and English abstract bodies must be detected both as standalone-title blocks and inline label-plus-content forms such as `摘 要：...` and `Abstract: ...`.
 
 Header evidence additionally requires the structured `header.presence-contract` detector record in the exact `sample_self_check` report used for handoff. The detector must prove section-level effective header references, non-empty header parts, template header-token preservation, and rendered-page header-token visibility on body and tail sample pages. A visible header on one page, a DOCX header part existing somewhere, or a broad `header_ok` Boolean is not enough.
+
+When the template header includes a chapter-number component, the header evidence must also expose `expected full display string`, `expected chapter-number component`, `expected chapter-title component`, `observed rendered full display string`, and `chapter-number preservation verdict` for each chapter page sampled. A header that preserves the title but drops the numbering component fails even if `header.presence-contract`, title consistency, section linkage, or field-code checks otherwise look correct.
 
 ## FMT-EVID-011. Whole-Document Pagination Requires Section/Page/Field Evidence
 

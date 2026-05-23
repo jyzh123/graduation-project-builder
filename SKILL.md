@@ -187,6 +187,7 @@ Mandatory thesis gate lines:
 - Live TOC is a hard surface when required. A final manuscript with a
   handwritten/static TOC, mixed static-plus-field TOC, or leaked TOC placeholder
   is not complete.
+- Whole-thesis generation or revision must pass `scripts/audit_docx_whole_format_gate.py` on the exact final DOCX and bind its path, verdict, and SHA256 in final acceptance; narrower font/color/body-style/PDF-export checks cannot clear section, TOC, header/footer, page-number, surface-order, or builder-style failures.
 - Minimum page-class sample comparison set: cover, Chinese abstract, English
   abstract, TOC, first body chapter page, one figure page, one table page,
   references, and acknowledgement.

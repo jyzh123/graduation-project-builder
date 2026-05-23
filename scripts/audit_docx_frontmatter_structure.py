@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit front-matter order, abstract labels, keyword runs, and style refs."""
+"""Audit front-matter order, abstract surfaces, keyword runs, and style refs."""
 
 from __future__ import annotations
 
@@ -65,28 +65,31 @@ def has_tab(paragraph: ET.Element) -> bool:
 
 
 def is_toc_title(text: str) -> bool:
-    return compact_text(text).lower() in {"\u76ee\u5f55", "contents", "tableofcontents"}
+    return compact_text(text).lower() in {"目录", "contents", "tableofcontents"}
 
 
 def is_toc_entry(paragraph: ET.Element) -> bool:
     text = paragraph_text(paragraph).strip()
-    sid = paragraph_style_id(paragraph).lower()
-    if sid.startswith("toc") or has_tab(paragraph) or "\u2026" in text:
+    style_id = paragraph_style_id(paragraph).lower()
+    if style_id.startswith("toc") or has_tab(paragraph) or "…" in text:
         return True
-    if re.search(r"(?:\d+|[ivxlcdm]+)\s*$", text or "", flags=re.IGNORECASE) is None:
+    if re.search(r"(?:\d+|[ivxlcdm]+)\s*$", text, flags=re.IGNORECASE) is None:
         return False
     stripped = re.sub(r"(?:\d+|[ivxlcdm]+)\s*$", "", compact_text(text), flags=re.IGNORECASE).lower()
-    return stripped in {"\u6458\u8981", "abstract", "\u5173\u952e\u8bcd", "keywords", "keyword", "keywords"}
+    return stripped in {"摘要", "abstract", "关键词", "keywords", "keyword"}
 
 
 def heading_level(text: str) -> int | None:
     stripped = (text or "").strip()
+    dot = r"[.\uFF0E\u3002]"
+    if re.match(r"^第[0-9一二三四五六七八九十]+章(?:\s*\S.*)?$", stripped):
+        return 1
+    if re.match(rf"^\d{{1,2}}{dot}\d{{1,2}}{dot}\d{{1,2}}\s+\S", stripped):
+        return 3
+    if re.match(rf"^\d{{1,2}}{dot}\d{{1,2}}\s+\S", stripped):
+        return 2
     if re.match(r"^\d{1,2}\s+\S", stripped):
         return 1
-    if re.match(r"^\d{1,2}[.．]\d{1,2}\s+\S", stripped):
-        return 2
-    if re.match(r"^\d{1,2}[.．]\d{1,2}[.．]\d{1,2}\s+\S", stripped):
-        return 3
     return None
 
 
@@ -97,21 +100,20 @@ def paragraph_heading_level(paragraph: ET.Element) -> int | None:
     return heading_level(paragraph_text(paragraph))
 
 
-def is_zh_abstract(text: str) -> bool:
-    return compact_text(re.sub(r"[:：].*$", "", text or "")) == "\u6458\u8981"
+def is_zh_abstract_title(text: str) -> bool:
+    return compact_text(text) in {"摘要", "中文摘要"}
+
+
+def is_en_abstract_title(text: str) -> bool:
+    return compact_text(text).lower() == "abstract"
 
 
 def is_zh_keyword(text: str) -> bool:
-    return compact_text(text).startswith("\u5173\u952e\u8bcd")
-
-
-def is_en_abstract(text: str) -> bool:
-    compact = re.sub(r"[\s:：]+", "", text or "").lower()
-    return compact.startswith("abstract")
+    return compact_text(text).startswith("关键词")
 
 
 def is_en_keyword(text: str) -> bool:
-    return (text or "").strip().lower().startswith(("key words", "keywords", "keyword"))
+    return compact_text(text).lower().startswith(("keywords", "keyword"))
 
 
 def find_index(paragraphs: list[ET.Element], predicate) -> int | None:
@@ -148,7 +150,7 @@ def run_is_bold(run: ET.Element) -> bool:
 
 
 def normalize_label_text(text: str) -> str:
-    return re.sub(r"\s+", " ", (text or "").replace("\uff1a", ":")).strip().lower()
+    return re.sub(r"\s+", " ", (text or "").replace("：", ":")).strip().lower()
 
 
 def split_label_and_content_runs(
@@ -189,7 +191,10 @@ def paragraph_metric_detail(paragraph: ET.Element) -> dict[str, object]:
 
 def label_run_detail(paragraph: ET.Element, labels: tuple[str, ...] = ()) -> dict[str, object]:
     runs = [run for run in paragraph.findall("./w:r", NS) if run_text(run)]
-    label_runs, content_run_candidates = split_label_and_content_runs(runs, labels) if labels else ((runs[:1], runs[1:]) if runs else ([], []))
+    if labels:
+        label_runs, content_run_candidates = split_label_and_content_runs(runs, labels)
+    else:
+        label_runs, content_run_candidates = (runs[:1], runs[1:]) if runs else ([], [])
     label_text = "".join(run_text(run) for run in label_runs)
     content_runs = [run for run in content_run_candidates if run_text(run).strip()]
     return {
@@ -203,7 +208,11 @@ def label_run_detail(paragraph: ET.Element, labels: tuple[str, ...] = ()) -> dic
     }
 
 
-def surface_detail(paragraphs: list[ET.Element], index: int | None) -> dict[str, object] | None:
+def surface_detail(
+    paragraphs: list[ET.Element],
+    index: int | None,
+    labels: tuple[str, ...] = (),
+) -> dict[str, object] | None:
     if index is None:
         return None
     paragraph = paragraphs[index - 1]
@@ -211,7 +220,7 @@ def surface_detail(paragraphs: list[ET.Element], index: int | None) -> dict[str,
         "paragraph_index": index,
         "text_prefix": paragraph_text(paragraph).strip()[:160],
         "metrics": paragraph_metric_detail(paragraph),
-        "label_runs": label_run_detail(paragraph),
+        "label_runs": label_run_detail(paragraph, labels),
     }
 
 
@@ -238,16 +247,10 @@ def label_run_issues(paragraph: ET.Element, labels: tuple[str, ...], surface: st
     return issues
 
 
-def label_content_text(paragraph: ET.Element) -> str:
-    runs = [run for run in paragraph.findall("./w:r", NS) if run_text(run)]
-    return "".join(run_text(run) for run in runs[1:]).strip()
-
-
-def frontmatter_metric_issues(paragraph: ET.Element, surface: str) -> list[str]:
+def direct_spacing_issues(paragraph: ET.Element, surface: str) -> list[str]:
     issues: list[str] = []
     ppr = paragraph.find("./w:pPr", NS)
     spacing = ppr.find("./w:spacing", NS) if ppr is not None else None
-    ind = ppr.find("./w:ind", NS) if ppr is not None else None
     expected_spacing = {"line": "360", "lineRule": "auto"}
     for key, expected in expected_spacing.items():
         actual = spacing.get(qn(key)) if spacing is not None else None
@@ -257,9 +260,19 @@ def frontmatter_metric_issues(paragraph: ET.Element, surface: str) -> list[str]:
         actual = spacing.get(qn(key)) if spacing is not None else None
         if actual not in {None, "0"}:
             issues.append(f"{surface} paragraph {key} must be template-compatible 0 or omitted, found {actual}")
+    return issues
+
+
+def indented_body_issues(paragraph: ET.Element, surface: str) -> list[str]:
+    issues = direct_spacing_issues(paragraph, surface)
+    ppr = paragraph.find("./w:pPr", NS)
+    ind = ppr.find("./w:ind", NS) if ppr is not None else None
     first_line = ind.get(qn("firstLine")) if ind is not None else None
     if first_line not in {"480", "482"}:
-        issues.append(f"{surface} first-line indent must be template-compatible 480/482 twips (2 characters), found {first_line or '<missing>'}")
+        issues.append(
+            f"{surface} first-line indent must be template-compatible 480/482 twips (2 characters), "
+            f"found {first_line or '<missing>'}"
+        )
     first_line_chars = ind.get(qn("firstLineChars")) if ind is not None else None
     if first_line_chars != "200":
         issues.append(
@@ -269,25 +282,68 @@ def frontmatter_metric_issues(paragraph: ET.Element, surface: str) -> list[str]:
     return issues
 
 
-def abstract_content_issues(paragraph: ET.Element, surface: str, *, english: bool) -> list[str]:
-    content = label_content_text(paragraph)
-    compact = compact_text(content).lower()
-    if not content:
-        return [f"{surface} has no abstract content after label"]
-    if english and compact in {"abstract", "abstract:"}:
-        return [f"{surface} content is only a duplicated abstract title, not the abstract body"]
-    if not english and compact in {"\u6458\u8981", "\u6458\u8981\uff1a"}:
-        return [f"{surface} content is only a duplicated abstract title, not the abstract body"]
+def title_paragraph_issues(paragraph: ET.Element, surface: str, expected: tuple[str, ...]) -> list[str]:
+    text = paragraph_text(paragraph).strip()
+    compact = compact_text(text)
+    if compact not in {compact_text(item) for item in expected}:
+        return [f"{surface} title text is not an isolated abstract title: {text!r}"]
+    if ":" in text or "：" in text:
+        if surface == "en_abstract_title":
+            return ["English abstract title must be a standalone title paragraph, not an inline `Abstract: body` paragraph"]
+        return ["Chinese abstract title must be a standalone title paragraph, not an inline `摘要：正文` paragraph"]
     return []
 
 
-def nonempty_between(paragraphs: list[ET.Element], start: int, stop: int) -> list[dict[str, object]]:
-    rows: list[dict[str, object]] = []
-    for index in range(start + 1, stop):
-        text = paragraph_text(paragraphs[index - 1]).strip()
-        if text:
-            rows.append({"paragraph": index, "text": text[:120]})
-    return rows
+def abstract_body_issues(paragraph: ET.Element, surface: str, *, english: bool) -> list[str]:
+    text = paragraph_text(paragraph).strip()
+    compact = compact_text(text).lower()
+    if not text:
+        return [f"{surface} has no abstract body text"]
+    if english:
+        if compact in {"abstract", "abstract:"}:
+            return [f"{surface} content is only a duplicated abstract title, not the abstract body"]
+        if compact.startswith(("keywords", "keyword")):
+            return ["English abstract title must be followed by one standalone abstract body paragraph before the keyword line"]
+    else:
+        if compact in {"摘要", "中文摘要", "摘要:", "摘要："}:
+            return [f"{surface} content is only a duplicated abstract title, not the abstract body"]
+        if compact.startswith("关键词"):
+            return ["Chinese abstract title must be followed by one standalone abstract body paragraph before the keyword line"]
+    return []
+
+
+def locate_body_paragraph(
+    paragraphs: list[ET.Element],
+    title_index: int | None,
+    keyword_index: int | None,
+    surface: str,
+    issues: list[str],
+    *,
+    english: bool,
+) -> int | None:
+    if title_index is None or keyword_index is None or title_index >= keyword_index:
+        return None
+    nonempty = [
+        index
+        for index in range(title_index + 1, keyword_index)
+        if paragraph_text(paragraphs[index - 1]).strip()
+    ]
+    if not nonempty:
+        if english:
+            issues.append("English abstract title must be followed by one standalone abstract body paragraph before the keyword line")
+        else:
+            issues.append("Chinese abstract title must be followed by one standalone abstract body paragraph before the keyword line")
+        return None
+    body_index = nonempty[0]
+    if body_index != title_index + 1:
+        issues.append(f"{surface} body paragraph must immediately follow the abstract title paragraph")
+    if len(nonempty) > 1:
+        extras = [
+            {"paragraph": index, "text": paragraph_text(paragraphs[index - 1]).strip()[:120]}
+            for index in nonempty[1:]
+        ]
+        issues.append(f"{surface} contains unexpected extra non-empty paragraphs before the keyword line: {extras[:3]}")
+    return body_index
 
 
 def audit_frontmatter(final_docx: Path) -> dict[str, object]:
@@ -306,61 +362,71 @@ def audit_frontmatter(final_docx: Path) -> dict[str, object]:
     if undefined:
         issues.append(f"undefined non-empty paragraph styles: {undefined[:8]}")
 
-    zh_abs = find_index(paragraphs, lambda p: is_zh_abstract(paragraph_text(p)) and not is_toc_entry(p))
+    zh_abs = find_index(paragraphs, lambda p: is_zh_abstract_title(paragraph_text(p)) and not is_toc_entry(p))
     zh_key = find_index(paragraphs, lambda p: is_zh_keyword(paragraph_text(p)) and not is_toc_entry(p))
-    en_abs = find_index(paragraphs, lambda p: is_en_abstract(paragraph_text(p)) and not is_toc_entry(p))
+    en_abs = find_index(paragraphs, lambda p: is_en_abstract_title(paragraph_text(p)) and not is_toc_entry(p))
     en_key = find_index(paragraphs, lambda p: is_en_keyword(paragraph_text(p)) and not is_toc_entry(p))
     toc = find_index(paragraphs, lambda p: is_toc_title(paragraph_text(p)))
     first_body = find_index_after(paragraphs, toc, lambda p: paragraph_heading_level(p) == 1 and not is_toc_entry(p))
+
+    zh_body = locate_body_paragraph(paragraphs, zh_abs, zh_key, "zh_abstract", issues, english=False)
+    en_body = locate_body_paragraph(paragraphs, en_abs, en_key, "en_abstract", issues, english=True)
+
     surface_order = {
-        "zh_abstract": zh_abs,
+        "zh_abstract_title": zh_abs,
+        "zh_abstract_body": zh_body,
         "zh_keyword": zh_key,
-        "en_abstract": en_abs,
+        "en_abstract_title": en_abs,
+        "en_abstract_body": en_body,
         "en_keyword": en_key,
         "toc": toc,
         "first_body": first_body,
     }
     if any(value is None for value in surface_order.values()):
         issues.append(f"front-matter required surface missing: {surface_order}")
-    elif not (zh_abs < zh_key < en_abs < en_key < toc < first_body):  # type: ignore[operator]
-        issues.append(f"front-matter order must be zh abstract -> zh keyword -> en abstract -> en keyword -> TOC -> body, found {surface_order}")
+    elif not (
+        zh_abs < zh_body < zh_key < en_abs < en_body < en_key < toc < first_body  # type: ignore[operator]
+    ):
+        issues.append(
+            "front-matter order must be zh abstract title -> zh abstract body -> zh keyword -> "
+            f"en abstract title -> en abstract body -> en keyword -> TOC -> body, found {surface_order}"
+        )
 
     if zh_abs is not None:
-        zh_abs_para = paragraphs[zh_abs - 1]
-        text = paragraph_text(zh_abs_para).strip()
-        if "：" not in text and ":" not in text:
-            issues.append("Chinese abstract must keep label and content in one paragraph")
-        if zh_key is not None:
-            orphan_rows = nonempty_between(paragraphs, zh_abs, zh_key)
-            if orphan_rows:
-                issues.append(f"Chinese abstract body must be merged into the label paragraph, found orphan rows: {orphan_rows[:3]}")
-        issues.extend(label_run_issues(zh_abs_para, ("\u6458  \u8981：", "\u6458\u8981："), "zh_abstract"))
-        issues.extend(abstract_content_issues(zh_abs_para, "zh_abstract", english=False))
-        issues.extend(frontmatter_metric_issues(zh_abs_para, "zh_abstract"))
-    if en_abs is not None:
-        en_abs_para = paragraphs[en_abs - 1]
-        text = paragraph_text(en_abs_para).strip()
-        if re.fullmatch(r"abstract", text, flags=re.IGNORECASE):
-            issues.append("English abstract is a standalone title instead of `Abstract:` plus content")
-        if en_key is not None:
-            orphan_rows = nonempty_between(paragraphs, en_abs, en_key)
-            if orphan_rows:
-                issues.append(f"English abstract body must be merged into the label paragraph, found orphan rows: {orphan_rows[:3]}")
-        issues.extend(label_run_issues(en_abs_para, ("Abstract:",), "en_abstract"))
-        issues.extend(abstract_content_issues(en_abs_para, "en_abstract", english=True))
-        issues.extend(frontmatter_metric_issues(en_abs_para, "en_abstract"))
+        issues.extend(title_paragraph_issues(paragraphs[zh_abs - 1], "zh_abstract_title", ("摘要", "中文摘要")))
+    if zh_body is not None:
+        issues.extend(abstract_body_issues(paragraphs[zh_body - 1], "zh_abstract_body", english=False))
+        issues.extend(indented_body_issues(paragraphs[zh_body - 1], "zh_abstract_body"))
     if zh_key is not None:
-        issues.extend(label_run_issues(paragraphs[zh_key - 1], ("\u5173\u952e\u8bcd：", "\u5173\u952e\u8bcd:"), "zh_keyword"))
-        issues.extend(frontmatter_metric_issues(paragraphs[zh_key - 1], "zh_keyword"))
+        issues.extend(label_run_issues(paragraphs[zh_key - 1], ("关键词：", "关键词:"), "zh_keyword"))
+        issues.extend(direct_spacing_issues(paragraphs[zh_key - 1], "zh_keyword"))
+
+    if en_abs is not None:
+        issues.extend(title_paragraph_issues(paragraphs[en_abs - 1], "en_abstract_title", ("Abstract",)))
+    if en_body is not None:
+        issues.extend(abstract_body_issues(paragraphs[en_body - 1], "en_abstract_body", english=True))
+        issues.extend(indented_body_issues(paragraphs[en_body - 1], "en_abstract_body"))
     if en_key is not None:
-        issues.extend(label_run_issues(paragraphs[en_key - 1], ("Key words:",), "en_keyword"))
-        issues.extend(frontmatter_metric_issues(paragraphs[en_key - 1], "en_keyword"))
+        issues.extend(
+            label_run_issues(
+                paragraphs[en_key - 1],
+                ("Key words:", "Key Words:", "Keywords:", "Keyword:"),
+                "en_keyword",
+            )
+        )
+        issues.extend(direct_spacing_issues(paragraphs[en_key - 1], "en_keyword"))
 
     surface_details = {
-        "zh_abstract": surface_detail(paragraphs, zh_abs),
-        "zh_keyword": surface_detail(paragraphs, zh_key),
-        "en_abstract": surface_detail(paragraphs, en_abs),
-        "en_keyword": surface_detail(paragraphs, en_key),
+        "zh_abstract_title": surface_detail(paragraphs, zh_abs),
+        "zh_abstract_body": surface_detail(paragraphs, zh_body),
+        "zh_keyword": surface_detail(paragraphs, zh_key, ("关键词：", "关键词:")),
+        "en_abstract_title": surface_detail(paragraphs, en_abs),
+        "en_abstract_body": surface_detail(paragraphs, en_body),
+        "en_keyword": surface_detail(
+            paragraphs,
+            en_key,
+            ("Key words:", "Key Words:", "Keywords:", "Keyword:"),
+        ),
         "toc": surface_detail(paragraphs, toc),
         "first_body": surface_detail(paragraphs, first_body),
     }

@@ -23,26 +23,45 @@ import xml.etree.ElementTree as ET
 
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+PKG_REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
 MC_NS = "http://schemas.openxmlformats.org/markup-compatibility/2006"
 A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 WP_NS = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
 W14_NS = "http://schemas.microsoft.com/office/word/2010/wordml"
 W15_NS = "http://schemas.microsoft.com/office/word/2012/wordml"
+W16SE_NS = "http://schemas.microsoft.com/office/word/2015/wordml/symex"
+W16CID_NS = "http://schemas.microsoft.com/office/word/2016/wordml/cid"
+W16_NS = "http://schemas.microsoft.com/office/word/2018/wordml"
+W16CEX_NS = "http://schemas.microsoft.com/office/word/2018/wordml/cex"
+W16SDTDH_NS = "http://schemas.microsoft.com/office/word/2020/wordml/sdtdatahash"
 WP14_NS = "http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing"
 WPS_NS = "http://schemas.microsoft.com/office/word/2010/wordprocessingShape"
+WPS_CUSTOM_DATA_NS = "http://www.wps.cn/officeDocument/2013/wpsCustomData"
 
 W = f"{{{W_NS}}}"
 MC = f"{{{MC_NS}}}"
 
-DEFAULT_PARTS = ("word/document.xml", "word/styles.xml", "word/numbering.xml")
+DEFAULT_PARTS = (
+    "word/document.xml",
+    "word/styles.xml",
+    "word/stylesWithEffects.xml",
+    "word/numbering.xml",
+    "word/settings.xml",
+)
 STYLE_REFERENCE_PART_RE = re.compile(
     r"^word/(?:document|styles|numbering|header\d+|footer\d+|footnotes|endnotes|comments)\.xml$"
 )
 IGNORABLE_PREFIX_URIS = {
     "w14": W14_NS,
     "w15": W15_NS,
+    "w16se": W16SE_NS,
+    "w16cid": W16CID_NS,
+    "w16": W16_NS,
+    "w16cex": W16CEX_NS,
+    "w16sdtdh": W16SDTDH_NS,
     "wp14": WP14_NS,
     "wps": WPS_NS,
+    "wpsCustomData": WPS_CUSTOM_DATA_NS,
 }
 
 PPR_ORDER = [
@@ -198,6 +217,11 @@ TBLPR_ORDER = [
     "tblPrChange",
 ]
 
+TR_ORDER = [
+    "tblPrEx",
+    "trPr",
+]
+
 TCPR_ORDER = [
     "cnfStyle",
     "tcW",
@@ -219,12 +243,124 @@ TCPR_ORDER = [
     "tcPrChange",
 ]
 
+BORDER_ORDER = [
+    "top",
+    "left",
+    "bottom",
+    "right",
+    "insideH",
+    "insideV",
+    "tl2br",
+    "tr2bl",
+]
+
 NUMBERING_ROOT_ORDER = {
     "numPicBullet": 0,
     "abstractNum": 1,
     "num": 2,
     "numIdMacAtCleanup": 3,
 }
+
+SETTINGS_ORDER = [
+    "writeProtection",
+    "view",
+    "zoom",
+    "removePersonalInformation",
+    "removeDateAndTime",
+    "doNotDisplayPageBoundaries",
+    "displayBackgroundShape",
+    "printPostScriptOverText",
+    "printFractionalCharacterWidth",
+    "printFormsData",
+    "embedTrueTypeFonts",
+    "embedSystemFonts",
+    "saveSubsetFonts",
+    "saveFormsData",
+    "mirrorMargins",
+    "alignBordersAndEdges",
+    "bordersDoNotSurroundHeader",
+    "bordersDoNotSurroundFooter",
+    "gutterAtTop",
+    "hideSpellingErrors",
+    "hideGrammaticalErrors",
+    "activeWritingStyle",
+    "proofState",
+    "formsDesign",
+    "attachedTemplate",
+    "linkStyles",
+    "stylePaneFormatFilter",
+    "stylePaneSortMethod",
+    "documentType",
+    "mailMerge",
+    "revisionView",
+    "trackRevisions",
+    "doNotTrackMoves",
+    "doNotTrackFormatting",
+    "documentProtection",
+    "autoFormatOverride",
+    "styleLockTheme",
+    "styleLockQFSet",
+    "defaultTabStop",
+    "autoHyphenation",
+    "consecutiveHyphenLimit",
+    "hyphenationZone",
+    "doNotHyphenateCaps",
+    "showEnvelope",
+    "summaryLength",
+    "clickAndTypeStyle",
+    "defaultTableStyle",
+    "evenAndOddHeaders",
+    "bookFoldRevPrinting",
+    "bookFoldPrinting",
+    "bookFoldPrintingSheets",
+    "drawingGridHorizontalSpacing",
+    "drawingGridVerticalSpacing",
+    "displayHorizontalDrawingGridEvery",
+    "displayVerticalDrawingGridEvery",
+    "doNotUseMarginsForDrawingGridOrigin",
+    "drawingGridHorizontalOrigin",
+    "drawingGridVerticalOrigin",
+    "doNotShadeFormData",
+    "noPunctuationKerning",
+    "characterSpacingControl",
+    "printTwoOnOne",
+    "strictFirstAndLastChars",
+    "noLineBreaksAfter",
+    "noLineBreaksBefore",
+    "savePreviewPicture",
+    "doNotValidateAgainstSchema",
+    "saveInvalidXml",
+    "ignoreMixedContent",
+    "alwaysShowPlaceholderText",
+    "doNotDemarcateInvalidXml",
+    "saveXmlDataOnly",
+    "useXSLTWhenSaving",
+    "saveThroughXslt",
+    "showXMLTags",
+    "alwaysMergeEmptyNamespace",
+    "updateFields",
+    "hdrShapeDefaults",
+    "footnotePr",
+    "endnotePr",
+    "compat",
+    "docVars",
+    "rsids",
+    "mathPr",
+    "attachedSchema",
+    "themeFontLang",
+    "clrSchemeMapping",
+    "doNotIncludeSubdocsInStats",
+    "doNotAutoCompressPictures",
+    "forceUpgrade",
+    "captions",
+    "readModeInkLockDown",
+    "smartTagType",
+    "schemaLibrary",
+    "shapeDefaults",
+    "doNotEmbedSmartTags",
+    "decimalSymbol",
+    "listSeparator",
+]
 
 BUILTIN_STYLE_ID_BY_TYPE_AND_NAME = {
     ("paragraph", "Normal"): "Normal",
@@ -268,6 +404,7 @@ STYLE_REFERENCE_TAGS = {
 
 
 for prefix, uri in {
+    "": PKG_REL_NS,
     "w": W_NS,
     "r": R_NS,
     "mc": MC_NS,
@@ -277,8 +414,13 @@ for prefix, uri in {
     "w15": W15_NS,
     "wp14": WP14_NS,
     "wps": WPS_NS,
+    "wpsCustomData": WPS_CUSTOM_DATA_NS,
 }.items():
     ET.register_namespace(prefix, uri)
+
+
+def rel_qn(local: str) -> str:
+    return f"{{{PKG_REL_NS}}}{local}"
 
 
 def qn(local: str) -> str:
@@ -318,7 +460,24 @@ def order_children(parent: ET.Element, order: list[str]) -> bool:
 
 
 def reorder_property_containers(root: ET.Element) -> dict[str, int]:
-    counts = {"pPr": 0, "rPr": 0, "style": 0, "sectPr": 0, "tblPr": 0, "tcPr": 0}
+    counts = {
+        "p": 0,
+        "pPr": 0,
+        "rPr": 0,
+        "style": 0,
+        "sectPr": 0,
+        "tblPr": 0,
+        "tr": 0,
+        "tcPr": 0,
+        "tblBorders": 0,
+        "tcBorders": 0,
+    }
+    for paragraph in root.iter(qn("p")):
+        ppr = paragraph.find(qn("pPr"))
+        if ppr is not None and list(paragraph).index(ppr) != 0:
+            paragraph.remove(ppr)
+            paragraph.insert(0, ppr)
+            counts["p"] += 1
     for ppr in root.iter(qn("pPr")):
         if order_children(ppr, PPR_ORDER):
             counts["pPr"] += 1
@@ -334,9 +493,18 @@ def reorder_property_containers(root: ET.Element) -> dict[str, int]:
     for tblpr in root.iter(qn("tblPr")):
         if order_children(tblpr, TBLPR_ORDER):
             counts["tblPr"] += 1
+    for tr in root.iter(qn("tr")):
+        if order_children(tr, TR_ORDER):
+            counts["tr"] += 1
     for tcpr in root.iter(qn("tcPr")):
         if order_children(tcpr, TCPR_ORDER):
             counts["tcPr"] += 1
+    for borders in root.iter(qn("tblBorders")):
+        if order_children(borders, BORDER_ORDER):
+            counts["tblBorders"] += 1
+    for borders in root.iter(qn("tcBorders")):
+        if order_children(borders, BORDER_ORDER):
+            counts["tcBorders"] += 1
     return counts
 
 
@@ -399,6 +567,48 @@ def remove_false_no_wrap_values(root: ET.Element) -> int:
     return removed
 
 
+def normalize_on_off_values(root: ET.Element) -> int:
+    """Convert non-canonical boolean values on common on/off elements."""
+    normalized = 0
+    for element in root.iter():
+        name = local_name(element.tag)
+        value = element.attrib.get(qn("val"))
+        if value is None:
+            continue
+        clean_value = value.strip().lower()
+        if name in {"cantSplit", "tblHeader", "keepNext", "keepLines", "b", "bCs", "i", "iCs"}:
+            if clean_value in {"true", "1", "on"}:
+                element.attrib.pop(qn("val"), None)
+                normalized += 1
+            elif clean_value == "false":
+                element.attrib[qn("val")] = "0"
+                normalized += 1
+    return normalized
+
+
+def remove_orphan_note_settings(root: ET.Element) -> dict[str, int]:
+    """Remove settings-level footnote/endnote refs when no note parts exist."""
+    removed = {"footnotePr": 0, "endnotePr": 0}
+    if local_name(root.tag) != "settings":
+        return removed
+    for name in ("footnotePr", "endnotePr"):
+        for node in list(root.findall(qn(name))):
+            root.remove(node)
+            removed[name] += 1
+    return removed
+
+
+def remove_strict_validator_extension_attrs(root: ET.Element) -> int:
+    """Drop extension attributes rejected by the local schema validator."""
+    removed = 0
+    for element in root.iter():
+        for attr in list(element.attrib):
+            if attr == f"{{{W15_NS}}}restartNumberingAfterBreak":
+                del element.attrib[attr]
+                removed += 1
+    return removed
+
+
 def reorder_numbering_root_children(root: ET.Element) -> int:
     """Restore WordprocessingML numbering root order: abstractNum definitions before nums."""
     if local_name(root.tag) != "numbering":
@@ -417,9 +627,24 @@ def reorder_numbering_root_children(root: ET.Element) -> int:
     return 1
 
 
+def reorder_settings_root_children(root: ET.Element) -> int:
+    """Restore WordprocessingML settings root order for schema validators."""
+    if local_name(root.tag) != "settings":
+        return 0
+    return 1 if order_children(root, SETTINGS_ORDER) else 0
+
+
 def ignorable_prefixes(root: ET.Element) -> set[str]:
     value = root.attrib.get(f"{MC}Ignorable", "")
     return {token for token in re.split(r"\s+", value.strip()) if token}
+
+
+def markup_compatibility_prefixes(root: ET.Element) -> set[str]:
+    prefixes = set(ignorable_prefixes(root))
+    for element in root.iter():
+        requires = element.attrib.get("Requires", "")
+        prefixes.update(token for token in re.split(r"\s+", requires.strip()) if token)
+    return prefixes
 
 
 def inject_missing_namespace_declarations(xml_text: str, prefixes: set[str]) -> tuple[str, list[str]]:
@@ -484,12 +709,16 @@ def apply_builtin_style_id_map(root: ET.Element, style_id_map: dict[str, str]) -
 
 def repair_xml_part(payload: bytes, *, style_id_map: dict[str, str] | None = None) -> tuple[bytes, dict[str, object]]:
     root = ET.fromstring(payload)
-    prefixes = ignorable_prefixes(root)
+    prefixes = markup_compatibility_prefixes(root)
     style_counts = apply_builtin_style_id_map(root, style_id_map or {})
     removed_duplicate_bookmark_starts = remove_duplicate_bookmark_starts(root)
     removed_duplicate_bookmark_ends = remove_duplicate_bookmark_ends(root)
     removed_false_no_wrap = remove_false_no_wrap_values(root)
+    normalized_on_off_values = normalize_on_off_values(root)
+    removed_orphan_note_settings = remove_orphan_note_settings(root)
+    removed_extension_attrs = remove_strict_validator_extension_attrs(root)
     reordered_numbering_root = reorder_numbering_root_children(root)
+    reordered_settings_root = reorder_settings_root_children(root)
     counts = reorder_property_containers(root)
     xml_text = ET.tostring(root, encoding="unicode", xml_declaration=True)
     xml_text, added_prefixes = inject_missing_namespace_declarations(xml_text, prefixes)
@@ -501,15 +730,49 @@ def repair_xml_part(payload: bytes, *, style_id_map: dict[str, str] | None = Non
         "removed_duplicate_bookmark_starts": removed_duplicate_bookmark_starts,
         "removed_duplicate_bookmark_ends": removed_duplicate_bookmark_ends,
         "removed_false_no_wrap": removed_false_no_wrap,
+        "normalized_on_off_values": normalized_on_off_values,
+        "removed_orphan_note_settings": removed_orphan_note_settings,
+        "removed_strict_validator_extension_attrs": removed_extension_attrs,
         "reordered_numbering_root": reordered_numbering_root,
+        "reordered_settings_root": reordered_settings_root,
+        "reordered_p": counts["p"],
         "reordered_pPr": counts["pPr"],
         "reordered_rPr": counts["rPr"],
         "reordered_style": counts["style"],
         "reordered_sectPr": counts["sectPr"],
         "reordered_tblPr": counts["tblPr"],
+        "reordered_tr": counts["tr"],
         "reordered_tcPr": counts["tcPr"],
+        "reordered_tblBorders": counts["tblBorders"],
+        "reordered_tcBorders": counts["tcBorders"],
         "ignorable_prefixes": sorted(prefixes),
         "added_namespace_prefixes": added_prefixes,
+    }
+
+
+def repair_relationships_part(payload: bytes) -> tuple[bytes, dict[str, object]]:
+    """Normalize .rels parts away from ns0-prefixed ElementTree output.
+
+    LibreOffice is stricter than python-docx for some relationship parts.  A
+    package relationships file serialized as ``ns0:Relationships`` can validate
+    as XML yet fail conversion, so keep these package parts in the conventional
+    default namespace form used by Word.
+    """
+    root = ET.fromstring(payload)
+    renamed_root = 0
+    renamed_children = 0
+    if local_name(root.tag) == "Relationships" and root.tag != rel_qn("Relationships"):
+        root.tag = rel_qn("Relationships")
+        renamed_root = 1
+    for child in root:
+        if local_name(child.tag) == "Relationship" and child.tag != rel_qn("Relationship"):
+            child.tag = rel_qn("Relationship")
+            renamed_children += 1
+    body = ET.tostring(root, encoding="unicode", xml_declaration=False, short_empty_elements=True)
+    xml_text = "<?xml version='1.0' encoding='UTF-8' standalone='yes'?>\n" + body
+    return xml_text.encode("utf-8"), {
+        "relationship_root_normalized": renamed_root,
+        "relationship_children_normalized": renamed_children,
     }
 
 
@@ -550,6 +813,7 @@ def repair_docx(source: Path, output: Path, parts: list[str]) -> dict[str, objec
             else {}
         )
         expanded_parts = set(parts)
+        expanded_parts.update(name for name in existing if name.endswith(".rels"))
         if style_id_map:
             expanded_parts.update(
                 name
@@ -562,7 +826,10 @@ def repair_docx(source: Path, output: Path, parts: list[str]) -> dict[str, objec
                 continue
             original = zin.read(part)
             try:
-                repaired, details = repair_xml_part(original, style_id_map=style_id_map)
+                if part.endswith(".rels"):
+                    repaired, details = repair_relationships_part(original)
+                else:
+                    repaired, details = repair_xml_part(original, style_id_map=style_id_map)
             except ET.ParseError as exc:
                 part_reports.append({"part": part, "status": "parse-error", "message": str(exc)})
                 continue

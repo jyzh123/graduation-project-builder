@@ -40,6 +40,7 @@ Use this file for abnormal blank-page incidents, reference/end-matter drift, and
 ## Reference Boundary Rule
 
 - `参考文献` is a terminal top-level section, not a continuation of Chapter 6.
+- The formal `参考文献` title must not share a rendered physical page with the previous chapter, conclusion, or other real content block. A repair is accepted only when the evidence records the previous content page, the `参考文献` page, and a passing prior-block separation verdict.
 - Do not leave any "reference-discussion" or copied bibliography explanation paragraphs inside Chapter 6 once the final references section is appended.
 - Before delivery, scan the body and confirm:
   - Chapter 6 ends with its own conclusion content

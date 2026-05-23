@@ -39,7 +39,7 @@ Use this file as the routing layer for durable corrections learned whenever `gra
 - `references/user-feedback/template-and-layout.md`: namespace `FB-LAYOUT-*`
 - `references/user-feedback/final-qa-and-tooling.md`: namespace `QA-FINAL-*`
 - `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`
-- `references/agents/agent-lanes.md`: rules `AGENT-CTRL-001, AGENT-ALIAS-001, AGENT-ROSTER-001, AGENT-CONCURRENCY-001, AGENT-WORK-001, AGENT-FORMAT-001, AGENT-FORMAT-002, AGENT-FORMAT-003, AGENT-FORMAT-004, AGENT-FORMAT-005, AGENT-FORMAT-006, AGENT-AUDIT-001, AGENT-AUDIT-002, AGENT-AUDIT-003, AGENT-FALLBACK-001, AGENT-CARD-001, AGENT-EVIDENCE-001`
+- `references/agents/agent-lanes.md`: rules `AGENT-CTRL-001, AGENT-ALIAS-001, AGENT-ROSTER-001, AGENT-CONCURRENCY-001, AGENT-WORK-001, AGENT-FORMAT-001, AGENT-FORMAT-002, AGENT-FORMAT-003, AGENT-FORMAT-004, AGENT-FORMAT-005, AGENT-FORMAT-006, AGENT-AUDIT-001, AGENT-AUDIT-002, AGENT-AUDIT-003, AGENT-AUDIT-004, AGENT-FALLBACK-001, AGENT-CARD-001, AGENT-EVIDENCE-001`
 - `references/rule-owner-map.json`: canonical owner manifest for the rule IDs above and their legacy numeric aliases
 - `assets/agents/agent-task-card-template.md`: task-card template for agent lane work
 - `assets/agents/agent-run-manifest-template.md`: run-manifest template for authorization, lane dispatch, fallback, and audit evidence

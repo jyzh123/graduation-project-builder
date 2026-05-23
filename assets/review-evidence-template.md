@@ -167,6 +167,7 @@ For thesis structural figure evidence, source-scale and inserted-scale collision
 - blank/near-empty page scan verdict:
 - chapter opener page map:
 - tail-block opener page map:
+- tail-block references prior-block separation verdict:
 - page-class occupancy rhythm verdict:
 - whole-document pagination verdict:
 - TOC template rendered page/region image path:

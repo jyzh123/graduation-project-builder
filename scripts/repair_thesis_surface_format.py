@@ -23,6 +23,7 @@ import argparse
 from copy import deepcopy
 from datetime import datetime, timezone
 import hashlib
+import html
 import json
 import re
 import shutil
@@ -145,6 +146,23 @@ def replace_rpr(run: ET.Element, donor_rpr: ET.Element | None) -> None:
         run.insert(0, deepcopy(donor_rpr))
 
 
+def remove_annotation_visual_markers(rpr: ET.Element | None) -> int:
+    if rpr is None:
+        return 0
+    removed = 0
+    for child in list(rpr):
+        if child.tag == qn("highlight"):
+            rpr.remove(child)
+            removed += 1
+            continue
+        if child.tag == qn("color"):
+            value = (child.get(qn("val")) or "").upper()
+            if value in {"FF0000", "C00000", "0000FF", "0000CC", "BLUE", "RED"}:
+                rpr.remove(child)
+                removed += 1
+    return removed
+
+
 def ensure_run_rpr(run: ET.Element) -> ET.Element:
     rpr = run.find("./w:rPr", NS)
     if rpr is None:
@@ -225,6 +243,7 @@ def clear_paragraph_content_preserving_review_anchors(paragraph: ET.Element) -> 
 
 def clone_rpr_with_latin_slots(rpr: ET.Element | None, *, east_asia_font: str = "\u5b8b\u4f53") -> ET.Element:
     cloned = deepcopy(rpr) if rpr is not None else ET.Element(qn("rPr"))
+    remove_annotation_visual_markers(cloned)
     rfonts = ensure_rpr_fonts(cloned)
     rfonts.set(qn("ascii"), "Times New Roman")
     rfonts.set(qn("hAnsi"), "Times New Roman")
@@ -569,6 +588,17 @@ def sync_normal_style_font_baseline(
             target_rfonts.set(qn(key), value)
         elif target_rfonts.get(qn(key)) is not None:
             del target_rfonts.attrib[qn(key)]
+    for tag in ("sz", "szCs"):
+        template_node = template_style.find(f"./w:rPr/w:{tag}", NS)
+        target_node = target_rpr.find(f"./w:{tag}", NS)
+        if template_node is not None:
+            if target_node is None:
+                target_node = ET.Element(qn(tag))
+                target_rpr.append(target_node)
+            target_node.set(qn("val"), template_node.get(qn("val")) or "")
+        elif target_node is not None:
+            target_rpr.remove(target_node)
+    remove_annotation_visual_markers(target_rpr)
     return ET.tostring(target_root, encoding="utf-8", xml_declaration=True)
 
 
@@ -612,9 +642,7 @@ def is_heading_text(text: str) -> bool:
     if not stripped or len(stripped) > 80:
         return False
     normalized = stripped.replace("\uff0e", ".").replace("\u3002", ".")
-    if re.match(r"^\u7b2c\s*\d+\s*\u7ae0\s+\S", stripped):
-        return True
-    if re.match(r"^\d+\s+", normalized):
+    if re.match(r"^\u7b2c\s*[0-9\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341]+\s*\u7ae0\s+\S", stripped):
         return True
     if re.match(r"^\d+(?:\.\d+)+\s+", normalized):
         return True
@@ -649,8 +677,10 @@ def is_caption_or_reference(text: str) -> bool:
     stripped = text.strip()
     compact = compact_text(stripped)
     return (
-        re.match(r"^\u56fe\d+(?:[-.]\d+)?(?:\s|[\u3000:：])", stripped) is not None
-        or re.match(r"^\u8868\d+(?:[-.]\d+)?(?:\s|[\u3000:：])", stripped) is not None
+        re.match(r"^\u56fe\s*\d+(?:[-.]\d+)?(?:\s|[\u3000:：])", stripped) is not None
+        or re.match(r"^\u8868\s*\d+(?:[-.]\d+)?(?:\s|[\u3000:：])", stripped) is not None
+        or re.match(r"^\u56fe\s*[0-9\u4e00-\u9fff]+(?:[-.][0-9\u4e00-\u9fff]+)?\s+\S", stripped) is not None
+        or re.match(r"^\u8868\s*[0-9\u4e00-\u9fff]+(?:[-.][0-9\u4e00-\u9fff]+)?\s+\S", stripped) is not None
         or compact.startswith("\u5173\u952e\u8bcd")
         or compact in {"\u6458\u8981", "\u76ee\u5f55", "\u53c2\u8003\u6587\u732e", "\u81f4\u8c22", "\u8c22\u8f9e", "\u9644\u5f55", "\u7ed3\u8bed"}
         or re.match(r"^\[\d+\]", compact) is not None
@@ -807,7 +837,7 @@ def find_first_real_body_heading_index(paragraphs: list[ET.Element]) -> int:
         text = paragraph_text(paragraph).strip()
         if not text:
             continue
-        level = body_heading_level_from_style(paragraph)
+        level = heading_level_from_paragraph(paragraph, text)
         if level is None:
             continue
         compact = compact_text(text)
@@ -841,13 +871,20 @@ def is_template_body_donor_candidate(paragraph: ET.Element) -> bool:
 
 
 def find_template_body_donor(paragraphs: list[ET.Element]) -> tuple[int, ET.Element]:
-    body_heading_index = find_first_real_body_heading_index(paragraphs)
-    for index, paragraph in enumerate(paragraphs[body_heading_index + 1 :], start=body_heading_index + 1):
-        if is_template_body_donor_candidate(paragraph):
-            return index, paragraph
+    try:
+        body_heading_index: int | None = find_first_real_body_heading_index(paragraphs)
+    except ValueError:
+        body_heading_index = None
+    if body_heading_index is not None:
+        for index, paragraph in enumerate(paragraphs[body_heading_index + 1 :], start=body_heading_index + 1):
+            if is_template_body_donor_candidate(paragraph):
+                return index, paragraph
     for index, paragraph in enumerate(paragraphs):
         text = paragraph_text(paragraph).strip()
-        if index <= body_heading_index or compact_text(text) in {"\u6458\u8981", "abstract", "\u76ee\u5f55"}:
+        if (
+            body_heading_index is not None
+            and index <= body_heading_index
+        ) or compact_text(text) in {"\u6458\u8981", "abstract", "\u76ee\u5f55"}:
             continue
         if is_template_body_donor_candidate(paragraph):
             return index, paragraph
@@ -856,14 +893,14 @@ def find_template_body_donor(paragraphs: list[ET.Element]) -> tuple[int, ET.Elem
 
 def is_safe_zh_keyword_text(text: str) -> bool:
     compact = compact_text(text)
-    return compact.startswith("\u5173\u952e\u8bcd") and "." not in compact and not re.search(r"[IVXLCDM0-9]+$", compact, flags=re.IGNORECASE)
+    return compact.startswith("\u5173\u952e\u8bcd") and "." not in compact
 
 
 def is_safe_en_keyword_text(text: str) -> bool:
     stripped = text.strip()
     lowered = stripped.lower()
     compact = compact_text(stripped)
-    return lowered.startswith(("keywords", "key words")) and "." not in compact and not re.search(r"[IVXLCDM0-9]+$", compact, flags=re.IGNORECASE)
+    return lowered.startswith(("keywords", "key words")) and "." not in compact
 
 
 KEYWORD_LINE_SIZE_HALF_POINTS = 24
@@ -952,6 +989,7 @@ def normalize_keyword_line_role_format(paragraph: ET.Element, *, english: bool) 
         else:
             set_font_slots(rpr, east_asia="\u5b8b\u4f53", latin="Times New Roman")
         set_run_size(rpr, KEYWORD_LINE_SIZE_HALF_POINTS)
+    split_mixed_script_runs(paragraph)
 
 
 def normalize_abstract_body_role_format(paragraph: ET.Element, *, english: bool) -> None:
@@ -1079,15 +1117,25 @@ def repair_inline_abstract_surfaces_from_template(
     return changed
 
 
-def repair_keyword_only_surfaces(paragraphs: list[ET.Element], abstract_text: dict[str, object]) -> dict[str, object]:
+def repair_keyword_only_surfaces(
+    paragraphs: list[ET.Element],
+    abstract_text: dict[str, object],
+    *,
+    allow_missing: bool = False,
+) -> dict[str, object]:
     changed: dict[str, object] = {}
     zh_match = [(index, paragraph) for index, paragraph in enumerate(paragraphs) if is_safe_zh_keyword_text(paragraph_text(paragraph))]
     en_match = [(index, paragraph) for index, paragraph in enumerate(paragraphs) if is_safe_en_keyword_text(paragraph_text(paragraph))]
-    if len(zh_match) != 1:
+    if len(zh_match) != 1 and not (allow_missing and len(zh_match) == 0):
         raise ValueError(f"keyword-only repair requires exactly one Chinese keyword paragraph, found {len(zh_match)}")
-    if len(en_match) != 1:
+    if len(en_match) != 1 and not (allow_missing and len(en_match) == 0):
         raise ValueError(f"keyword-only repair requires exactly one English keyword paragraph, found {len(en_match)}")
-    for surface_id, match in (("zh_keyword_line", zh_match[0]), ("en_keyword_line", en_match[0])):
+    matches: list[tuple[str, tuple[int, ET.Element]]] = []
+    if zh_match:
+        matches.append(("zh_keyword_line", zh_match[0]))
+    if en_match:
+        matches.append(("en_keyword_line", en_match[0]))
+    for surface_id, match in matches:
         index, paragraph = match
         before = paragraph_text(paragraph)
         replacement = str(abstract_text.get(surface_id, before))
@@ -1127,11 +1175,23 @@ def repair_abstract_role_surfaces(paragraphs: list[ET.Element]) -> dict[str, obj
 
 def clear_body_run_formatting(paragraph: ET.Element, donor_rpr: ET.Element | None) -> int:
     changed = 0
+    safe_donor_rpr = deepcopy(donor_rpr) if donor_rpr is not None else None
+    remove_annotation_visual_markers(safe_donor_rpr)
     for run in paragraph.findall(".//w:r", NS):
         if has_field_or_drawing(run) or is_citation_run(run):
             continue
-        replace_rpr(run, donor_rpr)
+        replace_rpr(run, safe_donor_rpr)
         changed += 1
+    return changed
+
+
+def remove_document_annotation_run_colors(paragraphs: list[ET.Element]) -> int:
+    changed = 0
+    for paragraph in paragraphs:
+        for run in paragraph.findall(".//w:r", NS):
+            if has_field_or_drawing(run):
+                continue
+            changed += remove_annotation_visual_markers(run.find("./w:rPr", NS))
     return changed
 
 
@@ -1167,17 +1227,20 @@ def heading_level_from_text(text: str) -> int | None:
     stripped = (text or "").strip().replace("\uff0e", ".").replace("\u3002", ".")
     if re.match(r"^\u7b2c\s*[0-9\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341]+\s*\u7ae0(?:\s|$)", stripped):
         return 0
-    match = re.match(r"^(\d+(?:\.\d+){0,3})\s+\S", stripped)
+    match = re.match(r"^(\d+(?:\.\d+){1,3})\s+\S", stripped)
     if not match:
         return None
     return min(match.group(1).count("."), 2)
 
 
 def heading_level_from_paragraph(paragraph: ET.Element, text: str) -> int | None:
+    text_level = heading_level_from_text(text)
+    if text_level is not None:
+        return text_level
     style_level = body_heading_level_from_style(paragraph)
     if style_level is not None:
         return style_level
-    return heading_level_from_text(text)
+    return None
 
 
 def set_run_size(rpr: ET.Element, half_points: int) -> None:
@@ -1455,7 +1518,534 @@ def remove_empty_paragraphs_before_headings(
     return changed
 
 
+def suppress_paragraph_auto_numbering(paragraph: ET.Element) -> None:
+    ppr = ensure_ppr(paragraph)
+    remove_children(ppr, {qn("numPr")})
+    num_pr = ET.Element(qn("numPr"))
+    num_id = ET.Element(qn("numId"))
+    # Word/WPS use numId=0 as the explicit "no numbering" override.  This
+    # keeps the heading style/outline level while blocking corrupt list output.
+    num_id.set(qn("val"), "0")
+    num_pr.append(num_id)
+    ppr.append(num_pr)
+
+
+def add_explicit_heading_number_text(paragraph: ET.Element, number_text: str) -> str:
+    text = paragraph_text(paragraph)
+    normalized = text.lstrip()
+    prefix = f"{number_text} "
+    if normalized.startswith(prefix) or normalized == number_text:
+        return text
+    for node in paragraph.findall(".//w:t", NS):
+        if node.text and node.text.strip():
+            leading = node.text[: len(node.text) - len(node.text.lstrip())]
+            node.text = f"{leading}{prefix}{node.text.lstrip()}"
+            return text
+    raise ValueError("heading paragraph has no editable text run")
+
+
+def apply_explicit_body_heading_numbers(
+    paragraphs: list[ET.Element], plan: dict[str, object]
+) -> list[dict[str, object]]:
+    items = plan.get("explicit_body_heading_numbers", [])
+    if items in (None, []):
+        return []
+    if not isinstance(items, list):
+        raise ValueError("plan.explicit_body_heading_numbers must be a list")
+    changed: list[dict[str, object]] = []
+    used_indices: set[int] = set()
+    for item in items:
+        if not isinstance(item, dict):
+            raise ValueError("each explicit_body_heading_numbers item must be an object")
+        exact_text = str(item.get("heading_text_exact") or "").strip()
+        number_text = str(item.get("number_text") or "").strip()
+        if not exact_text or not number_text:
+            raise ValueError("explicit heading number repair requires heading_text_exact and number_text")
+        min_paragraph_index = int(item.get("min_paragraph_index") or 0)
+        matches = [
+            (index, paragraph)
+            for index, paragraph in enumerate(paragraphs)
+            if index >= min_paragraph_index
+            and index not in used_indices
+            and paragraph_text(paragraph).strip() == exact_text
+        ]
+        if len(matches) != 1:
+            raise ValueError(f"explicit heading number repair matched {len(matches)} paragraphs: {exact_text[:40]}")
+        index, paragraph = matches[0]
+        if paragraph_has_field_drawing_or_citation(paragraph):
+            raise ValueError(f"explicit heading number target has field, drawing, or citation markers at paragraph {index}")
+        before = add_explicit_heading_number_text(paragraph, number_text)
+        suppress_paragraph_auto_numbering(paragraph)
+        after = paragraph_text(paragraph)
+        used_indices.add(index)
+        changed.append(
+            {
+                "target_paragraph_index": index,
+                "heading_text_exact": exact_text,
+                "number_text": number_text,
+                "before_text": before,
+                "after_text": after,
+                "auto_numbering_suppressed": True,
+            }
+        )
+    return changed
+
+
+P_XML_RE = re.compile(rb"<w:p(?:\s[^>]*)?>.*?</w:p>", re.DOTALL)
+T_XML_RE = re.compile(rb"(<w:t\b[^>]*>)(.*?)(</w:t>)", re.DOTALL)
+
+
+def paragraph_text_from_xml_bytes(paragraph_xml: bytes) -> str:
+    parts: list[str] = []
+    for match in T_XML_RE.finditer(paragraph_xml):
+        parts.append(html.unescape(match.group(2).decode("utf-8")))
+    return "".join(parts)
+
+
+def xml_text_escape(text: str) -> bytes:
+    return html.escape(text, quote=False).encode("utf-8")
+
+
+def insert_no_numbering_override_in_ppr(paragraph_xml: bytes) -> bytes:
+    no_numbering = b'<w:numPr><w:numId w:val="0"/></w:numPr>'
+    ppr_match = re.search(rb"<w:pPr\b[^>]*>.*?</w:pPr>", paragraph_xml, flags=re.DOTALL)
+    if ppr_match is None:
+        start_match = re.match(rb"<w:p(?:\s[^>]*)?>", paragraph_xml)
+        if start_match is None:
+            raise ValueError("paragraph XML start tag not found")
+        insert_at = start_match.end()
+        return paragraph_xml[:insert_at] + b"<w:pPr>" + no_numbering + b"</w:pPr>" + paragraph_xml[insert_at:]
+
+    ppr_xml = ppr_match.group(0)
+    ppr_xml = re.sub(rb"<w:numPr\b[^>]*>.*?</w:numPr>", b"", ppr_xml, flags=re.DOTALL)
+    style_match = re.search(rb"</w:pStyle>", ppr_xml)
+    if style_match is not None:
+        insert_at = style_match.end()
+    else:
+        open_match = re.match(rb"<w:pPr\b[^>]*>", ppr_xml)
+        if open_match is None:
+            raise ValueError("paragraph properties XML start tag not found")
+        insert_at = open_match.end()
+    ppr_xml = ppr_xml[:insert_at] + no_numbering + ppr_xml[insert_at:]
+    return paragraph_xml[: ppr_match.start()] + ppr_xml + paragraph_xml[ppr_match.end() :]
+
+
+def prepend_heading_number_in_paragraph_xml(paragraph_xml: bytes, number_text: str) -> tuple[bytes, str, str]:
+    before_text = paragraph_text_from_xml_bytes(paragraph_xml)
+    stripped = before_text.lstrip()
+    prefix = f"{number_text} "
+    if stripped.startswith(prefix) or stripped == number_text:
+        numbered_xml = paragraph_xml
+    else:
+        def replace_first_nonempty(match: re.Match[bytes]) -> bytes:
+            content = html.unescape(match.group(2).decode("utf-8"))
+            if not content.strip():
+                return match.group(0)
+            leading = content[: len(content) - len(content.lstrip())]
+            new_content = f"{leading}{prefix}{content.lstrip()}"
+            return match.group(1) + xml_text_escape(new_content) + match.group(3)
+
+        numbered_xml, replacements = T_XML_RE.subn(replace_first_nonempty, paragraph_xml, count=1)
+        if replacements != 1 or paragraph_text_from_xml_bytes(numbered_xml) == before_text:
+            raise ValueError("heading paragraph has no editable non-empty text run")
+    patched_xml = insert_no_numbering_override_in_ppr(numbered_xml)
+    return patched_xml, before_text, paragraph_text_from_xml_bytes(patched_xml)
+
+
+def set_paragraph_section_type(paragraph_xml: bytes, section_type: str) -> bytes:
+    if section_type not in {"nextPage", "continuous", "evenPage", "oddPage"}:
+        raise ValueError(f"unsupported section type: {section_type}")
+    sect_match = re.search(rb"<w:sectPr\b[^>]*>.*?</w:sectPr>", paragraph_xml, flags=re.DOTALL)
+    if sect_match is None:
+        raise ValueError("target paragraph has no w:sectPr")
+    sect_xml = sect_match.group(0)
+    sect_xml = re.sub(rb"<w:type\b[^>]*/>", b"", sect_xml, flags=re.DOTALL)
+    sect_xml = re.sub(rb"<w:type\b[^>]*>.*?</w:type>", b"", sect_xml, flags=re.DOTALL)
+    type_xml = f'<w:type w:val="{section_type}"/>'.encode("utf-8")
+    header_footer_matches = list(re.finditer(rb"<w:(?:headerReference|footerReference)\b[^>]*/>", sect_xml))
+    if header_footer_matches:
+        insert_at = header_footer_matches[-1].end()
+    else:
+        open_match = re.match(rb"<w:sectPr\b[^>]*>", sect_xml)
+        if open_match is None:
+            raise ValueError("section properties XML start tag not found")
+        insert_at = open_match.end()
+    sect_xml = sect_xml[:insert_at] + type_xml + sect_xml[insert_at:]
+    return paragraph_xml[: sect_match.start()] + sect_xml + paragraph_xml[sect_match.end() :]
+
+
+def apply_package_preserving_frontmatter_section_type_repairs(
+    input_docx: Path, output_docx: Path, plan: dict[str, object]
+) -> dict[str, object]:
+    items = plan.get("frontmatter_section_type_repairs", [])
+    if not isinstance(items, list) or not items:
+        raise ValueError("package_preserving_frontmatter_section_types requires frontmatter_section_type_repairs")
+    allowed_truthy = {"package_preserving_frontmatter_section_types"}
+    allowed_nonempty = {"frontmatter_section_type_repairs"}
+    for key, value in plan.items():
+        if key in allowed_nonempty:
+            continue
+        if key in allowed_truthy and bool(value):
+            continue
+        if value not in (False, None, "", [], {}):
+            raise ValueError(
+                "package-preserving frontmatter section repair may not be combined with other mutation plan fields: "
+                f"{key}"
+            )
+
+    with zipfile.ZipFile(input_docx) as zin:
+        document_xml = zin.read("word/document.xml")
+        paragraph_matches = list(P_XML_RE.finditer(document_xml))
+        if not paragraph_matches:
+            raise ValueError("word/document.xml has no w:p paragraphs")
+        replacements: dict[int, bytes] = {}
+        changed: list[dict[str, object]] = []
+        used_indices: set[int] = set()
+        paragraph_texts = [paragraph_text_from_xml_bytes(match.group(0)).strip() for match in paragraph_matches]
+        for item in items:
+            if not isinstance(item, dict):
+                raise ValueError("each frontmatter_section_type_repairs item must be an object")
+            exact_text = str(item.get("paragraph_text_exact") or "").strip()
+            startswith = str(item.get("paragraph_text_startswith") or "").strip()
+            section_type = str(item.get("section_type") or "").strip()
+            min_paragraph_index = int(item.get("min_paragraph_index") or 0)
+            max_paragraph_index = int(item.get("max_paragraph_index") or len(paragraph_matches))
+            if not section_type or (not exact_text and not startswith):
+                raise ValueError("frontmatter section repair requires section_type and exact/startswith text")
+            matches = []
+            for index, text in enumerate(paragraph_texts):
+                if index < min_paragraph_index or index > max_paragraph_index or index in used_indices:
+                    continue
+                if exact_text and text == exact_text:
+                    matches.append(index)
+                elif startswith and text.startswith(startswith):
+                    matches.append(index)
+            if len(matches) != 1:
+                display = exact_text or startswith
+                raise ValueError(f"frontmatter section repair matched {len(matches)} paragraphs: {display[:40]}")
+            index = matches[0]
+            before_xml = paragraph_matches[index].group(0)
+            patched = set_paragraph_section_type(before_xml, section_type)
+            replacements[index] = patched
+            used_indices.add(index)
+            changed.append(
+                {
+                    "target_paragraph_index": index,
+                    "paragraph_text": paragraph_texts[index][:120],
+                    "section_type": section_type,
+                    "patch_mode": "package_preserving_document_xml_span",
+                }
+            )
+
+        rebuilt = bytearray()
+        cursor = 0
+        for index, match in enumerate(paragraph_matches):
+            rebuilt.extend(document_xml[cursor : match.start()])
+            rebuilt.extend(replacements.get(index, match.group(0)))
+            cursor = match.end()
+        rebuilt.extend(document_xml[cursor:])
+
+        with tempfile.TemporaryDirectory() as td:
+            temp_output = Path(td) / "out.docx"
+            with zipfile.ZipFile(temp_output, "w", compression=zipfile.ZIP_DEFLATED) as zout:
+                for zip_item in zin.infolist():
+                    data = zin.read(zip_item.filename)
+                    if zip_item.filename == "word/document.xml":
+                        data = bytes(rebuilt)
+                    zout.writestr(zip_item, data)
+            output_docx.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(temp_output, output_docx)
+
+    return {
+        "package_preserving_frontmatter_section_types": changed,
+        "document_xml_bytes_before": len(document_xml),
+        "document_xml_bytes_after": len(rebuilt),
+    }
+
+
+def apply_package_preserving_settings_repairs(
+    input_docx: Path, output_docx: Path, plan: dict[str, object]
+) -> dict[str, object]:
+    if not bool(plan.get("disable_even_and_odd_headers", False)):
+        raise ValueError("package_preserving_settings_repair currently requires disable_even_and_odd_headers=true")
+    allowed_truthy = {"package_preserving_settings_repair", "disable_even_and_odd_headers"}
+    for key, value in plan.items():
+        if key in allowed_truthy and bool(value):
+            continue
+        if value not in (False, None, "", [], {}):
+            raise ValueError(
+                "package-preserving settings repair may not be combined with other mutation plan fields: "
+                f"{key}"
+            )
+    with zipfile.ZipFile(input_docx) as zin:
+        if "word/settings.xml" not in zin.namelist():
+            raise ValueError("word/settings.xml is missing")
+        settings_xml = zin.read("word/settings.xml")
+        original_settings = settings_xml
+        settings_xml = re.sub(
+            rb"<w:evenAndOddHeaders\b[^>]*/>",
+            b'<w:evenAndOddHeaders w:val="0" />',
+            settings_xml,
+        )
+        if settings_xml == original_settings:
+            raise ValueError("word/settings.xml did not contain w:evenAndOddHeaders to disable")
+        with tempfile.TemporaryDirectory() as td:
+            temp_output = Path(td) / "out.docx"
+            with zipfile.ZipFile(temp_output, "w", compression=zipfile.ZIP_DEFLATED) as zout:
+                for zip_item in zin.infolist():
+                    data = zin.read(zip_item.filename)
+                    if zip_item.filename == "word/settings.xml":
+                        data = settings_xml
+                    zout.writestr(zip_item, data)
+            output_docx.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(temp_output, output_docx)
+    return {
+        "package_preserving_settings_repair": {
+            "changed_part": "word/settings.xml",
+            "disable_even_and_odd_headers": True,
+            "reason": "prevent WPS from inserting blank parity pages between front-matter sections",
+        }
+    }
+
+
+def apply_package_preserving_explicit_heading_number_repairs(
+    input_docx: Path, output_docx: Path, plan: dict[str, object]
+) -> dict[str, object]:
+    items = plan.get("explicit_body_heading_numbers", [])
+    if not isinstance(items, list) or not items:
+        raise ValueError("package_preserving_explicit_heading_numbers requires explicit_body_heading_numbers")
+    allowed_truthy = {"package_preserving_explicit_heading_numbers"}
+    allowed_nonempty = {"explicit_body_heading_numbers"}
+    for key, value in plan.items():
+        if key in allowed_nonempty:
+            continue
+        if key in allowed_truthy and bool(value):
+            continue
+        if value not in (False, None, "", [], {}):
+            raise ValueError(
+                "package-preserving heading repair may not be combined with other mutation plan fields: "
+                f"{key}"
+            )
+
+    with zipfile.ZipFile(input_docx) as zin:
+        document_xml = zin.read("word/document.xml")
+        paragraph_matches = list(P_XML_RE.finditer(document_xml))
+        if not paragraph_matches:
+            raise ValueError("word/document.xml has no w:p paragraphs")
+        replacements: dict[int, bytes] = {}
+        changed: list[dict[str, object]] = []
+        used_indices: set[int] = set()
+        paragraph_texts = [paragraph_text_from_xml_bytes(match.group(0)).strip() for match in paragraph_matches]
+        for item in items:
+            if not isinstance(item, dict):
+                raise ValueError("each explicit_body_heading_numbers item must be an object")
+            exact_text = str(item.get("heading_text_exact") or "").strip()
+            number_text = str(item.get("number_text") or "").strip()
+            min_paragraph_index = int(item.get("min_paragraph_index") or 0)
+            if not exact_text or not number_text:
+                raise ValueError("explicit heading number repair requires heading_text_exact and number_text")
+            matches = [
+                index
+                for index, text in enumerate(paragraph_texts)
+                if index >= min_paragraph_index and index not in used_indices and text == exact_text
+            ]
+            if len(matches) != 1:
+                raise ValueError(f"explicit heading number repair matched {len(matches)} paragraphs: {exact_text[:40]}")
+            index = matches[0]
+            patched, before_text, after_text = prepend_heading_number_in_paragraph_xml(
+                paragraph_matches[index].group(0), number_text
+            )
+            replacements[index] = patched
+            used_indices.add(index)
+            changed.append(
+                {
+                    "target_paragraph_index": index,
+                    "heading_text_exact": exact_text,
+                    "number_text": number_text,
+                    "before_text": before_text,
+                    "after_text": after_text,
+                    "auto_numbering_suppressed": True,
+                    "patch_mode": "package_preserving_document_xml_span",
+                }
+            )
+
+        rebuilt = bytearray()
+        cursor = 0
+        for index, match in enumerate(paragraph_matches):
+            rebuilt.extend(document_xml[cursor : match.start()])
+            rebuilt.extend(replacements.get(index, match.group(0)))
+            cursor = match.end()
+        rebuilt.extend(document_xml[cursor:])
+
+        with tempfile.TemporaryDirectory() as td:
+            temp_output = Path(td) / "out.docx"
+            with zipfile.ZipFile(temp_output, "w", compression=zipfile.ZIP_DEFLATED) as zout:
+                for zip_item in zin.infolist():
+                    data = zin.read(zip_item.filename)
+                    if zip_item.filename == "word/document.xml":
+                        data = bytes(rebuilt)
+                    zout.writestr(zip_item, data)
+            output_docx.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(temp_output, output_docx)
+
+    return {
+        "package_preserving_explicit_heading_numbers": changed,
+        "document_xml_bytes_before": len(document_xml),
+        "document_xml_bytes_after": len(rebuilt),
+    }
+
+
+def remove_outline_level_from_non_heading_paragraph_xml(paragraph_xml: bytes, paragraph_text_value: str) -> bytes:
+    if is_heading_text(paragraph_text_value):
+        raise ValueError("outline removal target text is a heading-like paragraph")
+    ppr_match = re.search(rb"<w:pPr\b[^>]*>.*?</w:pPr>", paragraph_xml, flags=re.DOTALL)
+    if ppr_match is None:
+        raise ValueError("outline removal target has no paragraph properties")
+    ppr_xml = ppr_match.group(0)
+    if not re.search(rb"<w:outlineLvl\b[^>]*/>", ppr_xml) and not re.search(
+        rb"<w:outlineLvl\b[^>]*>.*?</w:outlineLvl>", ppr_xml, flags=re.DOTALL
+    ):
+        raise ValueError("outline removal target has no w:outlineLvl")
+    ppr_xml = re.sub(rb"<w:outlineLvl\b[^>]*/>", b"", ppr_xml)
+    ppr_xml = re.sub(rb"<w:outlineLvl\b[^>]*>.*?</w:outlineLvl>", b"", ppr_xml, flags=re.DOTALL)
+    return paragraph_xml[: ppr_match.start()] + ppr_xml + paragraph_xml[ppr_match.end() :]
+
+
+def apply_package_preserving_non_heading_outline_repairs(
+    input_docx: Path, output_docx: Path, plan: dict[str, object]
+) -> dict[str, object]:
+    items = plan.get("non_heading_outline_removals", [])
+    if not isinstance(items, list) or not items:
+        raise ValueError("package_preserving_non_heading_outline_removal requires non_heading_outline_removals")
+    allowed_truthy = {"package_preserving_non_heading_outline_removal"}
+    allowed_nonempty = {"non_heading_outline_removals"}
+    for key, value in plan.items():
+        if key in allowed_nonempty:
+            continue
+        if key in allowed_truthy and bool(value):
+            continue
+        if value not in (False, None, "", [], {}):
+            raise ValueError(
+                "package-preserving non-heading outline repair may not be combined with other mutation plan fields: "
+                f"{key}"
+            )
+
+    with zipfile.ZipFile(input_docx) as zin:
+        document_xml = zin.read("word/document.xml")
+        paragraph_matches = list(P_XML_RE.finditer(document_xml))
+        if not paragraph_matches:
+            raise ValueError("word/document.xml has no w:p paragraphs")
+        replacements: dict[int, bytes] = {}
+        changed: list[dict[str, object]] = []
+        used_indices: set[int] = set()
+        paragraph_texts = [paragraph_text_from_xml_bytes(match.group(0)).strip() for match in paragraph_matches]
+        for item in items:
+            if not isinstance(item, dict):
+                raise ValueError("each non_heading_outline_removals item must be an object")
+            exact_text = str(item.get("paragraph_text_exact") or "").strip()
+            startswith = str(item.get("paragraph_text_startswith") or "").strip()
+            min_paragraph_index = int(item.get("min_paragraph_index") or 0)
+            max_paragraph_index = int(item.get("max_paragraph_index") or len(paragraph_matches))
+            if not exact_text and not startswith:
+                raise ValueError("non-heading outline repair requires exact or startswith text")
+            matches = []
+            for index, text in enumerate(paragraph_texts):
+                if index < min_paragraph_index or index > max_paragraph_index or index in used_indices:
+                    continue
+                if exact_text and text == exact_text:
+                    matches.append(index)
+                elif startswith and text.startswith(startswith):
+                    matches.append(index)
+            if len(matches) != 1:
+                display = exact_text or startswith
+                raise ValueError(f"non-heading outline repair matched {len(matches)} paragraphs: {display[:40]}")
+            index = matches[0]
+            before_xml = paragraph_matches[index].group(0)
+            after_xml = remove_outline_level_from_non_heading_paragraph_xml(before_xml, paragraph_texts[index])
+            replacements[index] = after_xml
+            used_indices.add(index)
+            changed.append(
+                {
+                    "target_paragraph_index": index,
+                    "paragraph_text": paragraph_texts[index][:160],
+                    "removed": "w:outlineLvl",
+                    "patch_mode": "package_preserving_document_xml_span",
+                }
+            )
+
+        rebuilt = bytearray()
+        cursor = 0
+        for index, match in enumerate(paragraph_matches):
+            rebuilt.extend(document_xml[cursor : match.start()])
+            rebuilt.extend(replacements.get(index, match.group(0)))
+            cursor = match.end()
+        rebuilt.extend(document_xml[cursor:])
+
+        with tempfile.TemporaryDirectory() as td:
+            temp_output = Path(td) / "out.docx"
+            with zipfile.ZipFile(temp_output, "w", compression=zipfile.ZIP_DEFLATED) as zout:
+                for zip_item in zin.infolist():
+                    data = zin.read(zip_item.filename)
+                    if zip_item.filename == "word/document.xml":
+                        data = bytes(rebuilt)
+                    zout.writestr(zip_item, data)
+            output_docx.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(temp_output, output_docx)
+
+    return {
+        "package_preserving_non_heading_outline_removal": changed,
+        "document_xml_bytes_before": len(document_xml),
+        "document_xml_bytes_after": len(rebuilt),
+    }
+
+
+def remove_blank_paragraphs_between_abstract_body_and_keywords(
+    body: ET.Element, paragraphs: list[ET.Element], plan: dict[str, object]
+) -> list[dict[str, object]]:
+    if not bool(plan.get("remove_blank_paragraphs_between_abstract_body_and_keywords", False)):
+        return []
+    surfaces = find_abstract_surfaces(paragraphs)
+    changed: list[dict[str, object]] = []
+    for body_surface, keyword_surface in (
+        ("zh_abstract_body", "zh_keyword_line"),
+        ("en_abstract_body", "en_keyword_line"),
+    ):
+        body_index = surfaces[body_surface][0]
+        keyword_index = surfaces[keyword_surface][0]
+        if keyword_index <= body_index:
+            raise ValueError(f"{keyword_surface} appears before {body_surface}")
+        removed: list[int] = []
+        for index in range(keyword_index - 1, body_index, -1):
+            text = paragraph_text(paragraphs[index])
+            if text.strip():
+                continue
+            if paragraphs[index].find(".//w:drawing", NS) is not None or paragraphs[index].find(".//w:pict", NS) is not None:
+                raise ValueError(f"blank abstract seam paragraph {index} contains a drawing or pict object")
+            if paragraphs[index].find(".//w:fldChar", NS) is not None or paragraphs[index].find(".//w:instrText", NS) is not None:
+                raise ValueError(f"blank abstract seam paragraph {index} contains a field")
+            body.remove(paragraphs[index])
+            paragraphs.pop(index)
+            removed.append(index)
+        if removed:
+            changed.append(
+                {
+                    "body_surface": body_surface,
+                    "keyword_surface": keyword_surface,
+                    "removed_blank_paragraph_indices": list(reversed(removed)),
+                }
+            )
+    return changed
+
+
 def apply_repairs(input_docx: Path, template_docx: Path, output_docx: Path, plan: dict[str, object]) -> dict[str, object]:
+    if bool(plan.get("package_preserving_settings_repair", False)):
+        return apply_package_preserving_settings_repairs(input_docx, output_docx, plan)
+    if bool(plan.get("package_preserving_frontmatter_section_types", False)):
+        return apply_package_preserving_frontmatter_section_type_repairs(input_docx, output_docx, plan)
+    if bool(plan.get("package_preserving_explicit_heading_numbers", False)):
+        return apply_package_preserving_explicit_heading_number_repairs(input_docx, output_docx, plan)
+    if bool(plan.get("package_preserving_non_heading_outline_removal", False)):
+        return apply_package_preserving_non_heading_outline_repairs(input_docx, output_docx, plan)
     if plan.get("image_display_resize") not in (None, {}, []):
         raise ValueError(
             "plan.image_display_resize requires a transaction-owned figure manifest; "
@@ -1490,6 +2080,7 @@ def apply_repairs(input_docx: Path, template_docx: Path, output_docx: Path, plan
     normalize_image_holders = bool(plan.get("normalize_image_holders", False if keyword_only else normalize_body_prose))
     normalize_body_headings = bool(plan.get("normalize_body_headings", False))
     sync_normal_style_baseline = bool(plan.get("sync_normal_style_baseline", True))
+    remove_annotation_colors = bool(plan.get("remove_annotation_run_colors", False))
     force_real_firstline_twips = (
         int(plan["force_real_firstline_twips"])
         if str(plan.get("force_real_firstline_twips", "")).strip()
@@ -1553,7 +2144,9 @@ def apply_repairs(input_docx: Path, template_docx: Path, output_docx: Path, plan
             "body_prose_paragraphs_normalized": [],
             "body_headings_normalized": [],
             "body_text_replacements": [],
+            "explicit_body_heading_numbers": [],
             "empty_paragraphs_removed_before_headings": [],
+            "blank_paragraphs_removed_between_abstract_body_and_keywords": [],
             "image_holders_normalized": [],
             "body_donor_template_index": body_donor_index,
             "template_normal_style_id": template_normal_style_id,
@@ -1565,13 +2158,19 @@ def apply_repairs(input_docx: Path, template_docx: Path, output_docx: Path, plan
             "body_style_policy": body_style_policy,
             "body_style_id_override": body_style_id_override,
             "sync_normal_style_baseline": sync_normal_style_baseline,
+            "remove_annotation_run_colors": remove_annotation_colors,
+            "annotation_run_visual_markers_removed": 0,
         }
 
         abstract_text = plan.get("abstract_text", {})
         if not isinstance(abstract_text, dict):
             raise ValueError("plan.abstract_text must be an object")
         if keyword_only:
-            changed["abstract_surfaces"] = repair_keyword_only_surfaces(paragraphs, abstract_text)
+            changed["abstract_surfaces"] = repair_keyword_only_surfaces(
+                paragraphs,
+                abstract_text,
+                allow_missing=bool(plan.get("allow_missing_keyword_surface", False)),
+            )
             if bool(plan.get("repair_abstract_role_format", False)):
                 changed["abstract_surfaces"].update(repair_abstract_role_surfaces(paragraphs))
             normalize_body_prose = False
@@ -1798,8 +2397,14 @@ def apply_repairs(input_docx: Path, template_docx: Path, output_docx: Path, plan
             body_rpr=body_rpr,
             firstline_twips=force_real_firstline_twips,
         )
+        changed["explicit_body_heading_numbers"] = apply_explicit_body_heading_numbers(paragraphs, plan)
+        changed["blank_paragraphs_removed_between_abstract_body_and_keywords"] = (
+            remove_blank_paragraphs_between_abstract_body_and_keywords(body, paragraphs, plan)
+        )
         changed["empty_paragraphs_removed_before_headings"] = remove_empty_paragraphs_before_headings(body, paragraphs, plan)
         changed["image_display_resizes"] = apply_image_display_resize(paragraphs, plan.get("image_display_resize"))
+        if remove_annotation_colors:
+            changed["annotation_run_visual_markers_removed"] = remove_document_annotation_run_colors(paragraphs)
 
         with tempfile.TemporaryDirectory() as td:
             temp_output = Path(td) / "out.docx"

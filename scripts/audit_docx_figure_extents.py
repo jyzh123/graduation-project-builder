@@ -262,10 +262,21 @@ def audit_figure_extents(
                 f"width_cm={width_cm} height_cm={height_cm} "
                 f"min_width_cm={required_min_width} min_height_cm={required_min_height}"
             )
+        scaled_height_at_target_width = 0
+        if max_cx > 0 and max_cy > 0 and text_width_emu and min_text_width_ratio > 0:
+            scaled_height_at_target_width = int(max_cy * ((text_width_emu * min_text_width_ratio) / max_cx))
+        height_constrained_width = bool(
+            scaled_height_at_target_width
+            and (
+                scaled_height_at_target_width > int(max_height_cm * EMU_PER_CM * 1.005)
+                or (text_height_emu and scaled_height_at_target_width > int(text_height_emu * 0.82))
+            )
+        )
         paragraph_margin_width_drift = (
             bool(text_width_emu)
             and min_text_width_ratio > 0
             and max_cx < int(text_width_emu * min_text_width_ratio)
+            and not height_constrained_width
         )
         if paragraph_margin_width_drift:
             paragraph_margin_width_drift_count += 1
@@ -300,6 +311,8 @@ def audit_figure_extents(
                 "cy_emu": max_cy,
                 "text_width_cm": emu_to_cm(text_width_emu) if text_width_emu else 0.0,
                 "width_text_ratio": width_text_ratio,
+                "height_constrained_width": height_constrained_width,
+                "scaled_height_at_target_width_cm": round(emu_to_cm(scaled_height_at_target_width), 2) if scaled_height_at_target_width else 0,
                 "structural_caption": structural_caption,
                 "min_readable_width_cm": required_min_width,
                 "min_readable_height_cm": required_min_height,

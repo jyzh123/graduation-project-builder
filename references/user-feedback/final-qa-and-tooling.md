@@ -589,6 +589,7 @@ Render Review Page-Number Distinction Detail
 - Required checks on the exact rendered deliverable:
   - the title paragraph matches the locked baseline
   - the opener starts on a fresh page
+  - the `references` opener page is strictly after the previous real content page, with `references previous content physical page=...` and `references_prior_block_separation_verdict=pass` recorded in the tail-block opener map
   - the page immediately before the opener does not still carry a merged boundary
   - references and acknowledgement remain separate terminal blocks in the rendered sequence
   - the acceptance record names the evidence files and summary for the checked tail-block openers
@@ -773,17 +774,30 @@ Render Review Page-Number Distinction Detail
 - If this checklist conflicts with a more specific project instruction, record the override in the checklist.
 - Project-specific figure/result-image provenance overrides must be recorded in the checklist rather than silently weakening this common gate.
 
-### QA-FINAL-057. User-Reported TOC, References, Or Body-Font Visual Defects Require Template-Bound Render Geometry (Mandatory)
+### QA-FINAL-057. User-Reported Protected Visual Defects Require Template-Bound Render Geometry (Mandatory)
 
-- When the user report, screenshot, or review comment points to TOC visual drift, references pagination/page-break drift, or visible body-font/body-size/body-style abnormality, do not close the issue from XML inspection, style names, `officecli validate`, PDF export success, page-image existence, or sampled-page review alone.
+- When the user report, screenshot, or review comment points to TOC visual drift, abstract/keyword typography drift, header horizontal-line drift, footer/page-number position drift, references pagination/page-break drift, or visible body-font/body-size/body-style abnormality, do not close the issue from XML inspection, style names, `officecli validate`, PDF export success, page-image existence, or sampled-page review alone.
 - The acceptance record must bind every named surface to:
   - the exact reviewed DOCX/PDF path and final DOCX SHA256
   - the active template or approved sample path and fingerprint
   - rendered template-vs-target full-page evidence for the same logical/physical page class
-  - rendered key-surface crop or region evidence for the complained-about TOC row/level, references opener/entry block, or body-font page
+  - rendered key-surface crop or region evidence for the complained-about TOC row/level, abstract title/body/keyword block, header line/text region, footer/page-number region, references opener/entry block, or body-font page
   - numeric geometry or typography evidence, including left-x/centerline, bounding box, line-height/y-delta, page occupancy, font size, and paragraph/run typography where relevant
   - one ledger row per user-named surface, with detector id, evidence path, and pass verdict
 - TOC issues must cover all rendered TOC pages and every used level, including dotted leaders, page-number column, row density, visible-run typography, and page-class occupancy.
+- Abstract issues must cover Chinese abstract title/body/keyword line and English abstract title/body/keyword line as separate surfaces. A body-style pass or front-matter order pass cannot substitute for those six typography/paragraph checks.
+- Header/footer/page-number issues must cover rendered front matter, TOC, first body page, representative body page, references, acknowledgement, and appendix when present. A header/footer XML or field-code pass is not enough when a visible line, stale header text, or page-number position is reported.
 - References pagination issues must cover the references title/opener, first references page, continuation pages when present, the page immediately before the opener, and the pagination owner that makes the opener start on a fresh page.
 - Body visible-font issues must cover the user-reported page and enough same-family body pages to prove the repair is not a sampled-only local patch. If body defaults, `Normal`, docDefaults, theme fonts, or shared body styles were touched, the proof must escalate to same-family chapter/body-page coverage.
 - Evidence that is stale, sampled-only, current-draft-as-baseline, XML-only, structure-only, or missing either the full-page binding or key-surface binding is failed evidence even when individual detector summaries say `pass`.
+- Final handoff text may not say `passed with limitations`, `core checks passed`, `structural pass`, or equivalent caveat wording for these surfaces. The correct state is blocked until the template-bound rendered evidence passes.
+
+### QA-FINAL-058. Thesis Content Expansion Requires Post-Mutation Machine-Vision Body Review (Mandatory)
+
+- After any thesis DOCX text mutation that inserts, expands, rewrites, or lengthens body paragraphs, final QA must render or rasterize the exact output being handed off and run a machine-vision or equivalent page-image review on every touched page plus the page-flow/blast-radius neighborhood.
+- PDF export success, page count stability, XML/package diff counts, media counts, paragraph counts, style names, body character counts, and broad page-image existence are supporting evidence only. They cannot close content expansion or body paragraph insertion.
+- The review must explicitly check that inserted body prose did not render as a title, chapter heading, section heading, centered opener, bold oversized block, heading-outline paragraph, or top-of-page orphan block attached to the next chapter opener.
+- The acceptance record must include `content mutation rendered-page review path`, `content mutation machine-vision verdict`, `inserted body heading-contamination verdict`, `touched-page/blast-radius machine-vision evidence paths`, and `format lane post-mutation rendered audit verdict`.
+- The `content mutation machine-vision verdict` must be pass-shaped and must name the reviewed exact DOCX/PDF path, page images, touched paragraph/page ids, body-vs-heading comparison, and final body-contamination verdict.
+- A final acceptance record that says `XML only`, `PDF export only`, `page count only`, `manual visual only`, `sampled-only`, `not checked`, `no machine vision`, or any equivalent substitute proof for this surface is failed evidence.
+- Multi-agent, sequential-fallback, or single-agent audit cannot accept worker claims for content expansion unless the audit parses the rendered machine-vision evidence and confirms the format lane reviewed the post-mutation exact output.

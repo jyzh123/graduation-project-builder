@@ -185,6 +185,35 @@ def find_page(pdf_texts: list[str], marker: str) -> int | None:
     return None
 
 
+def page_contains_standalone_marker(text: str, marker: str) -> bool:
+    target = normalize(marker)
+    standalone_markers = {
+        "\u6458\u8981",
+        "Abstract",
+        "\u76ee\u5f55",
+        "\u7b2c\u4e00\u7ae0\u7eea\u8bba",
+        "\u7b2c\u4e00\u7ae0 \u7eea\u8bba",
+        "\u53c2\u8003\u6587\u732e",
+        "\u81f4\u8c22",
+    }
+    if target not in {normalize(item) for item in standalone_markers}:
+        return target in normalize(text)
+    for line in (text or "").splitlines():
+        if normalize(line) == target:
+            return True
+    return False
+
+
+def find_standalone_page(pdf_texts: list[str], marker: str) -> int | None:
+    target = normalize(marker)
+    if not target:
+        return None
+    for idx, text in enumerate(pdf_texts, start=1):
+        if page_contains_standalone_marker(text, marker):
+            return idx
+    return None
+
+
 def find_any_page(pdf_texts: list[str], markers: list[str]) -> int | None:
     for marker in markers:
         page = find_page(pdf_texts, marker)
@@ -197,6 +226,29 @@ def find_heading_marker(doc: Document, candidates: set[str]) -> tuple[str, int] 
     normalized_candidates = {heading_key(item) for item in candidates}
     for idx, paragraph in enumerate(doc.paragraphs):
         text = paragraph.text.strip()
+        if heading_key(text) in normalized_candidates:
+            return text, idx
+    return None
+
+
+def iter_sdt_paragraph_texts(doc: Document) -> list[tuple[str, int]]:
+    results: list[tuple[str, int]] = []
+    for idx, paragraph in enumerate(doc.paragraphs):
+        text = paragraph.text.strip()
+        if text:
+            results.append((text, idx))
+    base = len(results)
+    for offset, sdt in enumerate(doc.part.element.findall(".//w:sdt", doc.part.element.nsmap)):
+        for paragraph in sdt.findall("./w:sdtContent/w:p", doc.part.element.nsmap):
+            text = "".join(node.text or "" for node in paragraph.findall(".//w:t", doc.part.element.nsmap)).strip()
+            if text:
+                results.append((text, base + offset))
+    return results
+
+
+def find_heading_marker_anywhere(doc: Document, candidates: set[str]) -> tuple[str, int] | None:
+    normalized_candidates = {heading_key(item) for item in candidates}
+    for text, idx in iter_sdt_paragraph_texts(doc):
         if heading_key(text) in normalized_candidates:
             return text, idx
     return None
@@ -219,8 +271,7 @@ def find_heading_or_prefix_marker(doc: Document, candidates: set[str]) -> tuple[
 
 
 def find_first_body_marker(doc: Document) -> tuple[str, int] | None:
-    for idx, paragraph in enumerate(doc.paragraphs):
-        text = paragraph.text.strip()
+    for text, idx in iter_sdt_paragraph_texts(doc):
         if re.match(r"^\d{1,2}\s+\S", text) or re.match(r"^\u7b2c[0-9\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341]+\u7ae0", text):
             return text, idx
     return None
@@ -288,14 +339,17 @@ def build_template_profile(template_docx: Path, template_pdf: Path | None = None
         "toc": {"\u76ee\u5f55", "\u76ee  \u5f55", "\u76ee\u25a1\u25a1\u5f55"},
     }
     for key, candidates in heading_specs.items():
-        found = find_heading_or_prefix_marker(doc, candidates) if key in {"zh_abstract", "en_abstract"} else find_heading_marker(doc, candidates)
+        found = find_heading_or_prefix_marker(doc, candidates) if key in {"zh_abstract", "en_abstract"} else find_heading_marker_anywhere(doc, candidates)
         text, idx = found if found else ("", -1)
         page_markers = [text, *candidates] if text else []
+        template_page = find_any_page(pdf_texts, page_markers) if page_markers else None
+        if key in {"zh_abstract", "en_abstract", "toc"} and text:
+            template_page = find_standalone_page(pdf_texts, text) or template_page
         markers[key] = {
             "label": SURFACE_LABELS[key],
             "text": text,
             "paragraph_indices": [idx] if idx >= 0 else [],
-            "template_page": find_any_page(pdf_texts, page_markers) if page_markers else None,
+            "template_page": template_page,
         }
     body = find_first_body_marker(doc)
     text, idx = body if body else ("", -1)
@@ -303,7 +357,7 @@ def build_template_profile(template_docx: Path, template_pdf: Path | None = None
         "label": SURFACE_LABELS["first_body"],
         "text": text,
         "paragraph_indices": [idx] if idx >= 0 else [],
-        "template_page": find_page(pdf_texts, text) if text else None,
+        "template_page": find_standalone_page(pdf_texts, text) if text else None,
     }
 
     same_page_groups: list[dict[str, Any]] = []

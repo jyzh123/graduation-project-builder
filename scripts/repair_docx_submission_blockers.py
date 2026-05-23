@@ -52,6 +52,81 @@ def paragraph_style_id(paragraph: ET.Element) -> str:
     return node.attrib.get(qn("w:val"), "") if node is not None else ""
 
 
+def has_image(paragraph: ET.Element) -> bool:
+    return any(node.tag.endswith("}drawing") or node.tag.endswith("}pict") for node in paragraph.iter())
+
+
+def has_page_break(paragraph: ET.Element) -> bool:
+    return any(node.attrib.get(qn("w:type")) == "page" for node in paragraph.iter(qn("w:br")))
+
+
+def has_section_break(paragraph: ET.Element) -> bool:
+    return paragraph.find("./w:pPr/w:sectPr", NS) is not None
+
+
+def compact_text(text: str) -> str:
+    return re.sub(r"\s+", "", text or "").lower()
+
+
+def heading_level(text: str) -> int | None:
+    compact = compact_text(text)
+    if re.fullmatch(r"(第[一二三四五六七八九十]+章|[1-9]\d*)[^。；;,.，、]{0,30}", compact):
+        return 1
+    if re.fullmatch(r"[1-9]\d*\.\d+[^。；;,.，、]{0,50}", compact):
+        return 2
+    if re.fullmatch(r"[1-9]\d*\.\d+\.\d+[^。；;,.，、]{0,50}", compact):
+        return 3
+    return None
+
+
+CAPTION_RE = re.compile(r"^\s*[图表]\s*\d")
+
+
+def remove_blank_paragraphs_between_visible_thesis_paragraphs(body: ET.Element) -> int:
+    """Remove only blank prose separators that pre-submission gates reject.
+
+    This intentionally preserves paragraphs carrying page breaks, section
+    breaks, pictures, captions, headings, and image-adjacent spacing.
+    """
+    paragraphs = body_paragraphs(body)
+    texts = [paragraph_text(paragraph) for paragraph in paragraphs]
+    first_body = next((idx for idx, text in enumerate(texts) if heading_level(text) == 1), 0)
+    references = next(
+        (
+            idx
+            for idx, text in enumerate(texts)
+            if compact_text(text) in {"参考文献", "references", "bibliography"}
+        ),
+        len(paragraphs),
+    )
+    doomed: list[ET.Element] = []
+    for idx, paragraph in enumerate(paragraphs):
+        if idx <= first_body or idx >= references:
+            continue
+        if texts[idx].strip():
+            continue
+        if has_image(paragraph) or has_page_break(paragraph) or has_section_break(paragraph):
+            continue
+        if idx == 0 or idx + 1 >= len(paragraphs):
+            continue
+        prev = paragraphs[idx - 1]
+        next_paragraph = paragraphs[idx + 1]
+        prev_text = texts[idx - 1].strip()
+        next_text = texts[idx + 1].strip()
+        if not prev_text or not next_text:
+            continue
+        if has_image(prev) or has_image(next_paragraph):
+            continue
+        if CAPTION_RE.match(prev_text) or CAPTION_RE.match(next_text):
+            continue
+        if heading_level(prev_text) is not None or heading_level(next_text) is not None:
+            continue
+        doomed.append(paragraph)
+    for paragraph in doomed:
+        body.remove(paragraph)
+    return len(doomed)
+
+
 def body_paragraphs(body: ET.Element) -> list[ET.Element]:
     return [child for child in list(body) if child.tag == qn("w:p")]
 
@@ -70,6 +145,338 @@ def make_text_run(text: str, rpr: ET.Element | None = None) -> ET.Element:
         t.set(qn("xml:space"), "preserve")
     t.text = text
     return run
+
+
+def first_text_rpr(paragraph: ET.Element) -> ET.Element | None:
+    for run in paragraph.findall("./w:r", NS):
+        if paragraph_text(run).strip():
+            rpr = run.find("./w:rPr", NS)
+            return copy.deepcopy(rpr) if rpr is not None else None
+    for run in paragraph.findall(".//w:r", NS):
+        if paragraph_text(run).strip():
+            rpr = run.find("./w:rPr", NS)
+            return copy.deepcopy(rpr) if rpr is not None else None
+    return None
+
+
+def ensure_clean_citation_rpr(rpr: ET.Element | None = None) -> ET.Element:
+    result = copy.deepcopy(rpr) if rpr is not None else ET.Element(qn("w:rPr"))
+    for tag in ("w:b", "w:i", "w:rStyle", "w:highlight"):
+        for child in list(result.findall(tag, NS)):
+            result.remove(child)
+    color = result.find("./w:color", NS)
+    if color is None:
+        color = ET.SubElement(result, qn("w:color"))
+    color.set(qn("w:val"), "000000")
+    underline = result.find("./w:u", NS)
+    if underline is None:
+        underline = ET.SubElement(result, qn("w:u"))
+    underline.set(qn("w:val"), "none")
+    vert = result.find("./w:vertAlign", NS)
+    if vert is None:
+        vert = ET.SubElement(result, qn("w:vertAlign"))
+    vert.set(qn("w:val"), "superscript")
+    return result
+
+
+def existing_citation_rpr(root: ET.Element) -> ET.Element:
+    for run in root.findall(".//w:r", NS):
+        text = paragraph_text(run)
+        if re.fullmatch(r"\[\d+\]", text or ""):
+            rpr = run.find("./w:rPr", NS)
+            return ensure_clean_citation_rpr(rpr)
+    return ensure_clean_citation_rpr()
+
+
+def make_hyperlink_citation(number: int, rpr: ET.Element) -> ET.Element:
+    hyperlink = ET.Element(qn("w:hyperlink"))
+    hyperlink.set(qn("w:anchor"), f"cite_ref_{number}")
+    hyperlink.set(qn("w:history"), "1")
+    hyperlink.append(make_text_run(f"[{number}]", rpr))
+    return hyperlink
+
+
+def text_char_family(char: str) -> str:
+    if "\u4e00" <= char <= "\u9fff":
+        return "cjk"
+    if char.isascii() and (char.isalnum() or char in " -_./:&+()[]'\""):
+        return "latin"
+    return "neutral"
+
+
+def next_non_neutral_family(chars: list[str], start: int) -> str | None:
+    for char in chars[start:]:
+        family = text_char_family(char)
+        if family != "neutral":
+            return family
+    return None
+
+
+def split_body_text_by_script(text: str) -> list[tuple[str, str]]:
+    segments: list[tuple[str, str]] = []
+    chars = list(text or "")
+    current_family: str | None = None
+    current: list[str] = []
+    for index, char in enumerate(chars):
+        family = text_char_family(char)
+        if family == "neutral":
+            family = current_family or next_non_neutral_family(chars, index + 1) or "cjk"
+        if current_family is None:
+            current_family = family
+        if family != current_family:
+            if current:
+                segments.append((current_family, "".join(current)))
+            current_family = family
+            current = [char]
+        else:
+            current.append(char)
+    if current and current_family:
+        segments.append((current_family, "".join(current)))
+    return [(family, value) for family, value in segments if value]
+
+
+def body_latin_rpr(rpr: ET.Element | None) -> ET.Element:
+    result = copy.deepcopy(rpr) if rpr is not None else ET.Element(qn("w:rPr"))
+    fonts = result.find("./w:rFonts", NS)
+    if fonts is None:
+        fonts = ET.Element(qn("w:rFonts"))
+        result.insert(0, fonts)
+    for key in ("ascii", "hAnsi", "cs"):
+        fonts.set(qn(f"w:{key}"), "Times New Roman")
+        fonts.attrib.pop(qn(f"w:{key}Theme"), None)
+    return result
+
+
+def append_body_text_runs(paragraph: ET.Element, text: str, cjk_rpr: ET.Element | None, latin_rpr: ET.Element) -> None:
+    for family, value in split_body_text_by_script(text):
+        paragraph.append(make_text_run(value, latin_rpr if family == "latin" else cjk_rpr))
+
+
+def next_bookmark_id(root: ET.Element) -> int:
+    values = []
+    for node in root.findall(".//w:bookmarkStart", NS):
+        raw = node.get(qn("w:id"), "")
+        if raw.isdigit():
+            values.append(int(raw))
+    return max(values, default=0) + 1
+
+
+def make_bookmark_start(bookmark_id: int, name: str) -> ET.Element:
+    node = ET.Element(qn("w:bookmarkStart"))
+    node.set(qn("w:id"), str(bookmark_id))
+    node.set(qn("w:name"), name)
+    return node
+
+
+def make_bookmark_end(bookmark_id: int) -> ET.Element:
+    node = ET.Element(qn("w:bookmarkEnd"))
+    node.set(qn("w:id"), str(bookmark_id))
+    return node
+
+
+def clone_text_paragraph_from_donor(
+    donor: ET.Element,
+    text: str,
+    *,
+    bookmark_name: str | None = None,
+    bookmark_id: int | None = None,
+) -> ET.Element:
+    paragraph = ET.Element(qn("w:p"))
+    ppr = donor.find("./w:pPr", NS)
+    if ppr is not None:
+        paragraph.append(copy.deepcopy(ppr))
+    rpr = first_text_rpr(donor)
+    if bookmark_name and bookmark_id is not None:
+        paragraph.append(make_bookmark_start(bookmark_id, bookmark_name))
+    paragraph.append(make_text_run(text, rpr))
+    if bookmark_name and bookmark_id is not None:
+        paragraph.append(make_bookmark_end(bookmark_id))
+    return paragraph
+
+
+def replace_text_node_fragments(root: ET.Element, replacements: list[dict[str, str]]) -> list[dict[str, object]]:
+    results: list[dict[str, object]] = []
+    for item in replacements:
+        old = str(item.get("old") or "")
+        new = str(item.get("new") or "")
+        if not old:
+            continue
+        count = 0
+        for node in root.findall(".//w:t", NS):
+            if node.text and old in node.text:
+                node.text = node.text.replace(old, new)
+                if node.text.startswith(" ") or node.text.endswith(" "):
+                    node.set(qn("xml:space"), "preserve")
+                count += 1
+        results.append({"old": old, "new": new, "count": count})
+    return results
+
+
+def append_tail_citation_text(root: ET.Element, body: ET.Element, plan: dict[str, object]) -> dict[str, object]:
+    append_plan = plan.get("citation_append")
+    if not isinstance(append_plan, dict):
+        return {"status": "skipped"}
+    host_contains = str(append_plan.get("host_contains") or "")
+    pieces = append_plan.get("pieces")
+    if not host_contains or not isinstance(pieces, list):
+        raise RuntimeError("tail plan citation_append requires host_contains and pieces")
+    paragraphs = body_paragraphs(body)
+    candidates = [p for p in paragraphs if host_contains in paragraph_text(p)]
+    if len(candidates) != 1:
+        raise RuntimeError(f"citation_append host match count must be 1, found {len(candidates)}")
+    paragraph = candidates[0]
+    existing_text = paragraph_text(paragraph)
+    already_present_numbers = set(int(n) for n in re.findall(r"\[(\d+)\]", existing_text))
+    prose_rpr = first_text_rpr(paragraph)
+    latin_rpr = body_latin_rpr(prose_rpr)
+    citation_rpr = existing_citation_rpr(root)
+    inserted_numbers: list[int] = []
+    for piece in pieces:
+        if not isinstance(piece, dict):
+            continue
+        if "text" in piece:
+            text = str(piece.get("text") or "")
+            if text:
+                append_body_text_runs(paragraph, text, prose_rpr, latin_rpr)
+        elif "citation" in piece:
+            number = int(piece["citation"])
+            if number in already_present_numbers:
+                continue
+            paragraph.append(make_hyperlink_citation(number, citation_rpr))
+            inserted_numbers.append(number)
+    return {"status": "passed", "paragraph_text_prefix": existing_text[:80], "inserted_numbers": inserted_numbers}
+
+
+def find_bibliography_heading(paragraphs: list[ET.Element]) -> int | None:
+    for index, paragraph in enumerate(paragraphs):
+        if compact_text(paragraph_text(paragraph)) in {"参考文献", "references", "bibliography"}:
+            return index
+    return None
+
+
+def find_ack_heading(paragraphs: list[ET.Element]) -> int | None:
+    for index, paragraph in enumerate(paragraphs):
+        compact = compact_text(paragraph_text(paragraph)).lower()
+        if compact in {"致谢", "谢辞", "acknowledgement", "acknowledgements", "acknowledgment", "acknowledgments"}:
+            return index
+    return None
+
+
+def first_body_text_donor(paragraphs: list[ET.Element], bibliography_index: int) -> ET.Element:
+    body_started = False
+    fallback: ET.Element | None = None
+    for paragraph in paragraphs[:bibliography_index]:
+        text = paragraph_text(paragraph).strip()
+        if heading_level(text) == 1:
+            body_started = True
+            continue
+        if not body_started or not text:
+            continue
+        if heading_level(text) is not None or CAPTION_RE.match(text) or has_image(paragraph):
+            continue
+        fallback = paragraph
+    if fallback is None:
+        raise RuntimeError("could not find body prose donor before bibliography")
+    return fallback
+
+
+def tail_block_end_index(children: list[ET.Element], paragraphs: list[ET.Element], start_para_index: int) -> int:
+    start_child_index = children.index(paragraphs[start_para_index])
+    for index in range(start_child_index + 1, len(children)):
+        child = children[index]
+        if child.tag != qn("w:p"):
+            continue
+        text = paragraph_text(child).strip()
+        if not text:
+            continue
+        compact = compact_text(text).lower()
+        if compact in {"致谢", "谢辞", "附录", "appendix", "acknowledgement", "acknowledgements"}:
+            return index
+        if heading_level(text) == 1 and compact not in {"参考文献", "references", "bibliography"}:
+            return index
+    return len(children)
+
+
+def append_bibliography_entries(root: ET.Element, body: ET.Element, entries: list[str]) -> dict[str, object]:
+    if not entries:
+        return {"status": "skipped", "inserted": 0}
+    paragraphs = body_paragraphs(body)
+    bibliography_index = find_bibliography_heading(paragraphs)
+    if bibliography_index is None:
+        raise RuntimeError("extra references require an existing bibliography heading")
+    children = list(body)
+    block_end = tail_block_end_index(children, paragraphs, bibliography_index)
+    bibliography_children = children[children.index(paragraphs[bibliography_index]) + 1 : block_end]
+    donor = None
+    insert_at = block_end
+    existing_text = {paragraph_text(child).strip() for child in bibliography_children if child.tag == qn("w:p")}
+    for offset, child in enumerate(bibliography_children):
+        if child.tag != qn("w:p") or not paragraph_text(child).strip():
+            continue
+        donor = child
+        insert_at = children.index(child) + 1
+    if donor is None:
+        raise RuntimeError("could not find bibliography entry donor")
+    bookmark_id = next_bookmark_id(root)
+    inserted: list[str] = []
+    for offset, entry_text in enumerate(entries):
+        if entry_text in existing_text:
+            continue
+        number = len([c for c in bibliography_children if c.tag == qn("w:p") and paragraph_text(c).strip()]) + len(inserted) + 1
+        paragraph = clone_text_paragraph_from_donor(
+            donor,
+            entry_text,
+            bookmark_name=f"cite_ref_{number}",
+            bookmark_id=bookmark_id,
+        )
+        bookmark_id += 1
+        body.insert(insert_at + len(inserted), paragraph)
+        inserted.append(entry_text)
+    return {"status": "passed", "inserted": len(inserted), "inserted_prefixes": [item[:80] for item in inserted]}
+
+
+def insert_acknowledgement(body: ET.Element, plan: dict[str, object]) -> dict[str, object]:
+    ack_plan = plan.get("acknowledgement")
+    if not isinstance(ack_plan, dict):
+        return {"status": "skipped"}
+    paragraphs = body_paragraphs(body)
+    if find_ack_heading(paragraphs) is not None:
+        return {"status": "already-present"}
+    bibliography_index = find_bibliography_heading(paragraphs)
+    if bibliography_index is None:
+        raise RuntimeError("acknowledgement insertion requires bibliography heading")
+    title = str(ack_plan.get("title") or "致谢")
+    content = [str(item) for item in (ack_plan.get("paragraphs") or []) if str(item).strip()]
+    if not content:
+        raise RuntimeError("acknowledgement plan requires non-empty paragraphs")
+    children = list(body)
+    block_end = tail_block_end_index(children, paragraphs, bibliography_index)
+    reference_heading = paragraphs[bibliography_index]
+    body_donor = first_body_text_donor(paragraphs, bibliography_index)
+    heading = clone_text_paragraph_from_donor(reference_heading, title)
+    ppr = heading.find("./w:pPr", NS)
+    if ppr is None:
+        ppr = ET.Element(qn("w:pPr"))
+        heading.insert(0, ppr)
+    if ppr.find("./w:pageBreakBefore", NS) is None:
+        ppr.insert(0, ET.Element(qn("w:pageBreakBefore")))
+    insert_nodes = [heading] + [clone_text_paragraph_from_donor(body_donor, paragraph) for paragraph in content]
+    for offset, node in enumerate(insert_nodes):
+        body.insert(block_end + offset, node)
+    return {"status": "passed", "paragraphs_inserted": len(insert_nodes), "title": title}
+
+
+def apply_tail_content_plan(root: ET.Element, body: ET.Element, tail_plan: dict[str, object] | None) -> dict[str, object]:
+    if not tail_plan:
+        return {"status": "skipped"}
+    entries = [str(item) for item in (tail_plan.get("extra_references") or []) if str(item).strip()]
+    return {
+        "status": "passed",
+        "text_replacements": replace_text_node_fragments(root, tail_plan.get("text_replacements") or []),
+        "citation_append": append_tail_citation_text(root, body, tail_plan),
+        "extra_references": append_bibliography_entries(root, body, entries),
+        "acknowledgement": insert_acknowledgement(body, tail_plan),
+    }
 
 
 def make_tab_run(rpr: ET.Element | None = None) -> ET.Element:
@@ -278,32 +685,67 @@ def add_results_table(body: ET.Element) -> int:
     return 1
 
 
-def patch_document_xml(xml_bytes: bytes) -> tuple[bytes, dict[str, int]]:
+def patch_document_xml(
+    xml_bytes: bytes,
+    *,
+    empty_paragraphs_only: bool = False,
+    tail_plan: dict[str, object] | None = None,
+) -> tuple[bytes, dict[str, object]]:
     root = ET.fromstring(xml_bytes)
     body = root.find("w:body", NS)
     if body is None:
         raise RuntimeError("word/document.xml has no w:body")
+    removed_blank_paragraphs = remove_blank_paragraphs_between_visible_thesis_paragraphs(body)
+    if empty_paragraphs_only:
+        report = {
+            "square_placeholder_text_nodes_changed": 0,
+            "front_matter_toc_entries_added": 0,
+            "live_toc_fields_added": 0,
+            "results_tables_added": 0,
+            "blank_between_visible_paragraphs_removed": removed_blank_paragraphs,
+            "tail_content_plan": apply_tail_content_plan(root, body, tail_plan),
+        }
+        return ET.tostring(root, encoding="utf-8", xml_declaration=True), report
     report = {
         "square_placeholder_text_nodes_changed": normalize_square_placeholders(root),
         "front_matter_toc_entries_added": add_front_matter_toc_entries(body),
         "live_toc_fields_added": add_live_toc_field(body),
         "results_tables_added": add_results_table(body),
+        "blank_between_visible_paragraphs_removed": removed_blank_paragraphs,
+        "tail_content_plan": apply_tail_content_plan(root, body, tail_plan),
     }
     return ET.tostring(root, encoding="utf-8", xml_declaration=True), report
 
 
-def repair_docx(input_docx: Path, output_docx: Path) -> dict[str, object]:
+def repair_docx(
+    input_docx: Path,
+    output_docx: Path,
+    *,
+    empty_paragraphs_only: bool = False,
+    tail_plan_json: Path | None = None,
+) -> dict[str, object]:
     if not input_docx.exists():
         raise FileNotFoundError(input_docx)
+    tail_plan: dict[str, object] | None = None
+    if tail_plan_json is not None:
+        with tail_plan_json.open("r", encoding="utf-8-sig") as handle:
+            loaded = json.load(handle)
+        if not isinstance(loaded, dict):
+            raise RuntimeError("tail content plan root must be an object")
+        tail_plan = loaded
     output_docx.parent.mkdir(parents=True, exist_ok=True)
     temp = output_docx.with_suffix(output_docx.suffix + ".tmp")
     with zipfile.ZipFile(input_docx, "r") as zin, zipfile.ZipFile(temp, "w", zipfile.ZIP_DEFLATED) as zout:
         changed_parts: list[str] = []
-        patch_report: dict[str, int] = {}
+        patch_report: dict[str, object] = {}
         for item in zin.infolist():
             payload = zin.read(item.filename)
             if item.filename == "word/document.xml":
-                payload, patch_report = patch_document_xml(payload)
+                payload, patch_report = patch_document_xml(
+                    payload,
+                    empty_paragraphs_only=empty_paragraphs_only,
+                    tail_plan=tail_plan,
+                )
                 changed_parts.append(item.filename)
             zout.writestr(item, payload)
     shutil.move(str(temp), str(output_docx))
@@ -315,6 +757,9 @@ def repair_docx(input_docx: Path, output_docx: Path) -> dict[str, object]:
         "source_docx_sha256": sha256(input_docx),
         "final_docx_path": str(output_docx),
         "final_docx_sha256": sha256(output_docx),
+        "repair_mode": "empty-paragraphs-only" if empty_paragraphs_only else "default",
+        "tail_plan_json": str(tail_plan_json) if tail_plan_json is not None else None,
+        "tail_plan_sha256": sha256(tail_plan_json) if tail_plan_json is not None else None,
         "changed_parts": changed_parts,
         **patch_report,
         "verdict": "pass",
@@ -326,8 +771,22 @@ def main() -> int:
     parser.add_argument("--input-docx", required=True)
     parser.add_argument("--output-docx", required=True)
     parser.add_argument("--report-json", required=True)
+    parser.add_argument(
+        "--empty-paragraphs-only",
+        action="store_true",
+        help="Only remove pre-submission blocking blank paragraphs; do not run TOC/table placeholder repairs.",
+    )
+    parser.add_argument(
+        "--tail-plan-json",
+        help="Optional controlled plan for acknowledgement, extra references, body citation append, and literal placeholder replacements.",
+    )
     args = parser.parse_args()
-    report = repair_docx(Path(args.input_docx).resolve(), Path(args.output_docx).resolve())
+    report = repair_docx(
+        Path(args.input_docx).resolve(),
+        Path(args.output_docx).resolve(),
+        empty_paragraphs_only=args.empty_paragraphs_only,
+        tail_plan_json=Path(args.tail_plan_json).resolve() if args.tail_plan_json else None,
+    )
     report_path = Path(args.report_json).resolve()
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

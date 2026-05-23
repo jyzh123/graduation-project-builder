@@ -94,8 +94,11 @@
 - source retention verdict:
 - source review-artifact inventory path:
 - final review-artifact diff path:
+- controlled bookmark disposition path:
 - review comments/change marks preservation verdict:
 - comments strip explicit user approval:
+- comment-resolution source DOCX path:
+- comment-resolution source DOCX SHA256:
 - comment-resolution ledger path:
 - comment-resolution audit report path:
 - comment-resolution audit verdict:
@@ -199,9 +202,15 @@
 - full sequential blank/near-empty page scan verdict:
 - template rule profile comparison evidence path:
 - template rule profile comparison verdict:
+- final DOCX whole-format structural audit path:
+- final DOCX whole-format structural audit verdict:
+- final DOCX font-color audit path:
+- final DOCX font-color audit verdict:
 - exact output paths:
 - sample self-check report path:
 - sample self-check tail-block.pagination-contract detector:
+- sample self-check references prior-block separation verdict:
+- sample self-check header-footer.page-number-template-contract detector:
 - common pre-submission checklist evidence path:
 - common pre-submission checklist verdict:
 - page-class coverage matrix evidence path:
@@ -244,6 +253,13 @@
 - TOC dotted leaders verdict:
 - TOC page-number column evidence path:
 - TOC page-number column verdict:
+- TOC implementation family/live-field parity evidence path:
+- TOC implementation family/live-field parity verdict:
+- TOC per-level template baseline evidence path:
+- TOC rendered geometry comparison path:
+- TOC title/level font and paragraph metrics verdict:
+- TOC dotted leader and page-number column verdict:
+- TOC occupancy rhythm verdict:
 - body heading levels evidence path:
 - body heading levels verdict:
 - body text evidence path:
@@ -260,6 +276,7 @@
 - references title evidence path:
 - references title verdict:
 - references entries evidence path:
+- rendered references-page evidence path:
 - references entries verdict:
 - acknowledgement title evidence path:
 - acknowledgement title verdict:
@@ -273,6 +290,9 @@
 - header verdict:
 - header presence verdict:
 - header rendered verdict:
+- header expected display string source:
+- header rendered full-display evidence path:
+- header chapter number preservation verdict:
 - body opener/header title consistency evidence path:
 - body opener/header title consistency verdict:
 - odd/even header evidence path:
@@ -289,10 +309,17 @@
 - user-reported visual defect render-geometry evidence path:
 - user-reported visual defect template-vs-target binding verdict:
 - user-reported visual defect full-page/key-surface binding verdict:
+- content mutation rendered-page review path:
+- content mutation machine-vision verdict:
+- inserted body heading-contamination verdict:
+- touched-page/blast-radius machine-vision evidence paths:
+- format lane post-mutation rendered audit verdict:
 - figure comment conversion checklist path:
 - figure plan path:
 - figure task card paths:
 - figure asset manifest path:
+- figure source DOCX path:
+- figure source DOCX SHA256:
 - figure inventory path:
 - figure manifest contract verdict:
 - figure anchor location verdict:
@@ -442,6 +469,14 @@
 - custom-layout result-table preservation summary:
 - figure family style summary:
 - figure source/style contract summary:
+- mechanical drawing package audit path:
+- mechanical drawing package audit verdict:
+- mechanical drawing package exact package path:
+- mechanical drawing package exact package sha256:
+- mechanical drawing rendered review evidence paths:
+- mechanical drawing rendered no-overlap verdict:
+- mechanical drawing text/table/frame overlap verdict:
+- mechanical drawing entity-count-only false-pass verdict:
 - structural relation-attribute collision verdict:
 - structural shape-overlap verdict:
 - structural inserted-scale collision verdict:
@@ -566,6 +601,8 @@ Do not report completion after thesis formatting work if whole-document paginati
 Do not report completion after full-thesis or user-reported format repair unless the surface-face parity evidence records one class-specific row per present or reported surface: cover, title/front matter, Chinese abstract title/body/keywords, English abstract title/body/keywords, TOC title/levels, every heading level, body text, figure holder, figure caption, table title, table cells, citation superscript, reference title, reference entries, acknowledgement title/body, appendix title/body, header, footer, and page number.
 Do not report completion after thesis formatting work if any touched surface used a builder/default/guessed font instead of a locked baseline or explicit user rule.
 Do not report completion after thesis formatting work if template alignment verdict is not `pass`.
+Do not report completion after thesis DOCX text mutation, content expansion, body paragraph insertion, or body paragraph rewriting if `content mutation rendered-page review path`, `content mutation machine-vision verdict`, `inserted body heading-contamination verdict`, `touched-page/blast-radius machine-vision evidence paths`, or `format lane post-mutation rendered audit verdict` is blank, stale, sampled-only, manual-only, XML-only, PDF-export-only, page-count-only, not checked, or not pass-shaped.
+Do not report completion after thesis content expansion if inserted body prose renders like a title, heading, centered opener, bold oversized block, outline-level paragraph, TOC-bearing heading, or page-top orphan adjacent to a chapter opener.
 Do not report completion if an evidence path does not point to a valid review evidence record file.
 Do not report completion after thesis modification work if touched-page review evidence is missing.
 Do not report completion after TOC repair if TOC restoration evidence or TOC rendered baseline comparison evidence is missing.

@@ -37,6 +37,28 @@
         "System Before Thesis"
       ],
       "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/program-delivery.md`: namespace `FB-PROG-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_review_artifacts.py::compare_citations",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_body_citation_occurrence_moved_without_ledger_rejected",
+        "scripts/selftest_skill_flow.py::case_body_citation_no_para_id_host_changed_rejected",
+        "scripts/selftest_skill_flow.py::case_body_citation_diff_duplicate_occurrence_plain_text_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "source body citation run inventory path",
+        "final body citation run diff path",
+        "citation audit source-to-final run diff path"
+      ],
       "status": "active"
     },
     {
@@ -50,6 +72,28 @@
         "Admin Analytics Must Include a Line Chart"
       ],
       "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/citations-and-bibliography.md`: namespace `FB-CITE-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_review_artifacts.py::compare_citations",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_body_citation_occurrence_moved_without_ledger_rejected",
+        "scripts/selftest_skill_flow.py::case_body_citation_no_para_id_host_changed_rejected",
+        "scripts/selftest_skill_flow.py::case_body_citation_diff_duplicate_occurrence_plain_text_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "source body citation run inventory path",
+        "final body citation run diff path",
+        "citation audit source-to-final run diff path"
+      ],
       "status": "active"
     },
     {
@@ -619,6 +663,101 @@
       "status": "active"
     },
     {
+      "id": "CORE-FIGURE-009",
+      "legacy_id": null,
+      "owner_file": "references/thesis/figure-rules/geometry-and-layout.md",
+      "owner_group": "thesis-figure-geometry",
+      "heading": "### CORE-FIGURE-009. Structural Connectors Must Be Boundary-Bound And Orthogonal (Mandatory)",
+      "required_keywords": [
+        "CORE-FIGURE-009",
+        "boundary-to-boundary orthogonal connector law",
+        "edgeStyle=orthogonalEdgeStyle",
+        "rounded=0",
+        "source/targetless line segments"
+      ],
+      "router_file": "references/thesis/thesis-figure-generation-rules.md",
+      "router_anchor": "- `references/thesis/figure-rules/geometry-and-layout.md`: connector geometry, ER/tree layout, text containment, and collision-prevention rules",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/thesis_figure_contract.py::drawio_structural_geometry_report",
+        "scripts/validate_structural_figure_geometry.py::main"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_figure_manifest_structural_router_collision_rejected",
+        "scripts/selftest_skill_flow.py::case_figure_manifest_structural_line_crosses_node_rejected",
+        "scripts/selftest_skill_flow.py::case_figure_manifest_structural_non_orthogonal_connector_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "figure geometry validation report path",
+        "figure manifest contract verdict"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "CORE-FIGURE-010",
+      "legacy_id": null,
+      "owner_file": "references/thesis/figure-rules/baseline-and-sourcing.md",
+      "owner_group": "mechanical-cad-package-parity",
+      "heading": "### CORE-FIGURE-010. Mechanical CAD Drawing Packages Must Match The User-Provided Package Standard (Mandatory)",
+      "required_keywords": [
+        "CORE-FIGURE-010",
+        "Mechanical CAD Drawing Packages",
+        "DWG generation as a blocker",
+        "three-sheet-A0-equivalent",
+        "package manifest",
+        "rendered no-overlap review",
+        "boundary clearance",
+        "detail density",
+        "title-block/table/notes isolation",
+        "annotation margin clearance",
+        "local crowding",
+        "default mechanical CAD baseline",
+        "user-provided sample wins",
+        "entity-count-only false-pass",
+        "frame/title-block/table overlap",
+        "audit_mechanical_drawing_package.py"
+      ],
+      "router_file": "references/thesis/thesis-figure-generation-rules.md",
+      "router_anchor": "- `references/thesis/figure-rules/baseline-and-sourcing.md`: figure scope, source priority, required figure families, baseline style, and completion/failure rules",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_mechanical_drawing_package.py::audit_package",
+        "scripts/validate_skill_gate_record_gate.py::check_mechanical_cad_acceptance_record"
+      ],
+      "selftest_owner": [
+        "scripts/audit_mechanical_drawing_package.py::run_self_test"
+      ],
+      "template_owner": "assets/mechanical-cad-acceptance-template.md",
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "mechanical drawing package audit path",
+        "mechanical drawing package audit verdict",
+        "mechanical drawing package exact package path",
+        "mechanical drawing package exact package sha256",
+        "mechanical drawing rendered review evidence paths",
+        "mechanical drawing rendered no-overlap verdict",
+        "mechanical drawing boundary clearance verdict",
+        "mechanical drawing detail density verdict",
+        "mechanical drawing title block/table/notes isolation verdict",
+        "mechanical drawing annotation margin clearance verdict",
+        "mechanical drawing local crowding verdict",
+        "mechanical drawing text/table/frame overlap verdict",
+        "mechanical drawing entity-count-only false-pass verdict"
+      ],
+      "status": "active"
+    },
+    {
       "id": "FMT-TOC-001",
       "legacy_id": null,
       "owner_file": "references/thesis/format-rules/front-matter-and-toc.md",
@@ -822,7 +961,9 @@
         "FB-COPY-008",
         "Thesis Body Humanizer Must Remove Meta-Evaluation Voice",
         "humanizer-zh",
-        "meta-evaluation voice"
+        "meta-evaluation voice",
+        "process-pollution signals",
+        "touched-scope pollution scan"
       ],
       "router_file": "references/user-feedback-persistence.md",
       "status": "active"
@@ -1010,9 +1151,31 @@
       "heading": "### FB-CITE-011 (legacy 56). Citation Hyperlink Counts Must Be Verified On The Official Deliverable (Mandatory)",
       "required_keywords": [
         "FB-CITE-011",
-        "Citation Hyperlink Counts Must Be Verified On The Official Deliverable"
+        "Citation Hyperlink Counts Must Be Verified On The Official Deliverable",
+        "internal hyperlink count"
       ],
       "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/citations-and-bibliography.md`: namespace `FB-CITE-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_thesis_citations.py::audit_docx",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_body_citation_instr_text_only_hyperlink_rejected",
+        "scripts/selftest_skill_flow.py::case_gate_source_citation_surface_stripped_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "citation audit evidence path",
+        "citation audit final DOCX SHA256",
+        "body citation superscripts preservation verdict"
+      ],
       "status": "active"
     },
     {
@@ -1023,9 +1186,27 @@
       "heading": "### FB-CITE-012 (legacy 56A). Internal Citation Links Must Not Expose Anchor Names As Visible Text (Mandatory)",
       "required_keywords": [
         "FB-CITE-012",
-        "Internal Citation Links Must Not Expose Anchor Names As Visible Text"
+        "Internal Citation Links Must Not Expose Anchor Names As Visible Text",
+        "cite_ref_1"
       ],
       "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/citations-and-bibliography.md`: namespace `FB-CITE-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_thesis_citations.py::audit_docx"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_body_citation_visible_anchor_leak_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "citation audit evidence path"
+      ],
       "status": "active"
     },
     {
@@ -1305,9 +1486,39 @@
       "heading": "### FB-LAYOUT-002 (legacy 14). TOC Must Match The Sample Visually, Not Just Semantically (Mandatory)",
       "required_keywords": [
         "FB-LAYOUT-002",
-        "TOC Must Match The Sample Visually, Not Just Semantically"
+        "TOC Must Match The Sample Visually, Not Just Semantically",
+        "TOC implementation type",
+        "editable TOC behavior"
       ],
       "router_file": "references/user-feedback-persistence.md",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record",
+        "scripts/validate_skill_gate_record_format.py",
+        "scripts/measure_toc_paragraph_typography.py",
+        "scripts/measure_surface_hardfields.py"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_toc_visible_run_typography_evidence_paths_missing_rejected",
+        "scripts/selftest_skill_flow.py::case_toc_visible_run_typography_verdict_rejected",
+        "scripts/selftest_skill_flow.py::case_toc_geometry_ink_mismatch_rejected"
+      ],
+      "router_anchor": "- `references/user-feedback/template-and-layout.md`: namespace `FB-LAYOUT-*`",
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "TOC implementation family/live-field parity evidence path",
+        "TOC implementation family/live-field parity verdict",
+        "TOC per-level template baseline evidence path",
+        "TOC rendered geometry comparison path",
+        "TOC title/level font and paragraph metrics verdict",
+        "TOC dotted leader and page-number column verdict",
+        "TOC occupancy rhythm verdict"
+      ],
       "status": "active"
     },
     {
@@ -2139,18 +2350,21 @@
       "heading": "### FB-LAYOUT-062 (legacy 100B). Tail-Block First Pages Must Restore A Verified Opener Owner (Mandatory)",
       "required_keywords": [
         "FB-LAYOUT-062",
-        "Tail-Block First Pages Must Restore A Verified Opener Owner"
+        "Tail-Block First Pages Must Restore A Verified Opener Owner",
+        "references_prior_block_separation_verdict=pass"
       ],
       "router_file": "references/user-feedback-persistence.md",
       "router_anchor": "- `references/user-feedback/template-and-layout.md`: namespace `FB-LAYOUT-*`",
       "enforcement_required": true,
       "validator_owner": [
         "scripts/repair_thesis_frontmatter_toc_structure.py::repair_tail_block_order_and_openers",
-        "scripts/inspect_docx_pagination_structure.py::build_payload"
+        "scripts/inspect_docx_pagination_structure.py::build_payload",
+        "scripts/sample_self_check.py::extract_tail_block_pagination_checks"
       ],
       "selftest_owner": [
         "scripts/selftest_skill_flow.py::case_repair_frontmatter_toc_structure_tail_order_and_toc_entries_valid",
-        "scripts/selftest_skill_flow.py::case_inspect_docx_pagination_structure_blank_rendered_page_rejected"
+        "scripts/selftest_skill_flow.py::case_inspect_docx_pagination_structure_blank_rendered_page_rejected",
+        "scripts/selftest_skill_flow.py::case_sample_self_check_tail_block_previous_page_merge_rejected"
       ],
       "required_load_modes": [
         "thesis-only",
@@ -2849,18 +3063,21 @@
       "heading": "### QA-FINAL-044 (legacy 109A). Tail-Block First-Page Pagination Is A Final Acceptance Surface (Mandatory)",
       "required_keywords": [
         "QA-FINAL-044",
-        "Tail-Block First-Page Pagination Is A Final Acceptance Surface"
+        "Tail-Block First-Page Pagination Is A Final Acceptance Surface",
+        "references previous content physical page"
       ],
       "router_file": "references/user-feedback-persistence.md",
       "router_anchor": "- `references/user-feedback/final-qa-and-tooling.md`: namespace `QA-FINAL-*`",
       "enforcement_required": true,
       "validator_owner": [
         "scripts/inspect_docx_pagination_structure.py::build_payload",
+        "scripts/validate_skill_gate_record_evidence.py::_validate_whole_document_pagination_fields",
         "scripts/validate_skill_gate_record_gate.py::check_gate_record"
       ],
       "selftest_owner": [
         "scripts/selftest_skill_flow.py::case_repair_frontmatter_toc_structure_tail_order_and_toc_entries_valid",
-        "scripts/selftest_skill_flow.py::case_acceptance_generator_whole_pagination_fatal_differences_rejected"
+        "scripts/selftest_skill_flow.py::case_acceptance_generator_whole_pagination_fatal_differences_rejected",
+        "scripts/selftest_skill_flow.py::case_acceptance_generator_reference_prior_page_token_missing_rejected"
       ],
       "required_load_modes": [
         "thesis-only",
@@ -4788,6 +5005,7 @@
         "exact final DOCX path and SHA256",
         "source citation markers",
         "w:vertAlign=superscript",
+        "occurrence-level",
         "controlled-change ledger"
       ],
       "router_file": "references/user-feedback-persistence.md",
@@ -4996,13 +5214,18 @@
       "validator_owner": [
         "scripts/audit_docx_review_artifacts.py",
         "scripts/audit_thesis_citations.py",
-        "scripts/validate_skill_gate_record_evidence.py"
+        "scripts/validate_skill_gate_record_evidence.py",
+        "scripts/validate_skill_gate_record_gate.py"
       ],
       "selftest_owner": [
         "scripts/selftest_skill_flow.py::case_review_artifact_inventory_missing_rejected",
         "scripts/selftest_skill_flow.py::case_citation_superscript_plain_text_final_rejected",
+        "scripts/selftest_skill_flow.py::case_body_citation_snapshot_stops_at_references_heading",
+        "scripts/selftest_skill_flow.py::case_body_citation_occurrence_moved_without_ledger_rejected",
+        "scripts/selftest_skill_flow.py::case_gate_source_citation_surface_stripped_rejected",
         "scripts/selftest_skill_flow.py::case_body_citation_diff_source_without_hyperlinks_valid",
-        "scripts/selftest_skill_flow.py::case_body_citation_diff_source_hyperlink_removed_rejected"
+        "scripts/selftest_skill_flow.py::case_body_citation_diff_source_hyperlink_removed_rejected",
+        "scripts/selftest_skill_flow.py::case_empty_paragraph_bookmark_disposition_valid"
       ],
       "required_load_modes": [
         "thesis-only",
@@ -5012,6 +5235,7 @@
       "acceptance_fields": [
         "source review artifact inventory path",
         "final review artifact diff path",
+        "controlled bookmark disposition path",
         "source body citation run inventory path",
         "final body citation run diff path",
         "body citation superscripts preservation verdict"
@@ -5387,6 +5611,7 @@
         "references_entries",
         "tail-block.pagination-contract",
         "references_fresh_page_verdict=pass",
+        "references_prior_block_separation_verdict=pass",
         "explicit half-point override",
         "automatic bibliography numbering"
       ],
@@ -5407,8 +5632,10 @@
       "selftest_owner": [
         "scripts/selftest_skill_flow.py::case_pagination_raw_unexpected_near_empty_rejected",
         "scripts/selftest_skill_flow.py::case_acceptance_generator_reference_pagination_loss_rejected",
+        "scripts/selftest_skill_flow.py::case_acceptance_generator_reference_prior_page_token_missing_rejected",
         "scripts/selftest_skill_flow.py::case_acceptance_generator_missing_tail_block_pagination_detector_rejected",
         "scripts/selftest_skill_flow.py::case_sample_self_check_tail_block_pagination_loss_rejected",
+        "scripts/selftest_skill_flow.py::case_sample_self_check_tail_block_previous_page_merge_rejected",
         "scripts/selftest_skill_flow.py::case_references_hard_metric_drift_rejected",
         "scripts/selftest_skill_flow.py::case_docx_font_audit_explicit_halfpoint_template_conflict_rejected",
         "scripts/selftest_skill_flow.py::case_sample_self_check_auto_numbered_references_not_not_applicable"
@@ -5423,6 +5650,7 @@
         "whole-document pagination evidence path",
         "tail-block opener page map",
         "sample self-check tail-block.pagination-contract detector",
+        "sample self-check references prior-block separation verdict",
         "references title evidence path",
         "references entries evidence path",
         "docx font/encoding audit evidence path",
@@ -5472,6 +5700,56 @@
         "body opener/header title consistency verdict",
         "user-reported issue ledger path"
       ],
+      "status": "active"
+    },
+    {
+      "id": "EXEC-MAINT-075",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/maintenance-and-structure.md",
+      "owner_group": "maintenance-and-structure",
+      "heading": "### EXEC-MAINT-075. Protected Visual Surface False-Passes Must Fail Closed (Mandatory)",
+      "required_keywords": [
+        "EXEC-MAINT-075",
+        "Protected Visual Surface False-Passes",
+        "header-footer.page-number-template-contract",
+        "passed with limitations",
+        "sample self-check detector gate"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record",
+        "scripts/validate_skill_gate_record_gate.py::validate_sample_self_check_report"
+      ],
+      "generator_owner": [
+        "scripts/generate_thesis_acceptance_record.py::summarize_statuses",
+        "scripts/generate_thesis_acceptance_record.py::block_pass_shaped_handoff_fields"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_sample_self_check_header_footer_page_number_detector_required_rejected",
+        "scripts/selftest_skill_flow.py::case_acceptance_generator_missing_header_footer_page_number_detector_rejected",
+        "scripts/selftest_skill_flow.py::case_passed_with_limitations_rejected",
+        "scripts/selftest_skill_flow.py::case_acceptance_generator_validator_failure_rewrites_handoff_blocked"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "sample self-check report path",
+        "sample self-check header-footer.page-number-template-contract detector",
+        "header rendered verdict",
+        "header rendered full-display evidence path",
+        "header chapter number preservation verdict",
+        "footer verdict",
+        "page numbers verdict",
+        "validation result",
+        "handoff status"
+      ],
+      "case_record": "references/cases/skill-maintenance-20260518-protected-visual-false-pass.md",
       "status": "active"
     },
     {
@@ -5704,6 +5982,9 @@
         "cover style verdict",
         "abstract and keyword surface verdict",
         "header verdict",
+        "header expected display string source",
+        "header rendered full-display evidence path",
+        "header chapter number preservation verdict",
         "footer verdict",
         "page numbers verdict",
         "whole-document pagination verdict"
@@ -5852,6 +6133,10 @@
       ],
       "selftest_owner": [
         "scripts/selftest_skill_flow.py::case_citation_superscript_plain_text_final_rejected",
+        "scripts/selftest_skill_flow.py::case_body_citation_instr_text_only_hyperlink_rejected",
+        "scripts/selftest_skill_flow.py::case_body_citation_visible_anchor_leak_rejected",
+        "scripts/selftest_skill_flow.py::case_gate_source_citation_surface_stripped_rejected",
+        "scripts/selftest_skill_flow.py::case_gate_citation_reference_coupled_chain_missing_rejected",
         "scripts/selftest_skill_flow.py::case_sample_self_check_bibliography_mixed_run_font_rejected",
         "scripts/selftest_skill_flow.py::case_docx_font_audit_bibliography_mixed_run_font_rejected",
         "scripts/selftest_skill_flow.py::case_docx_font_audit_bibliography_leading_number_vertalign_rejected"
@@ -6351,6 +6636,71 @@
       "status": "active"
     },
     {
+      "id": "FB-CITE-042",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/citations-and-bibliography.md",
+      "owner_group": "citations-and-bibliography",
+      "heading": "### FB-CITE-042. References Pagination Must Be Treated As Part Of The Bibliography Surface (Mandatory)",
+      "required_keywords": [
+        "FB-CITE-042",
+        "References Pagination Must Be Treated As Part Of The Bibliography Surface"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/citations-and-bibliography.md`: namespace `FB-CITE-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_thesis_citations.py::audit_docx"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_references_pagination_changes_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "bibliography audit evidence path",
+        "rendered references-page evidence path"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "FB-CITE-043",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/citations-and-bibliography.md",
+      "owner_group": "citations-and-bibliography",
+      "heading": "### FB-CITE-043. Citation Hyperlinks Must Resolve To Bibliography Entries, Not Cover Or Front Matter (Mandatory)",
+      "required_keywords": [
+        "FB-CITE-043",
+        "Citation Hyperlinks Must Resolve To Bibliography Entries",
+        "cover",
+        "front matter"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/citations-and-bibliography.md`: namespace `FB-CITE-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_thesis_citations.py::audit_docx"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_body_citation_wrong_target_rejected",
+        "scripts/selftest_skill_flow.py::case_body_citation_instr_text_only_hyperlink_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "citation audit evidence path",
+        "bibliography audit evidence path"
+      ],
+      "status": "active"
+    },
+    {
       "id": "FMT-FORMULA-002",
       "legacy_id": null,
       "owner_file": "references/thesis-formula-style-memory.md",
@@ -6423,11 +6773,15 @@
       "legacy_id": null,
       "owner_file": "references/user-feedback/final-qa-and-tooling.md",
       "owner_group": "final-qa-and-tooling",
-      "heading": "### QA-FINAL-057. User-Reported TOC, References, Or Body-Font Visual Defects Require Template-Bound Render Geometry (Mandatory)",
+      "heading": "### QA-FINAL-057. User-Reported Protected Visual Defects Require Template-Bound Render Geometry (Mandatory)",
       "required_keywords": [
         "QA-FINAL-057",
-        "User-Reported TOC, References, Or Body-Font Visual Defects",
+        "User-Reported Protected Visual Defects",
         "Template-Bound Render Geometry",
+        "abstract",
+        "header",
+        "footer",
+        "page-number",
         "full-page binding",
         "key-surface binding"
       ],
@@ -6440,6 +6794,7 @@
       ],
       "selftest_owner": [
         "scripts/selftest_skill_flow.py::case_user_reported_visual_geometry_missing_rejected",
+        "scripts/selftest_skill_flow.py::case_user_reported_abstract_header_footer_visual_geometry_missing_rejected",
         "scripts/selftest_skill_flow.py::case_user_reported_visual_geometry_valid"
       ],
       "required_load_modes": [
@@ -6454,6 +6809,196 @@
         "user-reported visual defect template-vs-target binding verdict",
         "user-reported visual defect full-page/key-surface binding verdict",
         "user-reported issue ledger path"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "QA-FINAL-058",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/final-qa-and-tooling.md",
+      "owner_group": "final-qa-and-tooling",
+      "heading": "### QA-FINAL-058. Thesis Content Expansion Requires Post-Mutation Machine-Vision Body Review (Mandatory)",
+      "required_keywords": [
+        "QA-FINAL-058",
+        "Thesis Content Expansion",
+        "Post-Mutation Machine-Vision Body Review",
+        "inserted body heading-contamination verdict",
+        "format lane post-mutation rendered audit verdict"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/final-qa-and-tooling.md`: namespace `QA-FINAL-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record",
+        "scripts/validate_skill_gate_record_gate.py::validate_content_mutation_rendered_evidence"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_content_expansion_machine_vision_missing_rejected",
+        "scripts/selftest_skill_flow.py::case_content_expansion_machine_vision_substitute_rejected",
+        "scripts/selftest_skill_flow.py::case_content_expansion_machine_vision_valid"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "content mutation rendered-page review path",
+        "content mutation machine-vision verdict",
+        "inserted body heading-contamination verdict",
+        "touched-page/blast-radius machine-vision evidence paths",
+        "format lane post-mutation rendered audit verdict"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "FB-LAYOUT-072",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/template-and-layout.md",
+      "owner_group": "template-and-layout",
+      "heading": "### FB-LAYOUT-072. Inserted Or Replaced Body Prose Must Not Inherit Heading, Caption, Or Title Formatting (Mandatory)",
+      "required_keywords": [
+        "FB-LAYOUT-072",
+        "Inserted Or Replaced Body Prose",
+        "Heading, Caption, Or Title Formatting",
+        "whole-paragraph text replacement",
+        "visible Word/WPS style differs from surrounding body text",
+        "body prose rendered bold/oversized like a heading"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/template-and-layout.md`: namespace `FB-LAYOUT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record",
+        "scripts/validate_skill_gate_record_gate.py::validate_content_mutation_rendered_evidence"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_content_expansion_machine_vision_missing_rejected",
+        "scripts/selftest_skill_flow.py::case_content_expansion_machine_vision_valid"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "inserted body heading-contamination verdict",
+        "body text evidence path",
+        "body heading levels evidence path"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "FB-LAYOUT-073",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/template-and-layout.md",
+      "owner_group": "template-and-layout",
+      "heading": "### FB-LAYOUT-073. Thesis Deliverables Must Not Retain Blue Or Theme-Colored Visible Text Unless The Active Template Requires It (Mandatory)",
+      "required_keywords": [
+        "FB-LAYOUT-073",
+        "Blue Or Theme-Colored Visible Text",
+        "Heading 1",
+        "Caption",
+        "styles.xml",
+        "font-color audit"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/template-and-layout.md`: namespace `FB-LAYOUT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_font_color.py",
+        "scripts/validate_skill_gate_record_core.py::check_docx_font_color_audit_report",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
+      ],
+      "generator_owner": "scripts/generate_thesis_acceptance_record.py",
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_font_color_audit_missing_rejected",
+        "scripts/selftest_skill_flow.py::case_font_color_audit_failed_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "final DOCX font-color audit path",
+        "final DOCX font-color audit verdict"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "EXEC-MAINT-076",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/maintenance-and-structure.md",
+      "owner_group": "maintenance-and-structure",
+      "heading": "### EXEC-MAINT-076. Whole-Thesis DOCX Structural Format Gate Is Required For Release (Mandatory)",
+      "required_keywords": [
+        "EXEC-MAINT-076",
+        "Whole-Thesis DOCX Structural Format Gate",
+        "section topology",
+        "live or template-authorized TOC",
+        "footer PAGE fields",
+        "builder-owned style contamination",
+        "final DOCX whole-format structural audit"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_whole_format_gate.py",
+        "scripts/validate_skill_gate_record_core.py::check_docx_whole_format_gate_report",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
+      ],
+      "generator_owner": "scripts/generate_thesis_acceptance_record.py",
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_whole_docx_structural_gate_missing_rejected",
+        "scripts/selftest_skill_flow.py::case_whole_docx_structural_gate_failed_rejected",
+        "scripts/selftest_skill_flow.py::case_whole_docx_structural_gate_stale_sha_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "final DOCX whole-format structural audit path",
+        "final DOCX whole-format structural audit verdict"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "AGENT-AUDIT-004",
+      "legacy_id": null,
+      "owner_file": "references/agents/agent-lanes.md",
+      "owner_group": "agent-lanes",
+      "heading": "### AGENT-AUDIT-004. Audit Lane Must Enforce Rendered Review After Content Expansion (Mandatory)",
+      "required_keywords": [
+        "AGENT-AUDIT-004",
+        "Rendered Review After Content Expansion",
+        "post-mutation rendered evidence",
+        "XML/package-count-only"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/agents/agent-lanes.md`: rules `AGENT-CTRL-001, AGENT-ALIAS-001, AGENT-ROSTER-001, AGENT-CONCURRENCY-001, AGENT-WORK-001, AGENT-FORMAT-001, AGENT-FORMAT-002, AGENT-FORMAT-003, AGENT-FORMAT-004, AGENT-FORMAT-005, AGENT-FORMAT-006, AGENT-AUDIT-001, AGENT-AUDIT-002, AGENT-AUDIT-003, AGENT-AUDIT-004, AGENT-FALLBACK-001, AGENT-CARD-001, AGENT-EVIDENCE-001`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_content_expansion_machine_vision_missing_rejected",
+        "scripts/selftest_skill_flow.py::case_content_expansion_machine_vision_valid"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "agent run manifest path",
+        "format lane post-mutation rendered audit verdict",
+        "content mutation machine-vision verdict"
       ],
       "status": "active"
     }

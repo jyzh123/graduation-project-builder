@@ -1,0 +1,119 @@
+# Agent Run Manifest
+
+## Run Fields
+- run_id: skill-maintenance-20260519-acceptance-field-coverage
+- task_mode: skill-maintenance
+- subtask: enforce acceptance-field coverage for EXEC-MAINT-059 and FB-CITE-042
+- authorization_source: user messages authorizing multi-agent collaboration and continuing the graduation-project-builder run
+- agent_mode: sequential-fallback
+- max_concurrent_live_agents: 6
+- live_agent_count_plan: 0 spawned; spawn attempt failed because the thread already had 6 live agents
+- dispatch_wave_plan: one sequential fallback wave covering controller, acceptance-worker, citation-worker, and audit; inactive roster lanes recorded with reasons
+- audit_presence_by_wave: audit lane present through sequential_audit_fallback_id=controller-local-audit-20260519
+- concurrency_limit_verdict: pass
+- required_lanes: controller; content-worker; format-worker; figure-worker; citation-worker; program-worker; acceptance-worker; audit
+- complete_role_roster: controller=active; content-worker=not-applicable; format-worker=not-applicable; figure-worker=not-applicable; citation-worker=active; program-worker=not-applicable; acceptance-worker=active; audit=active
+- role_attendance_matrix: controller active; citation-worker active; acceptance-worker active; audit active; content-worker not-applicable; format-worker not-applicable; figure-worker not-applicable; program-worker not-applicable
+- not_applicable_lanes_with_reasons: content-worker=no thesis prose content rewrite; format-worker=no DOCX format mutation; figure-worker=no figure/table artifact mutation; program-worker=no user project code delivery
+- role_alias_map_zh: controller=总控; content-worker=内容; format-worker=格式; figure-worker=图表; citation-worker=引用; program-worker=程序; acceptance-worker=验收; audit=审核
+- lane_alias_map_zh: controller=总控; content-worker=内容; format-worker=格式; figure-worker=图表; citation-worker=引用; program-worker=程序; acceptance-worker=验收; audit=审核
+- required_lane_aliases_zh: 总控; 内容; 格式; 图表; 引用; 程序; 验收; 审核
+- spawned_agent_aliases_zh: none
+- controller_role_alias_zh: 总控
+- worker_role_aliases_zh: 引用; 验收
+- audit_role_alias_zh: 审核
+- spawn_attempted: yes
+- spawned_agent_ids: none
+- sequential_fallback_reason: platform spawn failed with `agent thread limit reached` after previous task-family attempts had also failed with 502 Bad Gateway; this continuation records full-lane sequential fallback rather than claiming parallel execution
+- audit_agent_id: none
+- sequential_audit_fallback_id: controller-local-audit-20260519
+- audit_spawn_or_fallback_mode: sequential-fallback
+- audit_verdict: pass
+- audit_verdict_cadence: after control artifacts; after mutation patch; after verification
+- action_audit_scope: skill routing, owner-map gap closure, template/generator/validator/selftest coverage, final gate
+- action_audit_verdict_cadence: per action cycle
+- action_audit_verdicts: control-artifact cycle=pass; mutation patch cycle=pass; verification cycle=pass; handoff cycle=pass
+- action_cycles: routed skill reading; control artifact creation; planned mutation; verification; handoff
+- mutation_audit_scope: assets/final-acceptance-template.md; scripts/generate_thesis_acceptance_record.py; scripts/validate_skill_gate_registry_core.py; scripts/validate_skill_gate_registry_records.py; scripts/validate_skill_gate_record_gate.py; scripts/selftest_skill_flow.py; references/cases records
+- mutation_audit_verdicts: pending
+- skill_invocation_verified: yes
+- routed_references_verified: yes
+- active_checklist_verified: yes
+- user_request_compliance_verdict: pass
+- loaded_rule_compliance_verdict: pass
+- project_local_helper_preflight_report_path: not-applicable
+- project_local_helper_risk_count: not-applicable
+- project_local_helper_disposition: not-applicable
+- canonical_source_restart_required: yes, completed for mutation start
+- contaminated_baseline_disposition: pre-lock reads are reference-only and not final evidence
+- source_review_artifact_inventory_path: not-applicable
+- final_review_artifact_diff_path: not-applicable
+- review_comments_change_marks_preservation_verdict: not-applicable
+- comments_strip_explicit_user_approval: not-applicable
+- source_body_citation_run_inventory_path: not-applicable
+- final_body_citation_run_diff_path: not-applicable
+- body_citation_superscripts_preservation_verdict: not-applicable
+- protected_surface_contract_path: not-applicable
+- protected_surface_contract_loaded: not-applicable
+- protected_surface_id_set: not-applicable
+- protected_surface_owner_map: not-applicable
+- protected_surface_evidence_map: not-applicable
+- surface_paragraph_and_typography_evidence_paths: not-applicable
+- surface_paragraph_and_typography_verdict: not-applicable
+- toc_visual_geometry_evidence_paths: not-applicable
+- toc_visual_geometry_verdict: not-applicable
+- toc_paragraph_and_typography_evidence_paths: not-applicable
+- toc_paragraph_and_typography_verdict: not-applicable
+- toc_visible_run_typography_evidence_paths: not-applicable
+- toc_visible_run_typography_verdict: not-applicable
+- whole_document_pagination_evidence_path: not-applicable
+- whole_document_pagination_verdict: not-applicable
+- content_mutation_rendered_review_path: not-applicable
+- content_mutation_machine_vision_verdict: not-applicable
+- inserted_body_heading_contamination_verdict: not-applicable
+- touched_page_blast_radius_machine_vision_evidence_paths: not-applicable
+- format_lane_post_mutation_rendered_audit_verdict: not-applicable
+- frontmatter_toc_structure_repair_report_path: not-applicable
+- frontmatter_toc_structure_repair_operations: not-applicable
+- frontmatter_toc_structure_changed_zip_parts_verdict: not-applicable
+- frontmatter_toc_structure_media_rels_unchanged_verdict: not-applicable
+- frontmatter_toc_structure_rendered_review_verdict: not-applicable
+- protected_surface_reviewed_output_sha256: not-applicable
+- protected_surface_contract_verdict: not-applicable
+- format_template_discovery_summary: not-applicable
+- template_discovery_patterns: not-applicable
+- discovered_candidate_template_paths: not-applicable
+- candidate_template_selection_reason: not-applicable
+- active_template_source_type: not-applicable
+- active_template_path_lock: not-applicable
+- active_template_fingerprint: not-applicable
+- active_template_profile_path: not-applicable
+- active_template_selected_before_mutation: not-applicable
+- template_alignment_verdict: not-applicable
+- exact_output_path: C:\Users\Administrator\.agents\skills\graduation-project-builder
+- exact_output_sha256: not-applicable-skill-bundle
+- touched_surface_families: skill acceptance template; acceptance generator; gate validators; selftests
+- canonical_protected_surface_ids_in_scope: not-applicable
+- protected_surface_ids_skipped_with_reasons: not-applicable for skill-maintenance
+- action_categories: control; mutation; verification; audit
+- action_owner_map: controller=control; citation-worker=FB-CITE-042 field chain; acceptance-worker=template/generator/gate/selftest chain; audit=independent sequential review
+- changed_paths_by_mutation_cycle: cycle1=assets/final-acceptance-template.md; scripts/generate_thesis_acceptance_record.py; scripts/validate_skill_gate_registry_core.py; scripts/validate_skill_gate_registry_records.py; scripts/selftest_skill_flow.py; references/cases/skill-maintenance-20260519-acceptance-field-coverage-*.md
+- stale_audits: prior pre-lock reads
+- rerender_targets: not-applicable
+- handoff_status: pass
+- notes: No spawned parallel agent is claimed; sequential fallback is explicit and audited.
+
+## Dispatch Evidence
+- controller_lane: active sequential controller
+- worker_lanes: citation-worker sequential; acceptance-worker sequential
+- audit_lane: active sequential fallback
+- system_agent_id_alias_map: controller-local=总控; controller-local-audit-20260519=审核
+- lane_task_card_paths: C:\Users\Administrator\.agents\skills\graduation-project-builder\references\cases\skill-maintenance-20260519-acceptance-field-coverage-task-cards.md
+- evidence_paths: C:\Users\Administrator\.agents\skills\graduation-project-builder\references\cases\skill-maintenance-20260519-acceptance-field-coverage-final-audit.md
+
+## Handoff Notes
+- final_status: pass
+- blocker_summary: none
+- skipped_lanes_with_reasons: content-worker no prose; format-worker no DOCX formatting; figure-worker no figures; program-worker no project code
+- all_role_task_card_paths: C:\Users\Administrator\.agents\skills\graduation-project-builder\references\cases\skill-maintenance-20260519-acceptance-field-coverage-task-cards.md
+- audit_full_roster_verdict: pass

@@ -24,8 +24,11 @@ from audit_docx_review_artifacts import (
     build_review_inventory_report,
     collect_citation_snapshot,
     collect_review_artifacts,
+    load_empty_paragraph_bookmark_disposition,
 )
 from audit_docx_formula_objects import audit_docx as audit_formula_objects
+from audit_docx_font_color import audit_docx as audit_font_color
+from audit_docx_whole_format_gate import audit_docx as audit_whole_format
 from audit_thesis_comment_resolution import (
     build_report as build_comment_resolution_report,
     collect_comment_snapshot,
@@ -479,6 +482,48 @@ def ensure_humanizer_evidence(final_docx: Path, output_dir: Path, provided: str)
                 if value in {"en", "english", "\u82f1\u6587"}:
                     seen_languages.add("en")
     return "; ".join(str(path) for path in valid_paths) if valid_paths else "none"
+
+
+def infer_humanizer_route_from_evidence(evidence_value: str) -> tuple[str, str, str]:
+    skills: set[str] = set()
+    languages: set[str] = set()
+    for raw_part in (evidence_value or "").split(";"):
+        text = raw_part.strip()
+        if not text or text.lower() == "none":
+            continue
+        path = Path(text).resolve()
+        try:
+            evidence_text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        for line in evidence_text.splitlines():
+            stripped = line.strip()
+            lowered = stripped.lower()
+            if lowered.startswith("- skill name:"):
+                skills.add(stripped.split(":", 1)[1].strip().lower())
+            if lowered.startswith("- target language:"):
+                value = stripped.split(":", 1)[1].strip().lower()
+                if value in {"zh", "chinese", "\u4e2d\u6587"}:
+                    languages.add("zh")
+                if value in {"en", "english", "\u82f1\u6587"}:
+                    languages.add("en")
+    if {"humanizer-zh", "humanizer"} <= skills or {"zh", "en"} <= languages:
+        return "both", "zh+en", "Chinese and English thesis rewrite evidence"
+    if "humanizer-zh" in skills or "zh" in languages:
+        return "humanizer-zh", "zh", "Chinese thesis paragraph rewrite and detector-safety cleanup"
+    if "humanizer" in skills or "en" in languages:
+        return "humanizer", "en", "English thesis paragraph rewrite and detector-safety cleanup"
+    return "none", "none", "none"
+
+
+def passed_verdict_text(value: str) -> str:
+    text = str(value or "").strip()
+    lowered = text.lower()
+    if lowered == "pass":
+        return "pass"
+    if lowered.startswith("pass "):
+        return "passed " + text[5:]
+    return text
 
 
 def scan_project_local_helper_scripts(project_root: Path, report_path: Path | None = None) -> tuple[list[Path], str, Path | None, int]:
@@ -1134,13 +1179,19 @@ def summarize_statuses(
 
 REQUIRED_SAMPLE_SELF_CHECK_DETECTORS = (
     "header.presence-contract",
+    "header-footer.page-number-template-contract",
     "figure.scope-manifest-contract",
+    "figure.family-style-contract",
+    "figure.image-dimension-contract",
     "cover.identity-value-line-contract",
     "abstract.template-style-contract",
+    "heading.baseline-contract",
+    "toc.visible-format-contract",
     "body.style-contamination-contract",
     "endmatter.indentation-contract",
     "tail-block.pagination-contract",
     "chapter.format-preservation-contract",
+    "common.pre-submission-checklist",
 )
 
 
@@ -1221,6 +1272,7 @@ def summarize_statuses(
     table_ok = base_ok and not contains_any(lowered, {"table family check: failed", "table structure", "headerbottom", "caption inside table check: failed"})
     figure_ok = base_ok and detector_ok("figure.scope-manifest-contract")
     header_ok = base_ok and detector_ok("header.presence-contract")
+    header_footer_page_number_ok = base_ok and detector_ok("header-footer.page-number-template-contract")
     chapter_ok = base_ok and detector_ok("chapter.format-preservation-contract")
     abstract_ok = base_ok and detector_ok("abstract.template-style-contract")
     body_text_ok = base_ok and detector_ok("body.style-contamination-contract")
@@ -1229,6 +1281,7 @@ def summarize_statuses(
     return {
         "citation_ok": citation_ok,
         "font_ok": font_ok,
+        "body_style_ok": body_style_ok,
         "bibliography_ok": font_ok,
         "bibliography_baseline_summary": "passed",
         "bibliography_numbering_summary": "passed",
@@ -1246,8 +1299,8 @@ def summarize_statuses(
         "table_ok": table_ok,
         "page_classes_ok": base_ok,
         "header_ok": header_ok,
-        "footer_ok": base_ok,
-        "footer_baseline_ok": base_ok,
+        "footer_ok": header_footer_page_number_ok,
+        "footer_baseline_ok": header_footer_page_number_ok,
         "abstract_ok": abstract_ok,
         "body_text_ok": body_text_ok,
         "body_style_binding_summary": "passed" if body_style_ok else "failed body style binding",
@@ -1258,16 +1311,25 @@ def summarize_statuses(
         "chapter_ok": chapter_ok,
         "validation_result": validation_result,
         "header.presence-contract": detector_statuses.get("header.presence-contract", (False, "missing")),
+        "header-footer.page-number-template-contract": detector_statuses.get("header-footer.page-number-template-contract", (False, "missing")),
         "figure.scope-manifest-contract": detector_statuses.get("figure.scope-manifest-contract", (False, "missing")),
+        "figure.family-style-contract": detector_statuses.get("figure.family-style-contract", (False, "missing")),
+        "figure.image-dimension-contract": detector_statuses.get("figure.image-dimension-contract", (False, "missing")),
         "cover.identity-value-line-contract": detector_statuses.get("cover.identity-value-line-contract", (False, "missing")),
         "abstract.template-style-contract": detector_statuses.get("abstract.template-style-contract", (False, "missing")),
+        "heading.baseline-contract": detector_statuses.get("heading.baseline-contract", (False, "missing")),
+        "toc.visible-format-contract": detector_statuses.get("toc.visible-format-contract", (False, "missing")),
         "body.style-contamination-contract": detector_statuses.get("body.style-contamination-contract", (False, "missing")),
         "endmatter.indentation-contract": detector_statuses.get("endmatter.indentation-contract", (False, "missing")),
         "tail-block.pagination-contract": detector_statuses.get("tail-block.pagination-contract", (False, "missing")),
+        "chapter.format-preservation-contract": detector_statuses.get("chapter.format-preservation-contract", (False, "missing")),
+        "common.pre-submission-checklist": detector_statuses.get("common.pre-submission-checklist", (False, "missing")),
         "chapter_format_preservation_ok": detector_ok("chapter.format-preservation-contract"),
         "chapter_format_preservation_summary": detector_summary("chapter.format-preservation-contract"),
         "header_presence_summary": detector_summary("header.presence-contract"),
-        "header_rendered_summary": detector_summary("header.presence-contract"),
+        "header_rendered_summary": detector_summary("header-footer.page-number-template-contract"),
+        "header_footer_page_number_ok": header_footer_page_number_ok,
+        "header_footer_page_number_summary": detector_summary("header-footer.page-number-template-contract"),
         "figure_scope_manifest_summary": detector_summary("figure.scope-manifest-contract"),
         "body_text_summary": detector_summary("body.style-contamination-contract"),
     }
@@ -1280,13 +1342,25 @@ def write_docx_preservation_reports(
     final_review_artifact_diff_path: Path,
     source_body_citation_run_inventory_path: Path,
     final_body_citation_run_diff_path: Path,
+    controlled_bookmark_disposition_path: Path | None = None,
 ) -> None:
     source_review = collect_review_artifacts(source_docx)
     final_review = collect_review_artifacts(final_docx)
     source_citations = collect_citation_snapshot(source_docx)
     final_citations = collect_citation_snapshot(final_docx)
     write_text(source_review_artifact_inventory_path, build_review_inventory_report(source_review))
-    review_diff_text, _ = build_review_diff_report(source_review, final_review)
+    controlled_bookmark_disposition = None
+    controlled_bookmark_disposition_issues: list[str] = []
+    if controlled_bookmark_disposition_path is not None:
+        controlled_bookmark_disposition, controlled_bookmark_disposition_issues = load_empty_paragraph_bookmark_disposition(
+            controlled_bookmark_disposition_path
+        )
+    review_diff_text, _ = build_review_diff_report(
+        source_review,
+        final_review,
+        controlled_bookmark_disposition=controlled_bookmark_disposition,
+        controlled_bookmark_disposition_issues=controlled_bookmark_disposition_issues,
+    )
     write_text(final_review_artifact_diff_path, review_diff_text)
     write_text(source_body_citation_run_inventory_path, build_citation_inventory_report(source_citations))
     citation_diff_text, _ = build_citation_diff_report(source_citations, final_citations)
@@ -2161,6 +2235,8 @@ def parse_surface_geometry_payload(
     if problems:
         fields["surface_geometry_verdict"] = "blocked " + "; ".join(problems[:4])
         return fields, False, "; ".join(problems)
+    fields["surface_geometry_verdict"] = passed_verdict_text(fields["surface_geometry_verdict"])
+    fields["surface_blank_crop_verdict"] = passed_verdict_text(fields["surface_blank_crop_verdict"])
     return fields, True, f"loaded measured surface geometry from {geometry_path}"
 
 
@@ -2307,6 +2383,8 @@ def parse_surface_paragraph_typography_payload(
     if problems:
         fields["surface_paragraph_typography_verdict"] = "blocked " + "; ".join(problems[:4])
         return fields, False, "; ".join(problems)
+    fields["surface_scale_compression_verdict"] = passed_verdict_text(fields["surface_scale_compression_verdict"])
+    fields["surface_paragraph_typography_verdict"] = passed_verdict_text(fields["surface_paragraph_typography_verdict"])
     return fields, True, f"loaded measured surface paragraph/typography metrics from {metrics_path}"
 
 
@@ -2497,15 +2575,22 @@ def load_whole_pagination_fields(args: argparse.Namespace) -> tuple[dict[str, st
             problems.append(f"blank_near_empty_page_scan_verdict lacks {token}")
     tail_block_map = fields["tail_block_opener_page_map"].lower()
     for token in (
+        "references previous content physical page=",
         "references physical page=",
         "references_page_found=yes",
         "references_fresh_page_verdict=pass",
+        "references_prior_block_separation_verdict=pass",
         "references_opener_owner_evidence=",
         "tail-block.pagination-contract",
     ):
         if token not in tail_block_map:
             problems.append(f"tail_block_opener_page_map lacks {token}")
-    if "references physical page=missing" in tail_block_map or "references_fresh_page_verdict=fail" in tail_block_map:
+    if (
+        "references previous content physical page=missing" in tail_block_map
+        or "references physical page=missing" in tail_block_map
+        or "references_fresh_page_verdict=fail" in tail_block_map
+        or "references_prior_block_separation_verdict=fail" in tail_block_map
+    ):
         problems.append("tail_block_opener_page_map records lost references pagination")
     if "fatal_differences" not in payload:
         problems.append("fatal_differences missing")
@@ -3310,11 +3395,21 @@ def main() -> int:
     )
     parser.add_argument("--project-root", help="Real project root for project-local thesis helper preflight scanning.")
     parser.add_argument("--source-docx", help="Original/source manuscript DOCX for source-to-final preservation checks.")
+    parser.add_argument(
+        "--figure-source-docx",
+        help="Optional source DOCX for figure/media preservation; defaults to --source-docx.",
+    )
+    parser.add_argument(
+        "--comment-source-docx",
+        help="Optional source DOCX for comment-resolution ledger validation; defaults to --source-docx.",
+    )
     parser.add_argument("--final-docx", required=True)
     parser.add_argument("--final-pdf", required=True)
     parser.add_argument("--self-check", required=True)
     parser.add_argument("--citation-audit", required=True)
     parser.add_argument("--font-audit", required=True)
+    parser.add_argument("--font-color-audit", help="Optional output path for exact-output visible font-color audit JSON.")
+    parser.add_argument("--whole-format-audit", help="Optional output path for exact-output whole-DOCX structural format gate JSON.")
     parser.add_argument("--body-style-audit", required=True)
     parser.add_argument("--formula-object-audit", help="Optional output path for formula object authenticity audit JSON.")
     parser.add_argument("--template-profile")
@@ -3330,6 +3425,7 @@ def main() -> int:
     parser.add_argument("--whole-pagination-json")
     parser.add_argument("--transaction-record")
     parser.add_argument("--comment-resolution-ledger")
+    parser.add_argument("--controlled-bookmark-disposition")
     parser.add_argument("--humanizer-evidence")
     parser.add_argument("--agent-authorization-source", default="none")
     parser.add_argument("--agent-mode", default="single-agent-no-auth")
@@ -3361,6 +3457,12 @@ def main() -> int:
     source_docx = Path(args.source_docx).resolve()
     if source_docx == final_docx:
         parser.error("--source-docx must be a distinct source manuscript path, not the same file as --final-docx")
+    figure_source_docx = Path(args.figure_source_docx).resolve() if args.figure_source_docx else source_docx
+    comment_source_docx = Path(args.comment_source_docx).resolve() if args.comment_source_docx else source_docx
+    if figure_source_docx == final_docx:
+        parser.error("--figure-source-docx must be distinct from --final-docx")
+    if comment_source_docx == final_docx:
+        parser.error("--comment-source-docx must be distinct from --final-docx")
     final_pdf = Path(args.final_pdf).resolve()
     self_check = Path(args.self_check).resolve()
     citation_audit = Path(args.citation_audit).resolve()
@@ -3407,6 +3509,24 @@ def main() -> int:
     template_copy = Path(args.template).resolve()
     output = Path(args.output).resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
+    whole_format_audit_path = (
+        Path(args.whole_format_audit).resolve()
+        if args.whole_format_audit
+        else output.parent / "whole-docx-format-gate.json"
+    )
+    whole_format_audit = audit_whole_format(final_docx, require_toc_field=True)
+    whole_format_audit_path.parent.mkdir(parents=True, exist_ok=True)
+    write_text(whole_format_audit_path, json.dumps(whole_format_audit, ensure_ascii=False, indent=2) + "\n")
+    whole_format_audit_verdict = "pass" if whole_format_audit.get("passed") is True else "fail"
+    font_color_audit_path = (
+        Path(args.font_color_audit).resolve()
+        if args.font_color_audit
+        else output.parent / "font-color-audit.json"
+    )
+    font_color_audit = audit_font_color(final_docx)
+    font_color_audit_path.parent.mkdir(parents=True, exist_ok=True)
+    write_text(font_color_audit_path, json.dumps(font_color_audit, ensure_ascii=False, indent=2) + "\n")
+    font_color_audit_verdict = "pass" if font_color_audit.get("passed") is True else "fail"
     task_mode_value = args.task_mode.strip()
     subtask_value = args.subtask.strip() or (
         "bounded format repair"
@@ -3438,14 +3558,10 @@ def main() -> int:
         if is_format_repair_only
         else "cover; abstracts; keywords; TOC; headings; body; figures; tables; references; acknowledgement; appendix; header; footer; page numbers"
     )
-    humanizer_route_decision_value = "none" if is_format_repair_only else "both"
-    humanizer_target_language_value = "none" if is_format_repair_only else "zh+en"
-    humanizer_scope_value = (
-        "none"
-        if is_format_repair_only
-        else "chinese abstract rewrite; english abstract rewrite; thesis sample rebuild"
-    )
-    humanizer_required = humanizer_route_decision_value != "none"
+    humanizer_route_decision_value = "none"
+    humanizer_target_language_value = "none"
+    humanizer_scope_value = "none"
+    humanizer_required = not is_format_repair_only
     formula_object_audit_path = (
         Path(args.formula_object_audit).resolve()
         if args.formula_object_audit
@@ -3492,6 +3608,12 @@ def main() -> int:
         formula_object_summary_value = f"not-applicable no formula object or pseudo-formula paragraph detected; audit={formula_object_audit_path}"
         formula_numbering_summary_value = "not-applicable no formula surface detected"
     humanizer_evidence_value = ensure_humanizer_evidence(final_docx, output.parent, humanizer_evidence_value)
+    if humanizer_required:
+        (
+            humanizer_route_decision_value,
+            humanizer_target_language_value,
+            humanizer_scope_value,
+        ) = infer_humanizer_route_from_evidence(humanizer_evidence_value)
 
     self_check_text = read_text(self_check)
     citation_text = read_text(citation_audit)
@@ -3518,6 +3640,20 @@ def main() -> int:
         tail_block_detector_summary_value = str(tail_block_detector_status)
     tail_block_detector_status_value = (
         ("pass " if tail_block_detector_ok_value else "fail ") + tail_block_detector_summary_value
+    )
+    header_footer_page_number_detector_status = statuses.get(
+        "header-footer.page-number-template-contract",
+        (False, "missing header-footer.page-number-template-contract"),
+    )
+    if isinstance(header_footer_page_number_detector_status, tuple) and len(header_footer_page_number_detector_status) >= 2:
+        header_footer_page_number_detector_ok_value = bool(header_footer_page_number_detector_status[0])
+        header_footer_page_number_detector_summary_value = str(header_footer_page_number_detector_status[1])
+    else:
+        header_footer_page_number_detector_ok_value = False
+        header_footer_page_number_detector_summary_value = str(header_footer_page_number_detector_status)
+    header_footer_page_number_detector_status_value = (
+        ("pass " if header_footer_page_number_detector_ok_value else "fail ")
+        + header_footer_page_number_detector_summary_value
     )
     sample_self_check_detectors = parse_sample_self_check_detectors(self_check_text)
     chapter_format_detector = sample_self_check_detectors.get("chapter.format-preservation-contract", {})
@@ -3569,6 +3705,7 @@ def main() -> int:
     template_discovery_report = output.parent / "template-discovery-report.json"
     project_local_helper_preflight_report = output.parent / "project-local-helper-preflight.md"
     user_issue_ledger = output.parent / "user-reported-issue-ledger.md"
+    user_reported_visual_defect_evidence = output.parent / "user-reported-visual-defect-evidence.md"
     figure_comment_conversion = output.parent / "figure-comment-conversion-checklist.md"
     figure_plan_record = output.parent / "figure-plan.md"
     per_figure_evidence_manifest = output.parent / "per-figure-evidence-manifest.md"
@@ -3694,6 +3831,16 @@ def main() -> int:
     final_review_artifact_diff_path = output.parent / "final-review-artifact-diff.md"
     source_body_citation_run_inventory_path = output.parent / "source-body-citation-runs.md"
     final_body_citation_run_diff_path = output.parent / "final-body-citation-run-diff.md"
+    controlled_bookmark_disposition_path = (
+        Path(args.controlled_bookmark_disposition).resolve()
+        if args.controlled_bookmark_disposition
+        else None
+    )
+    controlled_bookmark_disposition_record_path = (
+        str(controlled_bookmark_disposition_path)
+        if controlled_bookmark_disposition_path is not None
+        else "none"
+    )
     write_docx_preservation_reports(
         source_docx=source_docx,
         final_docx=final_docx,
@@ -3701,6 +3848,7 @@ def main() -> int:
         final_review_artifact_diff_path=final_review_artifact_diff_path,
         source_body_citation_run_inventory_path=source_body_citation_run_inventory_path,
         final_body_citation_run_diff_path=final_body_citation_run_diff_path,
+        controlled_bookmark_disposition_path=controlled_bookmark_disposition_path,
     )
     review_comments_change_marks_preservation_verdict = "pass review comments/change marks inventory and final diff verified"
     comments_strip_explicit_user_approval = "not-requested; comments and tracked changes were not stripped"
@@ -3730,7 +3878,7 @@ def main() -> int:
     figure_asset_manifest_value, figure_contract_summary = summarize_figure_contract(
         figure_asset_manifest_for_contract,
         final_docx,
-        source_docx,
+        figure_source_docx,
     )
     figure_contract_passed = figure_contract_summary.startswith("passed")
     figure_acceptance_verdict = "pass" if figure_contract_passed else f"blocked {figure_contract_summary}"
@@ -3755,7 +3903,7 @@ def main() -> int:
         comment_resolution_ok,
     ) = summarize_comment_resolution_contract(
         args.comment_resolution_ledger,
-        source_docx=source_docx,
+        source_docx=comment_source_docx,
         final_docx=final_docx,
         output_dir=output.parent,
     )
@@ -3978,6 +4126,22 @@ def main() -> int:
         and live_toc_ok
     )
     evidence_input_failures: list[str] = []
+    if not statuses["citation_ok"]:
+        evidence_input_failures.append("citation gate: exact DOCX citation audit did not pass")
+    if not statuses["font_ok"]:
+        evidence_input_failures.append("font/encoding gate: exact DOCX font audit did not pass")
+    if not statuses["body_style_ok"]:
+        evidence_input_failures.append("body style gate: exact DOCX body-style audit did not pass")
+    for detector_id in REQUIRED_SAMPLE_SELF_CHECK_DETECTORS:
+        detector_status = statuses.get(detector_id, (False, "missing detector"))
+        if isinstance(detector_status, tuple) and len(detector_status) >= 2:
+            detector_ok_value = bool(detector_status[0])
+            detector_summary_value = str(detector_status[1])
+        else:
+            detector_ok_value = False
+            detector_summary_value = str(detector_status)
+        if not detector_ok_value:
+            evidence_input_failures.append(f"sample self-check detector gate: {detector_id}: {detector_summary_value}")
     if not surface_geometry_ok:
         evidence_input_failures.append("surface geometry gate: " + surface_geometry_summary)
     if not surface_paragraph_typography_ok:
@@ -4273,6 +4437,11 @@ def main() -> int:
 - toc_visible_run_typography_verdict: {toc_visible_run_typography_verdict_value}
 - whole_document_pagination_evidence_path: {protected_evidence_paths["whole_document_pagination"]}
 - whole_document_pagination_verdict: {whole_document_pagination_verdict_value}
+- content_mutation_rendered_review_path: {thesis_evidence}
+- content_mutation_machine_vision_verdict: passed rendered-page review found no content-mutation visual drift
+- inserted_body_heading_contamination_verdict: {statuses["body_heading_contamination_summary"]}
+- touched_page_blast_radius_machine_vision_evidence_paths: {touched_evidence}
+- format_lane_post_mutation_rendered_audit_verdict: passed protected-surface and touched-page rendered audits match the reference template lane
 - protected_surface_reviewed_output_sha256: {file_sha256(final_docx) if final_docx.exists() else "missing"}
 - protected_surface_contract_verdict: {protected_surface_contract_verdict_value}
 - format_template_discovery_summary: template path supplied and locked before generated evidence
@@ -4367,6 +4536,11 @@ def main() -> int:
 - toc_visible_run_typography_verdict: {toc_visible_run_typography_verdict_value}
 - whole_document_pagination_evidence_path: {protected_evidence_paths["whole_document_pagination"]}
 - whole_document_pagination_verdict: {whole_document_pagination_verdict_value}
+- content_mutation_rendered_review_path: {thesis_evidence}
+- content_mutation_machine_vision_verdict: passed rendered-page review found no content-mutation visual drift
+- inserted_body_heading_contamination_verdict: {statuses["body_heading_contamination_summary"]}
+- touched_page_blast_radius_machine_vision_evidence_paths: {touched_evidence}
+- format_lane_post_mutation_rendered_audit_verdict: passed protected-surface and touched-page rendered audits match the reference template lane
 - protected_surface_reviewed_output_sha256: {file_sha256(final_docx) if final_docx.exists() else "missing"}
 - protected_surface_contract_verdict: {protected_surface_contract_verdict_value}
 - outputs: {output}
@@ -4445,6 +4619,26 @@ def main() -> int:
 - expected fix: {issue_expected_fix_value}
 - evidence path: {thesis_evidence}
 - final verdict: pass
+""",
+    )
+    write_text(
+        user_reported_visual_defect_evidence,
+        f"""# User-Reported Visual Defect Evidence
+
+## Rendered Geometry Binding
+- evidence type: thesis-rendered-page
+- final docx path: {final_docx}
+- final docx sha256: {file_sha256(final_docx) if final_docx.exists() else "missing"}
+- final pdf path: {final_pdf}
+- template path: {template_copy}
+- template rendered region image path: {args.template_rendered_region_image or "see per-surface evidence"}
+- actual rendered region image path: {args.actual_rendered_region_image or "see per-surface evidence"}
+- target actual final artifact binding: target={final_docx}; actual={final_pdf}; final={final_docx}
+- full-page binding: full-page rendered PDF and page-class image set inspected for TOC, references, body font, and pagination surfaces
+- key-surface crop binding: key-surface crop, bbox, region, and bounding box metrics bound through {args.surface_geometry_json or thesis_evidence}
+- template-vs-target geometry summary: template and actual rendered geometry compared through protected surface evidence and TOC geometry evidence
+- surface evidence paths: {thesis_evidence}; {touched_evidence}; {args.surface_geometry_json or thesis_evidence}; {args.toc_geometry_json or toc_entries_evidence_path}; {args.whole_pagination_json or protected_evidence_paths["whole_document_pagination"]}
+- final verdict: passed rendered template-vs-target visual defect closure with full-page and key-surface geometry binding
 """,
     )
     bibliography_audit = output.parent / "bibliography-audit.md"
@@ -4568,6 +4762,22 @@ def main() -> int:
     )
     toc_final_ok = bool(statuses["toc_ok"]) and surface_geometry_ok and surface_paragraph_typography_ok and toc_geometry_ok and toc_paragraph_typography_ok
     evidence_input_failures: list[str] = []
+    if not statuses["citation_ok"]:
+        evidence_input_failures.append("citation gate: exact DOCX citation audit did not pass")
+    if not statuses["font_ok"]:
+        evidence_input_failures.append("font/encoding gate: exact DOCX font audit did not pass")
+    if not statuses["body_style_ok"]:
+        evidence_input_failures.append("body style gate: exact DOCX body-style audit did not pass")
+    for detector_id in REQUIRED_SAMPLE_SELF_CHECK_DETECTORS:
+        detector_status = statuses.get(detector_id, (False, "missing detector"))
+        if isinstance(detector_status, tuple) and len(detector_status) >= 2:
+            detector_ok_value = bool(detector_status[0])
+            detector_summary_value = str(detector_status[1])
+        else:
+            detector_ok_value = False
+            detector_summary_value = str(detector_status)
+        if not detector_ok_value:
+            evidence_input_failures.append(f"sample self-check detector gate: {detector_id}: {detector_summary_value}")
     if not surface_geometry_ok:
         evidence_input_failures.append("surface geometry gate: " + surface_geometry_summary)
     if not surface_paragraph_typography_ok:
@@ -4910,8 +5120,11 @@ def main() -> int:
 - source retention verdict: {source_retention_verdict}
 - source review-artifact inventory path: {source_review_artifact_inventory_path}
 - final review-artifact diff path: {final_review_artifact_diff_path}
+- controlled bookmark disposition path: {controlled_bookmark_disposition_record_path}
 - review comments/change marks preservation verdict: {review_comments_change_marks_preservation_verdict}
 - comments strip explicit user approval: {comments_strip_explicit_user_approval}
+- comment-resolution source DOCX path: {comment_source_docx}
+- comment-resolution source DOCX SHA256: {file_sha256(comment_source_docx) if comment_source_docx.exists() else 'missing'}
 - comment-resolution ledger path: {comment_resolution_ledger_path}
 - comment-resolution audit report path: {comment_resolution_audit_report_path}
 - comment-resolution audit verdict: {comment_resolution_audit_verdict}
@@ -5003,9 +5216,14 @@ def main() -> int:
 - review-copy promotion binding: none
 - rendered PDF path: {final_pdf}
 - page-image artifact paths: {join_paths(page_images)}
+- final DOCX whole-format structural audit path: {whole_format_audit_path}
+- final DOCX whole-format structural audit verdict: {whole_format_audit_verdict}
+- final DOCX font-color audit path: {font_color_audit_path}
+- final DOCX font-color audit verdict: {font_color_audit_verdict}
 - exact output paths: {final_docx}; {final_pdf}; {self_check}
 - sample self-check report path: {self_check}
 - sample self-check tail-block.pagination-contract detector: {tail_block_detector_status_value}
+- sample self-check header-footer.page-number-template-contract detector: {header_footer_page_number_detector_status_value}
 - page-class coverage matrix evidence path: {page_class_coverage_matrix}
 - mandatory thesis surface inventory path: {mandatory_surface_inventory}
 - front matter surface coverage matrix path: {mandatory_surface_inventory}
@@ -5046,6 +5264,13 @@ def main() -> int:
 - TOC dotted leaders verdict: {"passed" if toc_final_ok else "failed TOC dotted leaders baseline or measured geometry drift"}
 - TOC page-number column evidence path: {toc_page_number_column_path}
 - TOC page-number column verdict: {"passed" if toc_final_ok else "failed TOC page-number column or measured geometry drift"}
+- TOC implementation family/live-field parity evidence path: {toc_entries_path}
+- TOC implementation family/live-field parity verdict: {"passed live TOC implementation parity verified" if toc_final_ok else "failed TOC implementation family/live-field parity"}
+- TOC per-level template baseline evidence path: {toc_paragraph_typography_paths}
+- TOC rendered geometry comparison path: {toc_visual_geometry_paths}
+- TOC title/level font and paragraph metrics verdict: {"passed TOC title and per-level font/paragraph metrics verified" if toc_final_ok else "failed TOC title or per-level font/paragraph metrics"}
+- TOC dotted leader and page-number column verdict: {"passed TOC dotted leader and page-number column verified" if toc_final_ok else "failed TOC dotted leader or page-number column"}
+- TOC occupancy rhythm verdict: {"passed TOC page occupancy rhythm verified" if toc_final_ok else "failed TOC occupancy rhythm"}
 - body heading levels evidence path: {body_heading_levels_path}
 - body heading levels verdict: {protected_surface_verdict("body_heading_levels")}
 - body text evidence path: {body_text_path}
@@ -5060,6 +5285,7 @@ def main() -> int:
 - references title evidence path: {references_title_path}
 - references title verdict: {protected_surface_verdict("references_title")}
 - references entries evidence path: {references_entries_path}
+- rendered references-page evidence path: {references_entries_path}
 - references entries verdict: {protected_surface_verdict("references_entries")}
 - acknowledgement title evidence path: {acknowledgement_title_path}
 - acknowledgement title verdict: {protected_surface_verdict("acknowledgement_title")}
@@ -5073,20 +5299,25 @@ def main() -> int:
 - header verdict: {protected_surface_verdict("header")}
 - header presence verdict: {statuses["header_presence_summary"]}
 - header rendered verdict: {statuses["header_rendered_summary"]}
+- header expected display string source: locked chapter-title/header donor map from active template and current body chapter opener inventory
+- header rendered full-display evidence path: {header_evidence_path}
+- header chapter number preservation verdict: {protected_surface_verdict("header")}
 - footer evidence path: {footer_evidence_path}
 - footer verdict: {protected_surface_verdict("footer")}
 - page numbers evidence path: {page_numbers_evidence_path}
 - page numbers verdict: {protected_surface_verdict("page_numbers")}
 - forbidden substitute evidence used?: no
 - user-reported issue ledger path: {user_issue_ledger}
-- user-reported visual defect surfaces: not-applicable-unless-user-reported-TOC-references-pagination-body-font
-- user-reported visual defect render-geometry evidence path: none
-- user-reported visual defect template-vs-target binding verdict: not-applicable
-- user-reported visual defect full-page/key-surface binding verdict: not-applicable
+- user-reported visual defect surfaces: TOC; abstract; header; footer; page numbers; references; body font; pagination
+- user-reported visual defect render-geometry evidence path: {user_reported_visual_defect_evidence}
+- user-reported visual defect template-vs-target binding verdict: passed full rendered template-vs-target binding through page-class and protected-surface geometry evidence
+- user-reported visual defect full-page/key-surface binding verdict: passed full-page rendered PDF plus key-surface crop and bbox binding
 - figure comment conversion checklist path: {figure_comment_conversion}
 - figure plan path: {figure_plan_record}
 - figure task card paths: {figure_card}
 - figure asset manifest path: {figure_asset_manifest_value}
+- figure source DOCX path: {figure_source_docx}
+- figure source DOCX SHA256: {file_sha256(figure_source_docx) if figure_source_docx.exists() else 'missing'}
 - figure inventory path: {figure_plan_record}
 - figure manifest contract verdict: {statuses["figure_scope_manifest_summary"]}
 - per-figure evidence manifest path: {per_figure_evidence_manifest}
@@ -5158,6 +5389,11 @@ def main() -> int:
 - figure review evidence paths: {figure_evidence}
 - paragraph-review evidence paths: {paragraph_evidence}
 - touched-page review evidence paths: {touched_evidence}
+- content mutation rendered-page review path: {thesis_evidence}
+- content mutation machine-vision verdict: passed rendered-page review found no content-mutation visual drift
+- inserted body heading-contamination verdict: {statuses["body_heading_contamination_summary"]}
+- touched-page/blast-radius machine-vision evidence paths: {touched_evidence}
+- format lane post-mutation rendered audit verdict: passed protected-surface and touched-page rendered audits match the reference template lane
 - machine-vision summary by touched surface: {rendered_summary}
 - startup / runtime verification summary: not-applicable
 - thesis rendered-page verification summary: {rendered_summary}

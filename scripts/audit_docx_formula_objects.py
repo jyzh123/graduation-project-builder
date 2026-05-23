@@ -38,6 +38,7 @@ CODE_LINE_RE = re.compile(r"^\s*\d+\s*\|\s*")
 CODE_TOKEN_RE = re.compile(
     r"(@app\.route|def\s+\w+\(|class\s+\w+|return\b|request\.|jsonify\(|"
     r"os\.path|cv2\.|self\.|import\s+\w+|from\s+\w+\s+import|"
+    r"\bconst\s+\w+\s*=|\blet\s+\w+\s*=|\bvar\s+\w+\s*=|\bawait\s+fetch\b|"
     r"\bif\s+.+:|\bfor\s+.+:|\btry:|\bexcept\b|=>|</?\w+)",
     re.I,
 )

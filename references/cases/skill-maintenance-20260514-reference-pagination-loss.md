@@ -15,9 +15,12 @@ The existing pagination gate verified section/page-number topology, blank/near-e
 - `sample_self_check.py` emits `tail-block.pagination-contract` and fails when the `references` opener lacks exactly one pagination owner.
 - `inspect_docx_pagination_structure.py` binds tail-block page-map evidence to that detector instead of accepting generic page-map text.
 - `generate_thesis_acceptance_record.py`, `validate_skill_gate_record_evidence.py`, and `validate_skill_gate_record_gate.py` reject missing, stale, failed, or pass-shaped reference pagination evidence.
+- 2026-05-20 hardening adds prior-block separation proof: the tail-block opener map must record `references previous content physical page=...` and `references_prior_block_separation_verdict=pass`, and the sample detector fails when the previous content page is missing or the same as the formal references opener page.
 
 ## Regression Coverage
 
 - `case_sample_self_check_tail_block_pagination_loss_rejected`
+- `case_sample_self_check_tail_block_previous_page_merge_rejected`
 - `case_acceptance_generator_reference_pagination_loss_rejected`
+- `case_acceptance_generator_reference_prior_page_token_missing_rejected`
 - `case_acceptance_generator_missing_tail_block_pagination_detector_rejected`

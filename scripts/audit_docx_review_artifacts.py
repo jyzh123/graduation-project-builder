@@ -17,10 +17,12 @@ try:
     from .audit_thesis_citations import (
         audit_docx as audit_body_citations,
         citation_is_before_punctuation,
+        citation_marker_count,
         citation_runs,
         citation_visual_style_ok,
         classify_surface,
         extract_citation_numbers,
+        find_bibliography_range,
         iter_paragraphs,
         run_has_hyperlink_citation,
         run_has_superscript_citation,
@@ -30,10 +32,12 @@ except ImportError:
     from audit_thesis_citations import (
         audit_docx as audit_body_citations,
         citation_is_before_punctuation,
+        citation_marker_count,
         citation_runs,
         citation_visual_style_ok,
         classify_surface,
         extract_citation_numbers,
+        find_bibliography_range,
         iter_paragraphs,
         run_has_hyperlink_citation,
         run_has_superscript_citation,
@@ -101,7 +105,9 @@ class CommentRecord:
 class CitationRecord:
     paragraph_index: int
     para_id: str
+    paragraph_text_digest: str
     number: int
+    marker_count: int
     superscript_ok: bool
     hyperlink_ok: bool
     visual_style_ok: bool
@@ -129,6 +135,17 @@ class CitationSnapshot:
     docx_sha256: str
     records: list[CitationRecord]
     citation_numbers: list[int]
+
+
+@dataclass
+class BookmarkDisposition:
+    path: Path
+    source_docx_path: str
+    source_docx_sha256: str
+    final_docx_path: str
+    final_docx_sha256: str
+    allowed_missing_bookmarks: set[str]
+    verdict: str
 
 
 STORY_PART_RE = re.compile(r"^word/(?:document|header\d+|footer\d+|footnotes|endnotes|comments)\.xml$")
@@ -265,8 +282,11 @@ def collect_review_artifacts(docx_path: Path) -> ReviewArtifactSnapshot:
 
 def collect_citation_snapshot(docx_path: Path) -> CitationSnapshot:
     paragraphs = iter_paragraphs(docx_path)
-    start = next((p.index for p in paragraphs if re.sub(r"\s+", "", p.text) == "参考文献"), len(paragraphs))
     records: list[CitationRecord] = []
+    try:
+        start, _ = find_bibliography_range(paragraphs)
+    except ValueError:
+        start = len(paragraphs)
     citation_numbers: list[int] = []
     for record in paragraphs[:start]:
         numbers = extract_citation_numbers(record.text)
@@ -279,7 +299,9 @@ def collect_citation_snapshot(docx_path: Path) -> CitationSnapshot:
                 CitationRecord(
                     paragraph_index=record.index + 1,
                     para_id=record.para_id,
+                    paragraph_text_digest=digest_text(record.text),
                     number=number,
+                    marker_count=citation_marker_count(record, number),
                     superscript_ok=run_has_superscript_citation(record, number),
                     hyperlink_ok=run_has_hyperlink_citation(record, number),
                     visual_style_ok=citation_visual_style_ok(record, number),
@@ -295,11 +317,110 @@ def collect_citation_snapshot(docx_path: Path) -> CitationSnapshot:
     )
 
 
+def _resolve_disposition_path(value: object, base: Path) -> Path | None:
+    text = str(value or "").strip()
+    if not text or text.lower() in {"none", "n/a", "not-applicable"}:
+        return None
+    path = Path(text)
+    if not path.is_absolute():
+        path = (base.parent / path).resolve()
+    return path
+
+
+def load_empty_paragraph_bookmark_disposition(path: Path) -> tuple[BookmarkDisposition | None, list[str]]:
+    issues: list[str] = []
+    if not path.exists():
+        return None, [f"controlled bookmark disposition missing: {path}"]
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return None, [f"controlled bookmark disposition unreadable: {path} ({exc})"]
+    if not isinstance(payload, dict):
+        return None, [f"controlled bookmark disposition root must be an object: {path}"]
+
+    if payload.get("schema") != "graduation-project-builder.empty-paragraph-bookmark-disposition.v1":
+        issues.append("controlled bookmark disposition schema is not recognized")
+    verdict = str(payload.get("verdict", "")).strip().lower()
+    if "pass" not in verdict or any(token in verdict for token in ("fail", "blocked", "missing", "pending")):
+        issues.append("controlled bookmark disposition verdict is not pass")
+
+    truthy_fields = ("empty_paragraph_verified", "visible_text_absent")
+    false_fields = (
+        "contains_image_or_table",
+        "contains_section_or_page_break",
+        "contains_comment_anchor",
+        "contains_tracked_change",
+        "contains_field_host",
+        "contains_hyperlink",
+        "contains_citation_marker",
+    )
+    for key in truthy_fields:
+        if payload.get(key) is not True:
+            issues.append(f"controlled bookmark disposition {key} must be true")
+    for key in false_fields:
+        if payload.get(key) is not False:
+            issues.append(f"controlled bookmark disposition {key} must be false")
+
+    allowed_missing = {
+        str(item).strip()
+        for item in payload.get("allowed_missing_bookmarks", [])
+        if str(item).strip()
+    }
+    if not allowed_missing:
+        issues.append("controlled bookmark disposition allowed_missing_bookmarks is empty")
+
+    source_docx_path = str(payload.get("source_docx_path", "")).strip()
+    final_docx_path = str(payload.get("final_docx_path", "")).strip()
+    source_docx_sha256 = str(payload.get("source_docx_sha256", "")).strip().lower()
+    final_docx_sha256 = str(payload.get("final_docx_sha256", "")).strip().lower()
+    for label, value in (
+        ("source_docx_path", source_docx_path),
+        ("final_docx_path", final_docx_path),
+        ("source_docx_sha256", source_docx_sha256),
+        ("final_docx_sha256", final_docx_sha256),
+    ):
+        if not value:
+            issues.append(f"controlled bookmark disposition {label} is missing")
+
+    return (
+        BookmarkDisposition(
+            path=path,
+            source_docx_path=source_docx_path,
+            source_docx_sha256=source_docx_sha256,
+            final_docx_path=final_docx_path,
+            final_docx_sha256=final_docx_sha256,
+            allowed_missing_bookmarks=allowed_missing,
+            verdict=verdict,
+        ),
+        issues,
+    )
+
+
+def disposition_matches_docs(
+    disposition: BookmarkDisposition | None,
+    source: ReviewArtifactSnapshot,
+    final: ReviewArtifactSnapshot,
+) -> list[str]:
+    if disposition is None:
+        return ["controlled bookmark disposition is missing"]
+    issues: list[str] = []
+    if Path(disposition.source_docx_path).resolve() != Path(source.docx_path).resolve():
+        issues.append("controlled bookmark disposition source_docx_path does not match source DOCX")
+    if Path(disposition.final_docx_path).resolve() != Path(final.docx_path).resolve():
+        issues.append("controlled bookmark disposition final_docx_path does not match final DOCX")
+    if disposition.source_docx_sha256.lower() != source.docx_sha256.lower():
+        issues.append("controlled bookmark disposition source_docx_sha256 does not match source DOCX")
+    if disposition.final_docx_sha256.lower() != final.docx_sha256.lower():
+        issues.append("controlled bookmark disposition final_docx_sha256 does not match final DOCX")
+    return issues
+
+
 def compare_review_artifacts(
     source: ReviewArtifactSnapshot,
     final: ReviewArtifactSnapshot,
     *,
     allow_approved_comment_disposal: bool = False,
+    controlled_bookmark_disposition: BookmarkDisposition | None = None,
 ) -> list[str]:
     issues: list[str] = []
     source_is_format_template = any(
@@ -352,7 +473,18 @@ def compare_review_artifacts(
     if source.package_counts.bookmarks > 0 and not source_is_format_template:
         missing_bookmarks = sorted(set(source.bookmark_names) - set(final.bookmark_names))
         if missing_bookmarks:
-            issues.append(f"source bookmark anchors missing from final DOCX: {missing_bookmarks[:8]}")
+            disposition_issues = disposition_matches_docs(controlled_bookmark_disposition, source, final)
+            if disposition_issues:
+                issues.append(f"source bookmark anchors missing from final DOCX: {missing_bookmarks[:8]}")
+                issues.extend(f"controlled bookmark disposition failed: {issue}" for issue in disposition_issues)
+            else:
+                allowed = controlled_bookmark_disposition.allowed_missing_bookmarks if controlled_bookmark_disposition else set()
+                unauthorized = sorted(set(missing_bookmarks) - allowed)
+                stale_allowed = sorted(allowed - set(missing_bookmarks))
+                if unauthorized:
+                    issues.append(f"source bookmark anchors missing from final DOCX: {unauthorized[:8]}")
+                if stale_allowed:
+                    issues.append(f"controlled bookmark disposition names bookmarks not missing from final DOCX: {stale_allowed[:8]}")
 
     if source.package_counts.fields > 0 and not source_is_format_template:
         missing_fields = sorted(set(source.field_instr_digests) - set(final.field_instr_digests))
@@ -397,16 +529,68 @@ def compare_citations(source: CitationSnapshot, final: CitationSnapshot) -> list
         if not final_records:
             issues.append(f"citation marker [{number}] missing from final DOCX")
             continue
-        if not any(item.superscript_ok for item in final_records):
-            issues.append(f"citation marker [{number}] lost superscript run state in final DOCX")
         source_records = source_by_number.get(number, [])
         source_has_hyperlink = any(item.hyperlink_ok for item in source_records)
-        if source_has_hyperlink and not any(item.hyperlink_ok for item in final_records):
-            issues.append(f"citation marker [{number}] lost hyperlink host in final DOCX")
-        if not any(item.visual_style_ok for item in final_records):
-            issues.append(f"citation marker [{number}] lost clean citation visual style in final DOCX")
-        if not any(item.punctuation_ok for item in final_records):
-            issues.append(f"citation marker [{number}] lost punctuation-side placement in final DOCX")
+        for source_item in source_records:
+            matching_final = [
+                item
+                for item in final_records
+                if (
+                    item.para_id
+                    and source_item.para_id
+                    and item.para_id == source_item.para_id
+                )
+                or (
+                    not item.para_id
+                    and not source_item.para_id
+                    and item.paragraph_index == source_item.paragraph_index
+                    and item.paragraph_text_digest == source_item.paragraph_text_digest
+                )
+            ]
+            source_location = f"paragraph {source_item.paragraph_index}"
+            if not matching_final:
+                same_index_changed_host = [
+                    item
+                    for item in final_records
+                    if (
+                        not item.para_id
+                        and not source_item.para_id
+                        and item.paragraph_index == source_item.paragraph_index
+                        and item.paragraph_text_digest != source_item.paragraph_text_digest
+                    )
+                ]
+                if same_index_changed_host:
+                    issues.append(
+                        f"citation marker [{number}] source occurrence host text changed or moved in final DOCX at {source_location}"
+                    )
+                issues.append(
+                    f"citation marker [{number}] source occurrence missing from final DOCX at {source_location}"
+                )
+                continue
+            if not any(item.marker_count >= source_item.marker_count for item in matching_final):
+                issues.append(
+                    f"citation marker [{number}] occurrence count decreased at source {source_location}"
+                )
+            if source_item.superscript_ok and not all(item.superscript_ok for item in matching_final):
+                issues.append(
+                    f"citation marker [{number}] source occurrence lost superscript run state at {source_location}"
+                )
+            if source_item.hyperlink_ok and not all(item.hyperlink_ok for item in matching_final):
+                issues.append(
+                    f"citation marker [{number}] source occurrence lost hyperlink host at {source_location}"
+                )
+        for item in final_records:
+            location = f"paragraph {item.paragraph_index}"
+            if item.marker_count <= 0:
+                issues.append(f"citation marker [{number}] missing concrete run occurrence in final DOCX at {location}")
+            if not item.superscript_ok:
+                issues.append(f"citation marker [{number}] lost superscript run state in final DOCX at {location}")
+            if source_has_hyperlink and not item.hyperlink_ok:
+                issues.append(f"citation marker [{number}] lost hyperlink host in final DOCX at {location}")
+            if not item.visual_style_ok:
+                issues.append(f"citation marker [{number}] lost clean citation visual style in final DOCX at {location}")
+            if not item.punctuation_ok:
+                issues.append(f"citation marker [{number}] lost punctuation-side placement in final DOCX at {location}")
 
     return issues
 
@@ -451,15 +635,25 @@ def build_review_diff_report(
     allow_approved_comment_disposal: bool = False,
     comment_disposal_audit_path: Path | None = None,
     comment_disposal_issues: list[str] | None = None,
+    controlled_bookmark_disposition: BookmarkDisposition | None = None,
+    controlled_bookmark_disposition_issues: list[str] | None = None,
 ) -> tuple[str, list[str]]:
     issues = compare_review_artifacts(
         source,
         final,
         allow_approved_comment_disposal=allow_approved_comment_disposal,
+        controlled_bookmark_disposition=controlled_bookmark_disposition,
     )
     if comment_disposal_issues:
         issues.extend(f"comment disposal authorization failed: {issue}" for issue in comment_disposal_issues)
+    if controlled_bookmark_disposition_issues:
+        issues.extend(f"controlled bookmark disposition failed: {issue}" for issue in controlled_bookmark_disposition_issues)
     counts = final.package_counts
+    missing_bookmarks = sorted(set(source.bookmark_names) - set(final.bookmark_names))
+    controlled_bookmarks = sorted(
+        set(missing_bookmarks)
+        & (controlled_bookmark_disposition.allowed_missing_bookmarks if controlled_bookmark_disposition else set())
+    )
     report = (
         "# DOCX Review Artifact Diff\n\n"
         "## Summary\n"
@@ -471,8 +665,11 @@ def build_review_diff_report(
         f"- comment-related parts stripped: {'yes' if set(source.comment_part_names) - set(final.comment_part_names) else 'no'}\n"
         f"- approved comment disposal: {'yes' if allow_approved_comment_disposal else 'no'}\n"
         f"- comment disposal audit path: {comment_disposal_audit_path if comment_disposal_audit_path is not None else 'none'}\n"
+        f"- controlled bookmark disposition path: {controlled_bookmark_disposition.path if controlled_bookmark_disposition is not None else 'none'}\n"
+        f"- controlled bookmark disposition: {'yes' if controlled_bookmarks else 'no'}\n"
+        f"- controlled missing bookmarks: {controlled_bookmarks if controlled_bookmarks else 'none'}\n"
         f"- tracked changes stripped: {'yes' if source.package_counts.tracked_changes > final.package_counts.tracked_changes else 'no'}\n"
-        f"- bookmarks stripped: {'yes' if source.package_counts.bookmarks > 0 and len(set(source.bookmark_names) - set(final.bookmark_names)) > 0 else 'no'}\n"
+        f"- bookmarks stripped: {'yes' if source.package_counts.bookmarks > 0 and len(set(missing_bookmarks) - set(controlled_bookmarks)) > 0 else 'no'}\n"
         f"- fields stripped: {'yes' if source.package_counts.fields > 0 and len(set(source.field_instr_digests) - set(final.field_instr_digests)) > 0 else 'no'}\n"
         f"- hyperlinks stripped: {'yes' if source.package_counts.hyperlinks > 0 and len(set(source.hyperlink_anchors) - set(final.hyperlink_anchors)) > 0 else 'no'}\n"
         f"- error codes: {', '.join(sorted(set(issues))) if issues else 'none'}\n"
@@ -498,7 +695,8 @@ def build_citation_inventory_report(snapshot: CitationSnapshot) -> str:
         "## Citation Records\n"
         + (
             "\n".join(
-                f"- paragraph {item.paragraph_index} number={item.number} superscript={'yes' if item.superscript_ok else 'no'} hyperlink={'yes' if item.hyperlink_ok else 'no'} visual={'yes' if item.visual_style_ok else 'no'} punctuation={'yes' if item.punctuation_ok else 'no'} surface={item.surface}"
+                f"- paragraph {item.paragraph_index} number={item.number} marker_count={item.marker_count} superscript={'yes' if item.superscript_ok else 'no'} hyperlink={'yes' if item.hyperlink_ok else 'no'} visual={'yes' if item.visual_style_ok else 'no'} punctuation={'yes' if item.punctuation_ok else 'no'} surface={item.surface}"
+                f" paragraph_text_digest={item.paragraph_text_digest}"
                 for item in snapshot.records
             )
             if snapshot.records
@@ -644,11 +842,24 @@ def validate_review_artifact_reports(source_report_path: Path, diff_report_path:
                     )
                 else:
                     approved_comment_disposal = True
+    disposition = None
+    disposition_claimed = diff_values.get("- controlled bookmark disposition:", "").strip().lower() in {"yes", "true", "pass", "passed"}
+    if disposition_claimed:
+        disposition_path = _resolve_disposition_path(
+            diff_values.get("- controlled bookmark disposition path:", ""),
+            diff_report_path,
+        )
+        if disposition_path is None:
+            issues.append(f"review artifact diff claims controlled bookmark disposition but lacks disposition path in {diff_report_path}")
+        else:
+            disposition, disposition_issues = load_empty_paragraph_bookmark_disposition(disposition_path)
+            issues.extend(f"controlled bookmark disposition failed: {issue}" for issue in disposition_issues)
     issues.extend(
         compare_review_artifacts(
             recomputed_source,
             recomputed_final,
             allow_approved_comment_disposal=approved_comment_disposal,
+            controlled_bookmark_disposition=disposition,
         )
     )
     return issues
@@ -739,6 +950,10 @@ def main(argv: list[str]) -> int:
         "--comment-resolution-ledger",
         help="Allow source comments to be absent from a clean final only when this ledger validates approved disposal.",
     )
+    parser.add_argument(
+        "--controlled-bookmark-disposition",
+        help="Allow only listed empty-paragraph bookmark loss when a SHA-bound disposition record validates it.",
+    )
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--json-output", help="Write the JSON audit payload as UTF-8 without relying on shell redirection.")
     args = parser.parse_args(argv)
@@ -761,6 +976,17 @@ def main(argv: list[str]) -> int:
             assert_all_resolved=True,
         )
         allow_approved_comment_disposal = not comment_disposal_issues
+    controlled_bookmark_disposition = None
+    controlled_bookmark_disposition_issues: list[str] = []
+    controlled_bookmark_disposition_path = (
+        Path(args.controlled_bookmark_disposition).resolve()
+        if args.controlled_bookmark_disposition
+        else None
+    )
+    if controlled_bookmark_disposition_path is not None:
+        controlled_bookmark_disposition, controlled_bookmark_disposition_issues = load_empty_paragraph_bookmark_disposition(
+            controlled_bookmark_disposition_path
+        )
 
     review_inventory_text = build_review_inventory_report(review_source)
     review_diff_text, review_issues = build_review_diff_report(
@@ -769,6 +995,8 @@ def main(argv: list[str]) -> int:
         allow_approved_comment_disposal=allow_approved_comment_disposal,
         comment_disposal_audit_path=comment_disposal_audit_path,
         comment_disposal_issues=comment_disposal_issues,
+        controlled_bookmark_disposition=controlled_bookmark_disposition,
+        controlled_bookmark_disposition_issues=controlled_bookmark_disposition_issues,
     )
     citation_inventory_text = build_citation_inventory_report(citation_source)
     citation_diff_text, citation_issues = build_citation_diff_report(citation_source, citation_final)
@@ -778,6 +1006,8 @@ def main(argv: list[str]) -> int:
         "comment_disposal_ledger": str(comment_disposal_audit_path) if comment_disposal_audit_path is not None else None,
         "comment_disposal_authorized": allow_approved_comment_disposal,
         "comment_disposal_issues": comment_disposal_issues,
+        "controlled_bookmark_disposition": str(controlled_bookmark_disposition_path) if controlled_bookmark_disposition_path is not None else None,
+        "controlled_bookmark_disposition_issues": controlled_bookmark_disposition_issues,
         "citation": asdict(citation_source),
         "citation_diff_issues": citation_issues,
     }

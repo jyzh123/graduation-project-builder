@@ -142,8 +142,6 @@ def heading_label_key(text: str) -> str:
 
 
 def first_body_page_marker(text: str) -> str:
-    if "\u7eea\u8bba" in text:
-        return "\u7eea\u8bba"
     return re.split(r"[\(\uff08]", str(text or "").strip(), maxsplit=1)[0]
 
 
@@ -170,6 +168,54 @@ def find_last_page(texts: list[str], needle: str) -> int | None:
     target = normalize(needle).lower()
     for idx in range(len(texts), 0, -1):
         if target in normalize(texts[idx - 1]).lower():
+            return idx
+    return None
+
+
+def page_contains_standalone_marker(text: str, marker: str) -> bool:
+    compact_marker = normalize(marker).lower()
+    if is_body_chapter_heading_text(marker):
+        for line in (text or "").splitlines():
+            if normalize(line).lower() == compact_marker:
+                return True
+        return False
+    short_body_heading_markers = {
+        normalize("\u7eea\u8bba").lower(),
+        normalize("\u7ed3\u8bba").lower(),
+        normalize("\u603b\u7ed3\u4e0e\u5c55\u671b").lower(),
+    }
+    if compact_marker in short_body_heading_markers:
+        for line in (text or "").splitlines():
+            if normalize(line).lower() == compact_marker:
+                return True
+        return False
+    standalone_markers = {
+        "\u6458\u8981",
+        "abstract",
+        "\u76ee\u5f55",
+        "\u7b2c\u4e00\u7ae0\u7eea\u8bba",
+        "\u7b2c\u4e00\u7ae0 \u7eea\u8bba",
+        "\u53c2\u8003\u6587\u732e",
+        "\u81f4\u8c22",
+    }
+    if compact_marker not in {normalize(item).lower() for item in standalone_markers}:
+        return compact_marker in normalize(text).lower()
+    for line in (text or "").splitlines():
+        if normalize(line).lower() == compact_marker:
+            return True
+    return False
+
+
+def find_standalone_page(texts: list[str], marker: str) -> int | None:
+    for idx, text in enumerate(texts, start=1):
+        if page_contains_standalone_marker(text, marker):
+            return idx
+    return None
+
+
+def find_last_standalone_page(texts: list[str], marker: str) -> int | None:
+    for idx in range(len(texts), 0, -1):
+        if page_contains_standalone_marker(texts[idx - 1], marker):
             return idx
     return None
 
@@ -423,6 +469,8 @@ def collect_reference_page_markers(reference_doc: Document) -> dict[str, str | N
         "ack": None,
     }
     toc_seen = False
+    toc_marker_seen = False
+    body_heading_before_toc: str | None = None
     for para in reference_doc.paragraphs:
         text = para.text.strip()
         if not text:
@@ -453,8 +501,11 @@ def collect_reference_page_markers(reference_doc: Document) -> dict[str, str | N
         ):
             markers["toc"] = "\u76ee\u5f55"
             toc_seen = True
+            toc_marker_seen = True
         if markers["first_body"] is None and toc_seen and not has_tab and not style_name.lower().startswith("toc") and (style_name == "Heading 1" or is_body_chapter_heading_text(text)):
             markers["first_body"] = first_body_page_marker(text)
+        if body_heading_before_toc is None and not has_tab and (style_name == "Heading 1" or is_body_chapter_heading_text(text)):
+            body_heading_before_toc = first_body_page_marker(text)
         if markers["figure_page"] is None and (style_name == "图注" or CAPTION_RE.match(text)) and text.startswith("图"):
             markers["figure_page"] = text
         if markers["table_page"] is None and (style_name == "表格标题" or CAPTION_RE.match(text)) and text.startswith("表"):
@@ -463,6 +514,28 @@ def collect_reference_page_markers(reference_doc: Document) -> dict[str, str | N
             markers["references"] = text
         if markers["ack"] is None and normalized_equals_any(text, ACKNOWLEDGEMENT_ALIASES):
             markers["ack"] = text
+    if not toc_marker_seen:
+        try:
+            document = reference_doc.part.element
+            for sdt in document.findall(".//w:sdt", NS):
+                for paragraph in sdt.findall("./w:sdtContent/w:p", NS):
+                    text = "".join(node.text or "" for node in paragraph.findall(".//w:t", NS)).strip()
+                    if not text:
+                        continue
+                    heading_key = heading_label_key(text)
+                    has_tab = paragraph.find(".//w:tab", NS) is not None
+                    style_el = paragraph.find("./w:pPr/w:pStyle", NS)
+                    style_id = style_el.get(qn("w:val")) if style_el is not None else ""
+                    if markers["toc"] is None and heading_key in {normalize("\u76ee\u5f55").lower(), normalize("\u76ee   \u5f55").lower()}:
+                        markers["toc"] = "\u76ee\u5f55"
+                        toc_seen = True
+                        continue
+                    if markers["first_body"] is None and toc_seen and not has_tab and not str(style_id).upper().startswith("TOC") and is_body_chapter_heading_text(text):
+                        markers["first_body"] = first_body_page_marker(text)
+        except Exception:
+            pass
+    if markers["first_body"] is None and body_heading_before_toc is not None:
+        markers["first_body"] = body_heading_before_toc
     return markers
 
 
@@ -997,6 +1070,33 @@ def iter_body_paragraph_elements(docx_path: Path) -> list[ET.Element]:
     if body is None:
         return []
     return [child for child in list(body) if child.tag == W + "p"]
+
+
+def iter_body_and_sdt_paragraph_elements(docx_path: Path) -> list[ET.Element]:
+    """Return body paragraphs in document order, expanding top-level SDT content.
+
+    Word may store a live table of contents inside a w:sdt content control.  The
+    body-only iterator intentionally skips that container for main-body checks,
+    but TOC-specific checks need the visible paragraphs inside it.
+    """
+    root = load_xml(docx_path, "word/document.xml")
+    if root is None:
+        return []
+    body = root.find("w:body", NS)
+    if body is None:
+        return []
+    paragraphs: list[ET.Element] = []
+    for child in list(body):
+        if child.tag == W + "p":
+            paragraphs.append(child)
+            continue
+        if child.tag != W + "sdt":
+            continue
+        content = child.find("./w:sdtContent", NS)
+        if content is None:
+            continue
+        paragraphs.extend(content.findall(".//w:p", NS))
+    return paragraphs
 
 
 def iter_main_body_paragraph_infos(docx_path: Path) -> list[dict[str, object]]:
@@ -2610,29 +2710,47 @@ def extract_bibliography_numbering_checks(reference_docx: Path, final_docx: Path
     _reference_heading, reference_entries = collect_bibliography_block_infos(reference_docx)
     _final_heading, final_entries = collect_bibliography_block_infos(final_docx)
     if not reference_entries or not final_entries:
-        return [], "不适用"
+        return [], "not-applicable"
 
+    reference_visible_bracket = any(re.match(r"^\s*[\[［]\d+[\]］]", str(entry["text"])) for entry in reference_entries)
+    reference_visible_decimal = any(re.match(r"^\s*\d+\.", str(entry["text"])) for entry in reference_entries)
     reference_numbered = [entry for entry in reference_entries if str(entry["signature"].get("numPr", "")) == "yes"]
-    if not reference_numbered:
-        return [], "不适用"
+    if not reference_numbered and not reference_visible_bracket and not reference_visible_decimal:
+        return [], "not-applicable"
 
-    expected_ilvl = Counter(str(entry["signature"].get("ilvl", "")) for entry in reference_numbered).most_common(1)[0][0]
     issues: list[str] = []
-    for entry in final_entries:
-        entry_text = str(entry["text"]).strip()
-        signature = dict(entry["signature"])
-        if signature.get("numPr", "") != "yes":
-            issues.append(f"参考文献条目丢失自动编号机制: `{entry_text[:80]}`")
-            if len(issues) >= 12:
-                break
-            continue
-        current_ilvl = str(signature.get("ilvl", ""))
-        if expected_ilvl != current_ilvl:
-            issues.append(f"参考文献条目自动编号层级漂移: `{entry_text[:80]}` expected ilvl `{expected_ilvl or 'none'}` but found `{current_ilvl or 'none'}`")
-            if len(issues) >= 12:
-                break
-    return issues, ("通过" if not issues else "未通过")
-
+    if reference_visible_decimal:
+        for entry in final_entries:
+            entry_text = str(entry["text"]).strip()
+            if not re.match(r"^\s*\d+\.", entry_text):
+                issues.append(f"参考文献条目编号样式应为 `1.` 形式: `{entry_text[:80]}`")
+                if len(issues) >= 12:
+                    break
+    elif reference_visible_bracket:
+        for entry in final_entries:
+            entry_text = str(entry["text"]).strip()
+            if not re.match(r"^\s*[\[［]\d+[\]］]", entry_text):
+                issues.append(f"参考文献条目编号样式应为 `[n]` 形式: `{entry_text[:80]}`")
+                if len(issues) >= 12:
+                    break
+    else:
+        expected_ilvl = Counter(str(entry["signature"].get("ilvl", "")) for entry in reference_numbered).most_common(1)[0][0]
+        for entry in final_entries:
+            entry_text = str(entry["text"]).strip()
+            signature = dict(entry["signature"])
+            if signature.get("numPr", "") != "yes":
+                issues.append(f"参考文献条目缺少自动编号结构: `{entry_text[:80]}`")
+                if len(issues) >= 12:
+                    break
+                continue
+            current_ilvl = str(signature.get("ilvl", ""))
+            if expected_ilvl != current_ilvl:
+                issues.append(
+                    f"参考文献条目自动编号层级不一致: `{entry_text[:80]}` expected ilvl `{expected_ilvl or 'none'}` but found `{current_ilvl or 'none'}`"
+                )
+                if len(issues) >= 12:
+                    break
+    return issues, ("passed" if not issues else "failed")
 
 def extract_bibliography_count_checks(reference_docx: Path, final_docx: Path) -> tuple[list[str], str]:
     _reference_heading, reference_entries = collect_bibliography_block_infos(reference_docx)
@@ -2725,6 +2843,7 @@ def extract_bibliography_entry_baseline_checks(reference_docx: Path, final_docx:
             "csTheme",
         )
     )
+    template_has_cjk_run_baseline = expected_run_signature.get("cjkRunPresent") == "yes"
     if not template_has_font_baseline:
         keys = tuple(
             key
@@ -2787,6 +2906,26 @@ def extract_bibliography_entry_baseline_checks(reference_docx: Path, final_docx:
                 }
             )
         diffs = compare_signature(dict(entry["signature"]), expected_signature, active_keys)
+        if contains_cjk(entry_text) and not template_has_cjk_run_baseline:
+            # A template bibliography can contain only Latin sample entries.
+            # In that case, the sample does not prove that CJK bibliography
+            # text should use the Latin paragraph/run font slots. The dedicated
+            # font-slot audit owns mixed-script bibliography font validation.
+            diffs = [
+                diff
+                for diff in diffs
+                if _diff_key(diff)
+                not in {
+                    "eastAsia",
+                    "ascii",
+                    "hAnsi",
+                    "eastAsiaTheme",
+                    "asciiTheme",
+                    "hAnsiTheme",
+                    "csTheme",
+                    "size",
+                }
+            ]
         if diffs:
             issues.append(f"\u53c2\u8003\u6587\u732e\u6761\u76ee `{entry_text[:80]}` \u57fa\u7ebf\u6f02\u79fb: {'; '.join(diffs[:6])}")
             if len(issues) >= 12:
@@ -2807,6 +2946,8 @@ def extract_bibliography_entry_baseline_checks(reference_docx: Path, final_docx:
         active_run_keys = run_keys
         if not contains_cjk(entry_text):
             active_run_keys = ()
+        elif not template_has_cjk_run_baseline:
+            active_run_keys = tuple(key for key in run_keys if not key.startswith("cjk"))
         run_diffs = compare_signature(dict(entry["run_signature"]), expected_run_signature, active_run_keys)
         if run_diffs:
             issues.append(f"\u53c2\u8003\u6587\u732e\u6761\u76ee `{entry_text[:80]}` run \u6a21\u578b\u6f02\u79fb: {'; '.join(run_diffs[:6])}")
@@ -2823,7 +2964,7 @@ def rendered_bibliography_line_lefts(pdf_path: Path) -> list[dict[str, object]]:
     with fitz.open(pdf_path) as pdf:
         for page_index, page in enumerate(pdf, start=1):
             page_lines = [line.strip() for line in page.get_text("text").splitlines() if line.strip()]
-            if "\u53c2\u8003\u6587\u732e" not in page_lines or not any(line.startswith("[1]") for line in page_lines):
+            if "\u53c2\u8003\u6587\u732e" not in page_lines or not any(re.match(r"^(?:\[\d+\]|\d+\.)", line) for line in page_lines):
                 continue
             grouped: dict[tuple[int, int], list[tuple[float, float, str]]] = {}
             for word in page.get_text("words"):
@@ -2843,7 +2984,7 @@ def rendered_bibliography_line_lefts(pdf_path: Path) -> list[dict[str, object]]:
                         "text": line_text,
                         "x0": min(item[0] for item in ordered),
                         "y0": min(item[1] for item in ordered),
-                        "entry_start": "yes" if re.match(r"^\[\d+\]", line_text) else "no",
+                        "entry_start": "yes" if re.match(r"^(?:\[\d+\]|\d+\.)", line_text) else "no",
                     }
                 )
             break
@@ -2859,7 +3000,7 @@ def rendered_bibliography_line_lefts(pdf_path: Path) -> list[dict[str, object]]:
             continue
         if normalized_equals_any(text, ACKNOWLEDGEMENT_ALIASES) or normalize(text).lower() in {normalize("\u9644\u5f55").lower(), "appendix"}:
             break
-        if re.match(r"^\[\d+\]", text) or bibliography_rows:
+        if re.match(r"^(?:\[\d+\]|\d+\.)", text) or bibliography_rows:
             bibliography_rows.append(row)
     return bibliography_rows
 
@@ -2894,6 +3035,45 @@ TAIL_BLOCK_ALIASES = {
     "acknowledgement": ACKNOWLEDGEMENT_ALIASES,
     "appendix": ("附录", "appendix"),
 }
+
+
+def paragraph_plain_text(paragraph: ET.Element) -> str:
+    return "".join(node.text or "" for node in paragraph.findall(".//w:t", NS)).strip()
+
+
+def previous_meaningful_paragraph(
+    children: list[ET.Element],
+    before_index: int,
+) -> tuple[int | None, str | None, ET.Element | None]:
+    for prev_idx in range(before_index - 1, -1, -1):
+        candidate = children[prev_idx]
+        if candidate.tag != W + "p":
+            continue
+        text = paragraph_plain_text(candidate)
+        if not text:
+            continue
+        if is_toc_heading_text(text) or is_toc_leader_entry_text(text):
+            continue
+        return prev_idx, text, candidate
+    return None, None, None
+
+
+def tail_block_previous_content_marker(final_docx: Path, aliases: tuple[str, ...]) -> str | None:
+    root = load_xml(final_docx, "word/document.xml")
+    if root is None:
+        return None
+    body = root.find("w:body", NS)
+    if body is None:
+        return None
+    children = list(body)
+    for idx, child in enumerate(children):
+        if child.tag != W + "p":
+            continue
+        text = paragraph_plain_text(child)
+        if text and normalized_equals_any(text, aliases):
+            _prev_idx, previous_text, _previous_para = previous_meaningful_paragraph(children, idx)
+            return previous_text
+    return None
 
 
 def is_tail_block_heading_text(text: str) -> bool:
@@ -4379,9 +4559,9 @@ def bibliography_entry_numbers(paragraph_texts: list[str]) -> list[int]:
             break
         if not in_references:
             continue
-        match = re.match(r"^\s*[\[\uff3b](\d{1,3})[\]\uff3d]", text)
+        match = re.match(r"^\s*(?:[\[\uff3b](\d{1,3})[\]\uff3d]|(\d{1,3})\.)", text)
         if match:
-            numbers.append(int(match.group(1)))
+            numbers.append(int(match.group(1) or match.group(2)))
     return numbers
 
 
@@ -5887,7 +6067,7 @@ def collect_toc_entry_font_profiles(docx_path: Path) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
     styles = paragraph_style_name_map(docx_path)
     toc_started = False
-    for para in iter_body_paragraph_elements(docx_path):
+    for para in iter_body_and_sdt_paragraph_elements(docx_path):
         text = "".join(node.text or "" for node in para.findall(".//w:t", NS)).strip()
         if is_toc_heading_text(text):
             toc_started = True
@@ -5957,7 +6137,7 @@ def collect_toc_entry_baselines(docx_path: Path) -> dict[int, dict[str, str]]:
     rows: dict[int, dict[str, str]] = {}
     styles = paragraph_style_name_map(docx_path)
     toc_started = False
-    for para in iter_body_paragraph_elements(docx_path):
+    for para in iter_body_and_sdt_paragraph_elements(docx_path):
         text = "".join(node.text or "" for node in para.findall(".//w:t", NS)).strip()
         style_node = para.find("./w:pPr/w:pStyle", NS)
         style_id = style_node.attrib.get(W + "val", "") if style_node is not None else ""
@@ -6061,6 +6241,8 @@ def compare_toc_entry_signature(current: dict[str, str], reference: dict[str, st
     for diff in diffs:
         if diff.startswith(("hasTab:", "tabStops:", "line:", "lineRule:")):
             continue
+        if "expected `none` but found `0`" in diff and diff.startswith(("before:", "after:")):
+            continue
         if "expected `0` but found `none`" in diff and diff.startswith(("left:", "leftChars:")):
             continue
         if diff.startswith(("left:", "right:", "hanging:")) and reference.get(diff.split(":", 1)[0], "") in {"", "none"}:
@@ -6100,7 +6282,7 @@ def collect_toc_visible_labels(docx_path: Path) -> set[str]:
     labels: set[str] = set()
     styles = paragraph_style_name_map(docx_path)
     toc_started = False
-    for para in iter_body_paragraph_elements(docx_path):
+    for para in iter_body_and_sdt_paragraph_elements(docx_path):
         text = "".join(node.text or "" for node in para.findall(".//w:t", NS)).strip()
         style_node = para.find("./w:pPr/w:pStyle", NS)
         style_id = style_node.attrib.get(W + "val", "") if style_node is not None else ""
@@ -6512,13 +6694,17 @@ def extract_tail_block_pagination_checks(
     for idx, child in enumerate(children):
         if child.tag != W + "p":
             continue
-        text = "".join(node.text or "" for node in child.findall(".//w:t", NS)).strip()
+        text = paragraph_plain_text(child)
         if not text:
             continue
         for block_key, aliases in target_aliases.items():
             if block_key in found or not normalized_equals_any(text, aliases):
                 continue
             prev_para = next((candidate for candidate in reversed(children[:idx]) if candidate.tag == W + "p"), None)
+            previous_content_idx, previous_content_text, _previous_content_para = previous_meaningful_paragraph(
+                children,
+                idx,
+            )
             owner_sources: list[str] = []
             if xml_paragraph_has_page_break_before(child):
                 owner_sources.append("opener.pageBreakBefore")
@@ -6526,11 +6712,53 @@ def extract_tail_block_pagination_checks(
                 owner_sources.append("previousParagraph.pageBreak")
             if prev_para is not None and xml_paragraph_has_section_break(prev_para):
                 owner_sources.append("previousParagraph.sectionBreak")
+            rendered_page = (page_class_map or {}).get("references" if block_key == "references" else "ack")
+            previous_content_page = (page_class_map or {}).get(f"{block_key}_previous")
+            prior_block_rendered_separation_verdict = "not-checked"
+            prior_block_separation_verdict = "pass" if len(owner_sources) == 1 else "fail"
+            if block_key == "references":
+                if previous_content_text is None:
+                    prior_block_separation_verdict = "fail"
+                    prior_block_rendered_separation_verdict = "missing-previous-content"
+                    issues.append(
+                        "tail-block pagination contract failed: references opener has no preceding content block "
+                        "to prove separation from the previous chapter/block"
+                    )
+                elif page_class_map is not None:
+                    if not isinstance(previous_content_page, int):
+                        prior_block_separation_verdict = "fail"
+                        prior_block_rendered_separation_verdict = "missing-previous-page"
+                        issues.append(
+                            "tail-block pagination contract failed: references previous content page is missing; "
+                            "cannot prove references starts after the previous chapter/block"
+                        )
+                    elif not isinstance(rendered_page, int):
+                        prior_block_separation_verdict = "fail"
+                        prior_block_rendered_separation_verdict = "missing-references-page"
+                        issues.append(
+                            "tail-block pagination contract failed: references rendered page is missing; "
+                            "cannot prove references starts after the previous chapter/block"
+                        )
+                    elif previous_content_page >= rendered_page:
+                        prior_block_separation_verdict = "fail"
+                        prior_block_rendered_separation_verdict = "fail"
+                        issues.append(
+                            "tail-block pagination contract failed: references opener is not rendered after "
+                            "the previous chapter/block "
+                            f"(previous content page={previous_content_page}, references page={rendered_page})"
+                        )
+                    else:
+                        prior_block_rendered_separation_verdict = "pass"
             found[block_key] = {
                 "text": text,
                 "paragraph_index": idx,
+                "previous_content_text": (previous_content_text or "")[:160],
+                "previous_content_paragraph_index": previous_content_idx,
                 "owner_sources": owner_sources,
-                "rendered_page": (page_class_map or {}).get("references" if block_key == "references" else "ack"),
+                "rendered_page": rendered_page,
+                "previous_content_rendered_page": previous_content_page,
+                "prior_block_separation_verdict": prior_block_separation_verdict,
+                "prior_block_rendered_separation_verdict": prior_block_rendered_separation_verdict,
             }
             if len(owner_sources) != 1:
                 issues.append(
@@ -7637,7 +7865,10 @@ def profile_surface_text_candidates(profile: dict[str, object], final_doc: Docum
 
 def find_profile_surface_page(profile: dict[str, object], final_doc: Document, pdf_texts: list[str], surface: str) -> int | None:
     for candidate in profile_surface_text_candidates(profile, final_doc, surface):
-        page = find_page(pdf_texts, candidate)
+        if surface in {"zh_abstract", "en_abstract", "toc", "first_body", "references", "ack"}:
+            page = find_standalone_page(pdf_texts, candidate)
+        else:
+            page = find_page(pdf_texts, candidate)
         if page is not None:
             return page
     return None
@@ -7647,7 +7878,12 @@ def find_profile_surface_pages(profile: dict[str, object], final_doc: Document, 
     pages: list[int] = []
     seen: set[int] = set()
     for candidate in profile_surface_text_candidates(profile, final_doc, surface):
-        for page in find_pages(pdf_texts, candidate):
+        if surface in {"zh_abstract", "en_abstract", "toc", "first_body", "references", "ack"}:
+            standalone = find_standalone_page(pdf_texts, candidate)
+            candidate_pages = [standalone] if standalone is not None else []
+        else:
+            candidate_pages = find_pages(pdf_texts, candidate)
+        for page in candidate_pages:
             if page not in seen:
                 pages.append(page)
                 seen.add(page)
@@ -7888,14 +8124,16 @@ def main() -> int:
     zh_abstract_marker = final_page_markers["zh_abstract"] or page_markers["zh_abstract"]
     en_abstract_marker = final_page_markers["en_abstract"] or page_markers["en_abstract"]
     toc_marker = final_page_markers["toc"] or page_markers["toc"]
+    references_previous_marker = tail_block_previous_content_marker(Path(args.final_docx), TAIL_BLOCK_ALIASES["references"])
     page_class_map = {
         "cover": find_page(pdf_texts, cover_marker) if cover_marker else None,
-        "zh_abstract": find_page(pdf_texts, zh_abstract_marker) if zh_abstract_marker else None,
-        "en_abstract": find_page(pdf_texts, en_abstract_marker) if en_abstract_marker else None,
-        "toc": find_page(pdf_texts, toc_marker) if toc_marker else None,
-        "first_body": find_last_page(pdf_texts, final_page_markers["first_body"] or page_markers["first_body"]) if (final_page_markers["first_body"] or page_markers["first_body"]) else None,
+        "zh_abstract": find_standalone_page(pdf_texts, zh_abstract_marker) if zh_abstract_marker else None,
+        "en_abstract": find_standalone_page(pdf_texts, en_abstract_marker) if en_abstract_marker else None,
+        "toc": find_standalone_page(pdf_texts, toc_marker) if toc_marker else None,
+        "first_body": find_standalone_page(pdf_texts, final_page_markers["first_body"] or page_markers["first_body"]) if (final_page_markers["first_body"] or page_markers["first_body"]) else None,
         "figure_page": find_last_page(pdf_texts, final_page_markers["figure_page"] or page_markers["figure_page"]) if (final_page_markers["figure_page"] or page_markers["figure_page"]) else None,
         "table_page": find_last_page(pdf_texts, final_page_markers["table_page"] or page_markers["table_page"]) if (final_page_markers["table_page"] or page_markers["table_page"]) else None,
+        "references_previous": find_last_page(pdf_texts, references_previous_marker) if references_previous_marker else None,
         "references": find_last_page(pdf_texts, reference_marker) if reference_marker else None,
         "ack": find_last_page(pdf_texts, ack_marker) if ack_marker else None,
     }
@@ -8106,6 +8344,32 @@ def main() -> int:
         )
     )
     footer_baseline_issues, footer_baseline_summary = extract_header_footer_baseline_checks(Path(args.reference_docx), Path(args.final_docx))
+    header_footer_page_number_issues = (
+        list(header_issues)
+        + list(header_presence_issues)
+        + list(footer_issues)
+        + list(footer_baseline_issues)
+    )
+    detector_results.append(
+        detector_result(
+            "header-footer.page-number-template-contract",
+            surface="header; footer; page_numbers",
+            passed=not header_footer_page_number_issues,
+            evidence={
+                "reference_docx": str(Path(args.reference_docx)),
+                "final_docx": str(Path(args.final_docx)),
+                "final_pdf": str(Path(args.final_pdf)),
+                "header_summary": header_summary,
+                "header_presence_summary": header_presence_summary,
+                "footer_summary": footer_summary,
+                "footer_baseline_summary": footer_baseline_summary,
+                "header_line_policy": "header horizontal rules must be template-proven, not target-only residue",
+                "page_number_policy": "footer/page-number position must match the rendered template baseline",
+                "issue_count": len(header_footer_page_number_issues),
+                "issues": header_footer_page_number_issues[:12],
+            },
+        )
+    )
     figure_issues, figure_summary = extract_figure_checks(
         Path(args.final_docx),
         Path(args.final_pdf),

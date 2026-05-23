@@ -586,8 +586,10 @@ def write_whole_pagination_json(path: Path, *, template_docx: Path | None = None
         "blank_near_empty_page_scan_verdict": "pass rendered blank/near-empty page scan template_blank_pages=[] actual_blank_pages=[] unexpected_blank_pages=[] template_near_empty_pages=[] actual_near_empty_pages=[] unexpected_near_empty_pages=[] rendered_ink_ratio template_min=0.012 actual_min=0.012 section page field TOC logical physical chapter tail clear",
         "chapter_opener_page_map": "chapter opener 1 physical page 1; previous page 0; first paragraph page 1",
         "tail_block_opener_page_map": (
-            "pass tail block rendered map: references physical page=1; acknowledgement physical page=2; "
+            "pass tail block rendered map: references previous content physical page=1; "
+            "references physical page=2; acknowledgement physical page=3; "
             "references_page_found=yes; references_fresh_page_verdict=pass; "
+            "references_prior_block_separation_verdict=pass; "
             "references_opener_owner_evidence=sample_self_check detector tail-block.pagination-contract passed"
         ),
         "page_class_occupancy_rhythm_verdict": "pass page-class section page occupancy rhythm stable",
@@ -1376,7 +1378,9 @@ def make_citation_order_docx(
         )
     body_xml.append(f"    <w:p><w:r><w:t>{chr(0x53C2)}{chr(0x8003)}{chr(0x6587)}{chr(0x732E)}</w:t></w:r></w:p>")
     for idx in range(1, bibliography_count + 1):
-        body_xml.append(f"    <w:p><w:r><w:t>Reference Item {idx}[J].</w:t></w:r></w:p>")
+        body_xml.append(
+            f'    <w:p><w:bookmarkStart w:id="{idx}" w:name="cite_ref_{idx}"/><w:r><w:t>Reference Item {idx}[J].</w:t></w:r><w:bookmarkEnd w:id="{idx}"/></w:p>'
+        )
     body_xml.extend(["    <w:sectPr/>", "  </w:body>", "</w:document>"])
 
     content_types = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -1398,6 +1402,104 @@ def make_citation_order_docx(
     return path
 
 
+def make_mixed_duplicate_citation_docx(path: Path) -> Path:
+    return make_raw_docx(
+        path,
+        f'''
+    <w:p>
+      <w:r><w:t>{escape("First host")}</w:t></w:r>
+      <w:hyperlink w:anchor="cite_ref_1"><w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:t>[1]</w:t></w:r></w:hyperlink>
+      <w:r><w:t>{escape(" and repeated corrupt host")}</w:t></w:r>
+      <w:r><w:t>[1]</w:t></w:r>
+      <w:r><w:t>\u3002</w:t></w:r>
+    </w:p>
+    <w:p><w:r><w:t>{chr(0x53C2)}{chr(0x8003)}{chr(0x6587)}{chr(0x732E)}</w:t></w:r></w:p>
+    <w:p><w:bookmarkStart w:id="1" w:name="cite_ref_1"/><w:bookmarkEnd w:id="1"/><w:r><w:t>[1] Example Journal Paper[J].</w:t></w:r></w:p>
+''',
+    )
+
+
+def make_instr_text_only_citation_docx(path: Path) -> Path:
+    return make_raw_docx(
+        path,
+        f'''
+    <w:p>
+      <w:r><w:t>{escape("Claim with visible citation")}</w:t></w:r>
+      <w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:t>[1]</w:t></w:r>
+      <w:r><w:instrText xml:space="preserve"> HYPERLINK \\l "cite_ref_1" </w:instrText></w:r>
+      <w:r><w:t>.</w:t></w:r>
+    </w:p>
+    <w:p><w:r><w:t>{chr(0x53C2)}{chr(0x8003)}{chr(0x6587)}{chr(0x732E)}</w:t></w:r></w:p>
+    <w:p><w:bookmarkStart w:id="1" w:name="cite_ref_1"/><w:bookmarkEnd w:id="1"/><w:r><w:t>[1] Example Journal Paper[J].</w:t></w:r></w:p>
+''',
+    )
+
+
+def make_visible_anchor_leak_citation_docx(path: Path) -> Path:
+    return make_raw_docx(
+        path,
+        f'''
+    <w:p>
+      <w:r><w:t>{escape("Claim with leaked cite_ref_1 anchor")}</w:t></w:r>
+      <w:hyperlink w:anchor="cite_ref_1"><w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:t>[1]</w:t></w:r></w:hyperlink>
+      <w:r><w:t>.</w:t></w:r>
+    </w:p>
+    <w:p><w:r><w:t>{chr(0x53C2)}{chr(0x8003)}{chr(0x6587)}{chr(0x732E)}</w:t></w:r></w:p>
+    <w:p><w:bookmarkStart w:id="1" w:name="cite_ref_1"/><w:bookmarkEnd w:id="1"/><w:r><w:t>[1] Example Journal Paper[J].</w:t></w:r></w:p>
+''',
+    )
+
+
+def make_reference_boundary_citation_docx(path: Path) -> Path:
+    return make_raw_docx(
+        path,
+        f'''
+    <w:p>
+      <w:r><w:t>{escape("Body claim")}</w:t></w:r>
+      <w:hyperlink w:anchor="cite_ref_1"><w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:t>[1]</w:t></w:r></w:hyperlink>
+      <w:r><w:t>.</w:t></w:r>
+    </w:p>
+    <w:p><w:r><w:t>{chr(0x53C2)}{chr(0x8003)}{chr(0x6587)}{chr(0x732E)}</w:t></w:r></w:p>
+    <w:p><w:bookmarkStart w:id="1" w:name="cite_ref_1"/><w:bookmarkEnd w:id="1"/><w:r><w:t>[1] Example Journal Paper[J].</w:t></w:r></w:p>
+    <w:p><w:r><w:t>[2] Bibliography-only item must not be counted as body citation[J].</w:t></w:r></w:p>
+''',
+    )
+
+
+def make_same_number_moved_citation_docx(path: Path) -> Path:
+    return make_raw_docx(
+        path,
+        f'''
+    <w:p w14:paraId="AAAA0001" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml">
+      <w:r><w:t>{escape("Original source host lost citation")}</w:t></w:r>
+      <w:r><w:t>.</w:t></w:r>
+    </w:p>
+    <w:p w14:paraId="BBBB0002" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml">
+      <w:r><w:t>{escape("Different final host keeps same number")}</w:t></w:r>
+      <w:hyperlink w:anchor="cite_ref_1"><w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:t>[1]</w:t></w:r></w:hyperlink>
+      <w:r><w:t>.</w:t></w:r>
+    </w:p>
+    <w:p><w:r><w:t>{chr(0x53C2)}{chr(0x8003)}{chr(0x6587)}{chr(0x732E)}</w:t></w:r></w:p>
+    <w:p><w:bookmarkStart w:id="1" w:name="cite_ref_1"/><w:bookmarkEnd w:id="1"/><w:r><w:t>[1] Example Journal Paper[J].</w:t></w:r></w:p>
+''',
+    )
+
+
+def make_no_para_id_citation_host_docx(path: Path, host_text: str) -> Path:
+    return make_raw_docx(
+        path,
+        f'''
+    <w:p>
+      <w:r><w:t>{escape(host_text)}</w:t></w:r>
+      <w:hyperlink w:anchor="cite_ref_1"><w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:t>[1]</w:t></w:r></w:hyperlink>
+      <w:r><w:t>.</w:t></w:r>
+    </w:p>
+    <w:p><w:r><w:t>{chr(0x53C2)}{chr(0x8003)}{chr(0x6587)}{chr(0x732E)}</w:t></w:r></w:p>
+    <w:p><w:bookmarkStart w:id="1" w:name="cite_ref_1"/><w:bookmarkEnd w:id="1"/><w:r><w:t>[1] Example Journal Paper[J].</w:t></w:r></w:p>
+''',
+    )
+
+
 def make_bibliography_numbering_conflict_docx(path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     citation_run = (
@@ -1412,8 +1514,39 @@ def make_bibliography_numbering_conflict_docx(path: Path) -> Path:
     <w:p><w:r><w:t>{chr(0x53C2)}{chr(0x8003)}{chr(0x6587)}{chr(0x732E)}</w:t></w:r></w:p>
     <w:p>
       <w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr>
-      <w:r><w:t>[1] Example Journal Paper[J].</w:t></w:r>
+      <w:bookmarkStart w:id="1" w:name="cite_ref_1"/><w:r><w:t>[1] Example Journal Paper[J].</w:t></w:r><w:bookmarkEnd w:id="1"/>
     </w:p>
+    <w:sectPr/>
+  </w:body>
+</w:document>'''
+    content_types = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>
+"""
+    rels = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>
+"""
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("[Content_Types].xml", content_types)
+        zf.writestr("_rels/.rels", rels)
+        zf.writestr("word/document.xml", document_xml)
+    return path
+
+
+def make_citation_wrong_target_docx(path: Path) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    document_xml = f'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:bookmarkStart w:id="1" w:name="cite_ref_1"/><w:r><w:t>Cover title donor</w:t></w:r><w:bookmarkEnd w:id="1"/></w:p>
+    <w:p><w:r><w:t>Body citation text </w:t></w:r><w:hyperlink w:anchor="cite_ref_1"><w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:t>[1]</w:t></w:r></w:hyperlink><w:r><w:t>.</w:t></w:r></w:p>
+    <w:p><w:r><w:t>{chr(0x53C2)}{chr(0x8003)}{chr(0x6587)}{chr(0x732E)}</w:t></w:r></w:p>
+    <w:p><w:r><w:t>[1] Example Journal Paper[J].</w:t></w:r></w:p>
     <w:sectPr/>
   </w:body>
 </w:document>'''
@@ -1616,8 +1749,10 @@ def make_review_evidence(
     blank_near_empty_page_scan_verdict: str = "pass rendered blank/near-empty page scan template_blank_pages=[] actual_blank_pages=[] unexpected_blank_pages=[] template_near_empty_pages=[] actual_near_empty_pages=[] unexpected_near_empty_pages=[] rendered_ink_ratio template_min=0.012 actual_min=0.012 section page field toc logical physical chapter tail clear",
     chapter_opener_page_map: str = "chapter opener 1 physical page 1; previous page 0; first paragraph page 1",
     tail_block_opener_page_map: str = (
-        "pass tail block rendered map: references physical page=1; acknowledgement physical page=2; "
+        "pass tail block rendered map: references previous content physical page=1; "
+        "references physical page=2; acknowledgement physical page=3; "
         "references_page_found=yes; references_fresh_page_verdict=pass; "
+        "references_prior_block_separation_verdict=pass; "
         "references_opener_owner_evidence=sample_self_check detector tail-block.pagination-contract passed"
     ),
     page_class_occupancy_rhythm_verdict: str = "pass page-class section page occupancy rhythm stable",
@@ -2294,18 +2429,21 @@ def make_user_reported_visual_geometry_evidence(
         task_mode=task_mode,
         reviewed_output=reviewed_output,
         artifact_paths=artifacts,
-        target_surface="user-reported visual defect TOC references body font",
+        target_surface="user-reported visual defect protected visual surfaces",
         target_identifier="user-reported-visual-defect",
         target_region="full-page and key-surface crop region",
-        blast_radius="TOC pages, references opener/pages, and same-family body-font pages",
+        blast_radius="TOC pages, abstract pages, header/footer/page-number pages, references opener/pages, and same-family body-font pages",
         neighbors="template-vs-target logical page and physical page neighbors",
         checks=(
             "template-vs-target rendered geometry, full-page binding, key-surface crop, "
-            "bbox, line-height y-delta, page occupancy, paragraph typography, final_docx_sha256, final verdict"
+            "TOC row/level typography, abstract title/body/keyword typography, header line and text region, "
+            "footer/page-number position, bbox, line-height y-delta, page occupancy, paragraph typography, "
+            "final_docx_sha256, final verdict"
         ),
         summary=(
             "template-vs-target rendered geometry pass; full-page physical page binding pass; "
-            "key-surface crop/region bbox pass; target actual final artifact bound; final verdict pass"
+            "key-surface crop/region bbox pass; abstract, header, footer, page-number, TOC, references, "
+            "and body-font surfaces bound to target actual final artifact; final verdict pass"
         ),
         references_title_indentation_confirmed="yes",
         references_entries_indentation_confirmed="yes",
@@ -2635,8 +2773,11 @@ def make_format_repair_task(
     source_retention_verdict: str = "pass source text retained for selftest fixture",
     source_review_artifact_inventory_path: str = "AUTO",
     final_review_artifact_diff_path: str = "AUTO",
+    controlled_bookmark_disposition_path: str = "none",
     review_comments_change_marks_preservation_verdict: str = "AUTO",
     comments_strip_explicit_user_approval: str = "AUTO",
+    comment_resolution_source_docx_path: str = "AUTO",
+    comment_resolution_source_docx_sha256: str = "AUTO",
     comment_resolution_ledger_path: str = "none",
     comment_resolution_audit_report_path: str = "none",
     comment_resolution_audit_verdict: str = "not-applicable",
@@ -3235,6 +3376,8 @@ def make_format_repair_task(
             - final review-artifact diff path: {final_review_artifact_diff_path}
             - review comments/change marks preservation verdict: {review_comments_change_marks_preservation_verdict}
             - comments strip explicit user approval: {comments_strip_explicit_user_approval}
+            - comment-resolution source DOCX path: {comment_resolution_source_docx_path}
+            - comment-resolution source DOCX SHA256: {comment_resolution_source_docx_sha256}
             - comment-resolution ledger path: {comment_resolution_ledger_path}
             - comment-resolution audit report path: {comment_resolution_audit_report_path}
             - comment-resolution audit verdict: {comment_resolution_audit_verdict}
@@ -3627,14 +3770,18 @@ def make_gate_record(
     source_retention_verdict: str = "AUTO",
     source_review_artifact_inventory_path: str = "AUTO",
     final_review_artifact_diff_path: str = "AUTO",
+    controlled_bookmark_disposition_path: str = "none",
     review_comments_change_marks_preservation_verdict: str = "AUTO",
     comments_strip_explicit_user_approval: str = "AUTO",
+    comment_resolution_source_docx_path: str = "AUTO",
+    comment_resolution_source_docx_sha256: str = "AUTO",
     comment_resolution_ledger_path: str = "none",
     comment_resolution_audit_report_path: str = "none",
     comment_resolution_audit_verdict: str = "not-applicable",
     source_body_citation_run_inventory_path: str = "AUTO",
     final_body_citation_run_diff_path: str = "AUTO",
     body_citation_superscripts_preservation_verdict: str = "AUTO",
+    citation_reference_coupled_chain_verdict: str = "AUTO",
     rebuild_class: str = "AUTO",
     clean_source_restart_source_path: str = "AUTO",
     contaminated_baseline_disposition: str = "AUTO",
@@ -3662,6 +3809,10 @@ def make_gate_record(
     unresolved_release_blocker_count: str = "0",
     scoped_artifact_next_baseline_verdict: str = "pass promoted only after sibling/cross-surface gates closed",
     docx_font_audit_evidence_path: str = "AUTO",
+    final_docx_whole_format_structural_audit_path: str = "AUTO",
+    final_docx_whole_format_structural_audit_verdict: str = "AUTO",
+    final_docx_font_color_audit_path: str = "AUTO",
+    final_docx_font_color_audit_verdict: str = "AUTO",
     surface_face_parity_audit_evidence_path: str = "AUTO",
     surface_paragraph_and_typography_audit_evidence_path: str = "AUTO",
     sibling_surface_audit_evidence_path: str = "AUTO",
@@ -3702,6 +3853,13 @@ def make_gate_record(
     toc_dotted_leaders_verdict: str = "passed",
     toc_page_number_column_evidence_path: str = "AUTO",
     toc_page_number_column_verdict: str = "passed",
+    toc_implementation_family_live_field_parity_evidence_path: str = "AUTO",
+    toc_implementation_family_live_field_parity_verdict: str = "passed TOC live-field parity unchanged for selftest fixture",
+    toc_per_level_template_baseline_evidence_path: str = "AUTO",
+    toc_rendered_geometry_comparison_path: str = "AUTO",
+    toc_title_level_font_and_paragraph_metrics_verdict: str = "passed TOC title and level metrics unchanged for selftest fixture",
+    toc_dotted_leader_and_page_number_column_verdict: str = "passed TOC dotted leader and page-number column unchanged for selftest fixture",
+    toc_occupancy_rhythm_verdict: str = "passed TOC occupancy rhythm unchanged for selftest fixture",
     body_heading_levels_evidence_path: str = "AUTO",
     body_heading_levels_verdict: str = "passed body_heading_levels protected surface evidence verified",
     body_text_evidence_path: str = "AUTO",
@@ -3720,6 +3878,7 @@ def make_gate_record(
     references_title_evidence_path: str = "AUTO",
     references_title_verdict: str = "passed references_title protected surface evidence verified",
     references_entries_evidence_path: str = "AUTO",
+    rendered_references_page_evidence_path: str = "AUTO",
     references_entries_verdict: str = "passed references_entries protected surface evidence verified",
     acknowledgement_title_evidence_path: str = "AUTO",
     acknowledgement_title_verdict: str = "passed acknowledgement_title protected surface evidence verified",
@@ -3733,6 +3892,9 @@ def make_gate_record(
     header_verdict: str = "passed header protected surface evidence verified",
     header_presence_verdict: str = "passed",
     header_rendered_verdict: str = "passed",
+    header_expected_display_string_source: str = "template header baseline unchanged for selftest fixture",
+    header_rendered_full_display_evidence_path: str = "AUTO",
+    header_chapter_number_preservation_verdict: str = "passed header chapter number unchanged for selftest fixture",
     body_opener_header_title_consistency_evidence_path: str = "AUTO",
     body_opener_header_title_consistency_verdict: str = "passed body opener/header title consistency verified on rendered physical pages",
     footer_evidence_path: str = "AUTO",
@@ -3745,7 +3907,14 @@ def make_gate_record(
     user_reported_visual_defect_render_geometry_evidence_path: str = "none",
     user_reported_visual_defect_template_vs_target_binding_verdict: str = "not-applicable",
     user_reported_visual_defect_full_page_key_surface_binding_verdict: str = "not-applicable",
+    content_mutation_rendered_page_review_path: str = "none",
+    content_mutation_machine_vision_verdict: str = "not-applicable",
+    inserted_body_heading_contamination_verdict: str = "not-applicable",
+    touched_page_blast_radius_machine_vision_evidence_paths: str = "none",
+    format_lane_post_mutation_rendered_audit_verdict: str = "not-applicable",
     figure_asset_manifest_path: str = "none",
+    figure_source_docx_path: str = "AUTO",
+    figure_source_docx_sha256: str = "AUTO",
     figure_inventory_path: str = "none",
     figure_manifest_contract_verdict: str = "not-applicable-with-reason",
     per_figure_rendered_evidence_paths: str = "none",
@@ -3873,6 +4042,28 @@ def make_gate_record(
             docx_font_audit_evidence_path = str(audit_path)
         else:
             docx_font_audit_evidence_path = "none"
+    if final_docx_whole_format_structural_audit_path == "AUTO":
+        if task_mode in {"thesis-only", "format-repair-only", "program-plus-thesis"}:
+            audit_path = path.with_suffix(".whole_format_gate.json")
+            make_docx_whole_format_gate_report(audit_path, docx_path=output_path, passed=True)
+            final_docx_whole_format_structural_audit_path = str(audit_path)
+        else:
+            final_docx_whole_format_structural_audit_path = "none"
+    if final_docx_whole_format_structural_audit_verdict == "AUTO":
+        final_docx_whole_format_structural_audit_verdict = (
+            "pass" if task_mode in {"thesis-only", "format-repair-only", "program-plus-thesis"} else "not-applicable"
+        )
+    if final_docx_font_color_audit_path == "AUTO":
+        if task_mode in {"thesis-only", "format-repair-only", "program-plus-thesis"}:
+            audit_path = path.with_suffix(".font_color_audit.json")
+            make_docx_font_color_audit_report(audit_path, docx_path=output_path, passed=True)
+            final_docx_font_color_audit_path = str(audit_path)
+        else:
+            final_docx_font_color_audit_path = "none"
+    if final_docx_font_color_audit_verdict == "AUTO":
+        final_docx_font_color_audit_verdict = (
+            "pass" if task_mode in {"thesis-only", "format-repair-only", "program-plus-thesis"} else "not-applicable"
+        )
     if body_style_audit_evidence_path == "AUTO":
         if task_mode in {"thesis-only", "format-repair-only", "program-plus-thesis"}:
             audit_path = path.with_suffix(".body_style_audit.md")
@@ -4006,15 +4197,16 @@ def make_gate_record(
         return ""
 
     thesis_mode = task_mode in {"thesis-only", "format-repair-only", "program-plus-thesis"}
+    source_docx_for_role: Path | None = None
     if thesis_mode:
         final_docx_sha = file_sha256(output_path) if output_path.exists() else "0" * 64
+        source_docx_for_role = make_preservation_source_copy(output_path, path)
         if (
             source_review_artifact_inventory_path == "AUTO"
             or final_review_artifact_diff_path == "AUTO"
             or source_body_citation_run_inventory_path == "AUTO"
             or final_body_citation_run_diff_path == "AUTO"
         ):
-            source_docx = make_preservation_source_copy(output_path, path)
             review_inventory = (
                 path.with_suffix(".source_review_artifacts.md")
                 if source_review_artifact_inventory_path == "AUTO"
@@ -4036,7 +4228,7 @@ def make_gate_record(
                 else Path(final_body_citation_run_diff_path)
             )
             write_docx_preservation_reports_for_selftest(
-                source_docx=source_docx,
+                source_docx=source_docx_for_role,
                 final_docx=output_path,
                 source_review_artifact_inventory_path=review_inventory,
                 final_review_artifact_diff_path=review_diff,
@@ -4055,8 +4247,22 @@ def make_gate_record(
             review_comments_change_marks_preservation_verdict = "pass review comments/change marks inventory and final diff verified"
         if comments_strip_explicit_user_approval == "AUTO":
             comments_strip_explicit_user_approval = "not-requested; comments and tracked changes were not stripped"
+        if comment_resolution_source_docx_path == "AUTO":
+            comment_resolution_source_docx_path = str(source_docx_for_role)
+        if comment_resolution_source_docx_sha256 == "AUTO":
+            comment_resolution_source_docx_sha256 = (
+                file_sha256(source_docx_for_role) if source_docx_for_role and source_docx_for_role.exists() else "0" * 64
+            )
+        if figure_source_docx_path == "AUTO":
+            figure_source_docx_path = str(source_docx_for_role)
+        if figure_source_docx_sha256 == "AUTO":
+            figure_source_docx_sha256 = (
+                file_sha256(source_docx_for_role) if source_docx_for_role and source_docx_for_role.exists() else "0" * 64
+            )
         if body_citation_superscripts_preservation_verdict == "AUTO":
             body_citation_superscripts_preservation_verdict = "pass body citation superscript run inventory and final diff verified"
+        if citation_reference_coupled_chain_verdict == "AUTO":
+            citation_reference_coupled_chain_verdict = "pass body citation markers resolve to preserved bibliography targets"
     else:
         if source_review_artifact_inventory_path == "AUTO":
             source_review_artifact_inventory_path = "none"
@@ -4066,12 +4272,22 @@ def make_gate_record(
             review_comments_change_marks_preservation_verdict = "not-applicable"
         if comments_strip_explicit_user_approval == "AUTO":
             comments_strip_explicit_user_approval = "not-applicable"
+        if comment_resolution_source_docx_path == "AUTO":
+            comment_resolution_source_docx_path = "none"
+        if comment_resolution_source_docx_sha256 == "AUTO":
+            comment_resolution_source_docx_sha256 = "none"
+        if figure_source_docx_path == "AUTO":
+            figure_source_docx_path = "none"
+        if figure_source_docx_sha256 == "AUTO":
+            figure_source_docx_sha256 = "none"
         if source_body_citation_run_inventory_path == "AUTO":
             source_body_citation_run_inventory_path = "none"
         if final_body_citation_run_diff_path == "AUTO":
             final_body_citation_run_diff_path = "none"
         if body_citation_superscripts_preservation_verdict == "AUTO":
             body_citation_superscripts_preservation_verdict = "not-applicable"
+        if citation_reference_coupled_chain_verdict == "AUTO":
+            citation_reference_coupled_chain_verdict = "not-applicable"
         if citation_audit_final_docx_sha256 == "AUTO":
             citation_audit_final_docx_sha256 = "not-applicable"
         if citation_audit_source_to_final_run_diff_path == "AUTO":
@@ -4208,6 +4424,12 @@ def make_gate_record(
             toc_dotted_leaders_evidence_path = front_matter_evidence_path["toc_dotted_leaders"]
         if toc_page_number_column_evidence_path == "AUTO":
             toc_page_number_column_evidence_path = front_matter_evidence_path["toc_page_number_column"]
+        if toc_implementation_family_live_field_parity_evidence_path == "AUTO":
+            toc_implementation_family_live_field_parity_evidence_path = front_matter_evidence_path["toc_entries"]
+        if toc_per_level_template_baseline_evidence_path == "AUTO":
+            toc_per_level_template_baseline_evidence_path = front_matter_evidence_path["toc_entries"]
+        if toc_rendered_geometry_comparison_path == "AUTO":
+            toc_rendered_geometry_comparison_path = front_matter_evidence_path["toc_entries"]
         if body_heading_levels_evidence_path == "AUTO":
             body_heading_levels_evidence_path = front_matter_evidence_path["body_heading_levels"]
         if body_text_evidence_path == "AUTO":
@@ -4220,12 +4442,16 @@ def make_gate_record(
             references_title_evidence_path = front_matter_evidence_path["references_title"]
         if references_entries_evidence_path == "AUTO":
             references_entries_evidence_path = front_matter_evidence_path["references_entries"]
+        if rendered_references_page_evidence_path == "AUTO":
+            rendered_references_page_evidence_path = references_entries_evidence_path
         if acknowledgement_title_evidence_path == "AUTO":
             acknowledgement_title_evidence_path = front_matter_evidence_path["acknowledgement_title"]
         if acknowledgement_body_evidence_path == "AUTO":
             acknowledgement_body_evidence_path = front_matter_evidence_path["acknowledgement_body"]
         if header_evidence_path == "AUTO":
             header_evidence_path = front_matter_evidence_path["header"]
+        if header_rendered_full_display_evidence_path == "AUTO":
+            header_rendered_full_display_evidence_path = front_matter_evidence_path["header"]
         if body_opener_header_title_consistency_evidence_path == "AUTO":
             title_evidence_path = path.with_suffix(".body_opener_header_title.md")
             body_opener_header_title_consistency_evidence_path = str(
@@ -4278,6 +4504,8 @@ def make_gate_record(
             references_title_evidence_path = "none"
         if references_entries_evidence_path == "AUTO":
             references_entries_evidence_path = "none"
+        if rendered_references_page_evidence_path == "AUTO":
+            rendered_references_page_evidence_path = "none"
         if acknowledgement_title_evidence_path == "AUTO":
             acknowledgement_title_evidence_path = "none"
         if acknowledgement_body_evidence_path == "AUTO":
@@ -4370,6 +4598,12 @@ def make_gate_record(
             toc_dotted_leaders_evidence_path = "none"
         if toc_page_number_column_evidence_path == "AUTO":
             toc_page_number_column_evidence_path = "none"
+        if toc_implementation_family_live_field_parity_evidence_path == "AUTO":
+            toc_implementation_family_live_field_parity_evidence_path = "none"
+        if toc_per_level_template_baseline_evidence_path == "AUTO":
+            toc_per_level_template_baseline_evidence_path = "none"
+        if toc_rendered_geometry_comparison_path == "AUTO":
+            toc_rendered_geometry_comparison_path = "none"
         if body_heading_levels_evidence_path == "AUTO":
             body_heading_levels_evidence_path = "none"
         if body_text_evidence_path == "AUTO":
@@ -4384,6 +4618,8 @@ def make_gate_record(
             review_comments_change_marks_verdict = "not-applicable"
         if header_evidence_path == "AUTO":
             header_evidence_path = "none"
+        if header_rendered_full_display_evidence_path == "AUTO":
+            header_rendered_full_display_evidence_path = "none"
         if body_opener_header_title_consistency_evidence_path == "AUTO":
             body_opener_header_title_consistency_evidence_path = "none"
         if footer_evidence_path == "AUTO":
@@ -4675,6 +4911,11 @@ def make_gate_record(
             - toc_visible_run_typography_verdict: {toc_paragraph_typography_verdict}
             - whole_document_pagination_evidence_path: {whole_document_pagination_evidence_path}
             - whole_document_pagination_verdict: {whole_document_pagination_verdict}
+            - content_mutation_rendered_review_path: {content_mutation_rendered_page_review_path}
+            - content_mutation_machine_vision_verdict: {content_mutation_machine_vision_verdict}
+            - inserted_body_heading_contamination_verdict: {inserted_body_heading_contamination_verdict}
+            - touched_page_blast_radius_machine_vision_evidence_paths: {touched_page_blast_radius_machine_vision_evidence_paths}
+            - format_lane_post_mutation_rendered_audit_verdict: {format_lane_post_mutation_rendered_audit_verdict}
             - protected_surface_reviewed_output_sha256: {protected_surface_reviewed_output_sha256}
             - protected_surface_contract_verdict: {protected_surface_contract_verdict}
             - lane_task_card_paths: {controller_card_path}; {content_card_path}; {format_card_path}; {figure_card_path}; {citation_card_path}; {program_card_path}; {acceptance_card_path}; {audit_card_path}
@@ -4854,8 +5095,11 @@ def make_gate_record(
             - source retention verdict: {source_retention_verdict}
             - source review-artifact inventory path: {source_review_artifact_inventory_path}
             - final review-artifact diff path: {final_review_artifact_diff_path}
+            - controlled bookmark disposition path: {controlled_bookmark_disposition_path}
             - review comments/change marks preservation verdict: {review_comments_change_marks_preservation_verdict}
             - comments strip explicit user approval: {comments_strip_explicit_user_approval}
+            - comment-resolution source DOCX path: {comment_resolution_source_docx_path}
+            - comment-resolution source DOCX SHA256: {comment_resolution_source_docx_sha256}
             - comment-resolution ledger path: {comment_resolution_ledger_path}
             - comment-resolution audit report path: {comment_resolution_audit_report_path}
             - comment-resolution audit verdict: {comment_resolution_audit_verdict}
@@ -4946,8 +5190,13 @@ def make_gate_record(
             - review-copy promotion binding: {review_copy_promotion_binding}
             - rendered PDF path: {rendered_pdf}
             - page-image artifact paths: {page_images}
+            - final DOCX whole-format structural audit path: {final_docx_whole_format_structural_audit_path}
+            - final DOCX whole-format structural audit verdict: {final_docx_whole_format_structural_audit_verdict}
+            - final DOCX font-color audit path: {final_docx_font_color_audit_path}
+            - final DOCX font-color audit verdict: {final_docx_font_color_audit_verdict}
             - exact output paths: {output_path}
             - sample self-check report path: {sample_self_check_report_path}
+            - sample self-check header-footer.page-number-template-contract detector: pass fixture detector present
             - page-class coverage matrix evidence path: {page_class_coverage_matrix_evidence_path}
             - mandatory thesis surface inventory path: {mandatory_thesis_surface_inventory_path}
             - front matter surface coverage matrix path: {front_matter_surface_coverage_matrix_path}
@@ -4988,6 +5237,13 @@ def make_gate_record(
             - TOC dotted leaders verdict: {toc_dotted_leaders_verdict}
             - TOC page-number column evidence path: {toc_page_number_column_evidence_path}
             - TOC page-number column verdict: {toc_page_number_column_verdict}
+            - TOC implementation family/live-field parity evidence path: {toc_implementation_family_live_field_parity_evidence_path}
+            - TOC implementation family/live-field parity verdict: {toc_implementation_family_live_field_parity_verdict}
+            - TOC per-level template baseline evidence path: {toc_per_level_template_baseline_evidence_path}
+            - TOC rendered geometry comparison path: {toc_rendered_geometry_comparison_path}
+            - TOC title/level font and paragraph metrics verdict: {toc_title_level_font_and_paragraph_metrics_verdict}
+            - TOC dotted leader and page-number column verdict: {toc_dotted_leader_and_page_number_column_verdict}
+            - TOC occupancy rhythm verdict: {toc_occupancy_rhythm_verdict}
             - body heading levels evidence path: {body_heading_levels_evidence_path}
             - body heading levels verdict: {body_heading_levels_verdict}
             - body text evidence path: {body_text_evidence_path}
@@ -5002,6 +5258,7 @@ def make_gate_record(
             - references title evidence path: {references_title_evidence_path}
             - references title verdict: {references_title_verdict}
             - references entries evidence path: {references_entries_evidence_path}
+            - rendered references-page evidence path: {rendered_references_page_evidence_path}
             - references entries verdict: {references_entries_verdict}
             - acknowledgement title evidence path: {acknowledgement_title_evidence_path}
             - acknowledgement title verdict: {acknowledgement_title_verdict}
@@ -5015,6 +5272,9 @@ def make_gate_record(
             - header verdict: {header_verdict}
             - header presence verdict: {header_presence_verdict}
             - header rendered verdict: {header_rendered_verdict}
+            - header expected display string source: {header_expected_display_string_source}
+            - header rendered full-display evidence path: {header_rendered_full_display_evidence_path}
+            - header chapter number preservation verdict: {header_chapter_number_preservation_verdict}
             - body opener/header title consistency evidence path: {body_opener_header_title_consistency_evidence_path}
             - body opener/header title consistency verdict: {body_opener_header_title_consistency_verdict}
             - footer evidence path: {footer_evidence_path}
@@ -5027,7 +5287,14 @@ def make_gate_record(
             - user-reported visual defect render-geometry evidence path: {user_reported_visual_defect_render_geometry_evidence_path}
             - user-reported visual defect template-vs-target binding verdict: {user_reported_visual_defect_template_vs_target_binding_verdict}
             - user-reported visual defect full-page/key-surface binding verdict: {user_reported_visual_defect_full_page_key_surface_binding_verdict}
+            - content mutation rendered-page review path: {content_mutation_rendered_page_review_path}
+            - content mutation machine-vision verdict: {content_mutation_machine_vision_verdict}
+            - inserted body heading-contamination verdict: {inserted_body_heading_contamination_verdict}
+            - touched-page/blast-radius machine-vision evidence paths: {touched_page_blast_radius_machine_vision_evidence_paths}
+            - format lane post-mutation rendered audit verdict: {format_lane_post_mutation_rendered_audit_verdict}
             - figure asset manifest path: {figure_asset_manifest_path}
+            - figure source DOCX path: {figure_source_docx_path}
+            - figure source DOCX SHA256: {figure_source_docx_sha256}
             - figure inventory path: {figure_inventory_path}
             - figure manifest contract verdict: {figure_manifest_contract_verdict}
             - per-figure rendered evidence paths: {per_figure_rendered_evidence_paths}
@@ -5066,6 +5333,7 @@ def make_gate_record(
             - citation audit evidence path: {citation_audit_path}
             - citation audit final DOCX SHA256: {citation_audit_final_docx_sha256}
             - citation audit source-to-final run diff path: {citation_audit_source_to_final_run_diff_path}
+            - citation-reference coupled-chain verdict: {citation_reference_coupled_chain_verdict}
             - bibliography audit evidence path: {bibliography_audit_path}
             - bibliography baseline summary: {bibliography_baseline_summary}
             - bibliography numbering summary: {bibliography_numbering_summary}
@@ -6062,6 +6330,7 @@ def make_sample_self_check_pass_report(path: Path, *, document_path: Path) -> No
 
             ## Detector Registry
             {{"id":"header.presence-contract","surface":"header","severity":"not-applicable","passed":true,"failed":false,"blocking":false,"evidence":{{"summary":"not-applicable","reason":"selftest fixture has no header baseline"}}}}
+            {{"id":"header-footer.page-number-template-contract","surface":"header; footer; page_numbers","severity":"not-applicable","passed":true,"failed":false,"blocking":false,"evidence":{{"summary":"not-applicable","reason":"selftest fixture has no header/footer/page-number baseline"}}}}
             {{"id":"figure.scope-manifest-contract","surface":"figures","severity":"not-applicable","passed":true,"failed":false,"blocking":false,"evidence":{{"summary":"not-applicable","reason":"selftest fixture has no figure/image surfaces"}}}}
             {{"id":"figure.image-dimension-contract","surface":"figures","severity":"not-applicable","passed":true,"failed":false,"blocking":false,"evidence":{{"summary":"not-applicable","reason":"selftest fixture has no figure/image surfaces"}}}}
             {{"id":"figure.family-style-contract","surface":"figures","severity":"not-applicable","passed":true,"failed":false,"blocking":false,"evidence":{{"summary":"not-applicable","reason":"selftest fixture has no figure family surface"}}}}
@@ -6071,7 +6340,7 @@ def make_sample_self_check_pass_report(path: Path, *, document_path: Path) -> No
             {{"id":"toc.visible-format-contract","surface":"toc","severity":"not-applicable","passed":true,"failed":false,"blocking":false,"evidence":{{"summary":"not-applicable","reason":"selftest fixture uses separate TOC evidence"}}}}
             {{"id":"body.style-contamination-contract","surface":"body","severity":"required","passed":true,"failed":false,"blocking":true,"evidence":{{"summary":"passed body style audit fixture confirms body text protected surface"}}}}
             {{"id":"endmatter.indentation-contract","surface":"references; acknowledgement; appendix","severity":"not-applicable","passed":true,"failed":false,"blocking":false,"evidence":{{"summary":"not-applicable","reason":"selftest fixture uses protected-surface reference/acknowledgement evidence"}}}}
-            {{"id":"tail-block.pagination-contract","surface":"references; acknowledgement","severity":"required","passed":true,"failed":false,"blocking":true,"evidence":{{"summary":"passed","found_blocks":{{"references":{{"owner_sources":["opener.pageBreakBefore"],"rendered_page":1}},"acknowledgement":{{"owner_sources":["opener.pageBreakBefore"],"rendered_page":2}}}}}}}}
+            {{"id":"tail-block.pagination-contract","surface":"references; acknowledgement","severity":"required","passed":true,"failed":false,"blocking":true,"evidence":{{"summary":"passed","found_blocks":{{"references":{{"owner_sources":["opener.pageBreakBefore"],"rendered_page":2,"previous_content_rendered_page":1,"prior_block_separation_verdict":"pass","prior_block_rendered_separation_verdict":"pass"}},"acknowledgement":{{"owner_sources":["opener.pageBreakBefore"],"rendered_page":3}}}}}}}}
             {{"id":"chapter.format-preservation-contract","surface":"body chapters","severity":"required","passed":true,"failed":false,"blocking":true,"evidence":{{"summary":"passed chapter format preservation fixture confirms chapter-level format"}}}}
             {{"id":"common.pre-submission-checklist","surface":"whole thesis","severity":"required","passed":true,"failed":false,"blocking":true,"evidence":{{"summary":"passed common pre-submission checklist fixture","bibliography_entry_count":20,"length_units":15000,"toc_starts_from_abstract":true,"summary_outlook_independent_body_chapter":true}}}}
             {{"id":"toc.page-number-column-right-edge","surface":"toc_page_number_column","severity":"advisory","passed":true,"failed":false,"blocking":false,"evidence":{{"summary":"passed rendered page-number right-edge metric","metric_owner":"rendered page-number right edge","forbidden_proxy":"dotted leader start / leader_x0"}}}}
@@ -6187,6 +6456,69 @@ def make_docx_font_audit_report(
         ).strip()
         + "\n",
     )
+
+
+def make_docx_whole_format_gate_report(path: Path, *, docx_path: Path, passed: bool = True) -> None:
+    payload = {
+        "schema": "graduation-project-builder.docx-whole-format-gate.v1",
+        "generator": "selftest_skill_flow.py",
+        "docx_path": str(docx_path),
+        "docx_sha256": file_sha256(docx_path) if docx_path.exists() else "0" * 64,
+        "counts": {
+            "paragraph_count": 32,
+            "section_count": 3 if passed else 1,
+            "paragraph_section_break_count": 2 if passed else 0,
+            "page_break_count": 4,
+            "live_toc_field_count": 1 if passed else 0,
+            "toc_entry_count": 8,
+            "toc_entry_with_page_count": 8,
+            "toc_entry_with_tab_count": 8,
+            "toc_entry_with_dotted_leader_count": 8,
+            "header_part_count": 2,
+            "footer_part_count": 2,
+            "footer_page_field_count": 2 if passed else 0,
+            "builder_style_visible_paragraph_count": 0 if passed else 5,
+            "nonempty_no_style_paragraph_count": 0,
+            "body_no_style_paragraph_count": 0,
+            "body_paragraph_count": 20,
+        },
+        "surfaces": {
+            "zh_abstract": 2,
+            "en_abstract": 5,
+            "toc": 8,
+            "first_body": 12,
+            "references": 28,
+            "appendix": None,
+            "acknowledgement": 31,
+        },
+        "used_styles": {"GPBFront": 6, "GPBHeading": 6, "GPBBody": 20},
+        "header_parts": ["header1.xml", "header2.xml"],
+        "footer_parts": ["footer1.xml", "footer2.xml"],
+        "header_texts": ["selftest header"],
+        "footer_texts": ["1", "1"],
+        "page_number_types": [{"fmt": ""}, {"fmt": "roman", "start": "1"}, {"fmt": "decimal", "start": "1"}],
+        "issues": [] if passed else ["selftest forced structural failure"],
+        "passed": passed,
+    }
+    write_text(path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+
+
+def make_docx_font_color_audit_report(path: Path, *, docx_path: Path, passed: bool = True) -> None:
+    payload = {
+        "schema": "graduation-project-builder.docx-font-color-audit.v1",
+        "generator": "selftest_skill_flow.py",
+        "generated_at": "2026-05-22T00:00:00+00:00",
+        "docx_path": str(docx_path),
+        "docx_sha256": file_sha256(docx_path) if docx_path.exists() else "0" * 64,
+        "repair_output_docx_path": "",
+        "repair_output_docx_sha256": "",
+        "used_style_ids": ["GPBBody", "GPBHeading"],
+        "nonblack_color_count": 0 if passed else 1,
+        "issues": [] if passed else [{"kind": "used-style-color", "styleId": "Heading1", "value": "0000FF"}],
+        "changed_parts": [],
+        "passed": passed,
+    }
+    write_text(path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
 
 
 def make_docx_body_style_audit_report(
@@ -7084,6 +7416,10 @@ def case_sample_self_check_toc_visible_detector_required_rejected(td: Path) -> t
     return sample_self_check_missing_detector_case(td, "toc.visible-format-contract")
 
 
+def case_sample_self_check_header_footer_page_number_detector_required_rejected(td: Path) -> tuple[int, str]:
+    return sample_self_check_missing_detector_case(td, "header-footer.page-number-template-contract")
+
+
 def case_sample_self_check_figure_family_detector_required_rejected(td: Path) -> tuple[int, str]:
     return sample_self_check_missing_detector_case(td, "figure.family-style-contract")
 
@@ -7582,6 +7918,92 @@ def run_review_artifact_audit_with_ledger(
         errors="replace",
         timeout=timeout_seconds(SHORT_SUBPROCESS_TIMEOUT),
     )
+
+
+def case_empty_paragraph_bookmark_disposition_valid(td: Path) -> tuple[int, str]:
+    source = make_raw_docx(
+        td / "empty-bookmark-source.docx",
+        """
+    <w:p><w:r><w:t>Visible paragraph before empty bookmark.</w:t></w:r></w:p>
+    <w:p><w:bookmarkStart w:id="42" w:name="empty_anchor"/><w:bookmarkEnd w:id="42"/></w:p>
+    <w:p><w:r><w:t>Visible paragraph after empty bookmark.</w:t></w:r></w:p>
+        """,
+    )
+    final = make_raw_docx(
+        td / "empty-bookmark-final.docx",
+        """
+    <w:p><w:r><w:t>Visible paragraph before empty bookmark.</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Visible paragraph after empty bookmark.</w:t></w:r></w:p>
+        """,
+    )
+    disposition = td / "empty-bookmark-disposition.json"
+    write_text(
+        disposition,
+        json.dumps(
+            {
+                "schema": "graduation-project-builder.empty-paragraph-bookmark-disposition.v1",
+                "source_docx_path": str(source),
+                "source_docx_sha256": file_sha256(source),
+                "final_docx_path": str(final),
+                "final_docx_sha256": file_sha256(final),
+                "allowed_missing_bookmarks": [
+                    "word/document.xml:empty_anchor",
+                    "word/document.xml:bookmark-id:42",
+                ],
+                "empty_paragraph_verified": True,
+                "visible_text_absent": True,
+                "contains_image_or_table": False,
+                "contains_section_or_page_break": False,
+                "contains_comment_anchor": False,
+                "contains_tracked_change": False,
+                "contains_field_host": False,
+                "contains_hyperlink": False,
+                "contains_citation_marker": False,
+                "verdict": "pass",
+            },
+            indent=2,
+        )
+        + "\n",
+    )
+    review_inventory = td / "empty-bookmark.source-review.md"
+    review_diff = td / "empty-bookmark.final-review-diff.md"
+    citation_inventory = td / "empty-bookmark.source-citation.md"
+    citation_diff = td / "empty-bookmark.final-citation-diff.md"
+    proc = subprocess.run(
+        [
+            str(PYTHON_EXE),
+            str(SKILL_ROOT / "scripts" / "audit_docx_review_artifacts.py"),
+            "--source-docx",
+            str(source),
+            "--final-docx",
+            str(final),
+            "--review-inventory-report",
+            str(review_inventory),
+            "--review-diff-report",
+            str(review_diff),
+            "--citation-inventory-report",
+            str(citation_inventory),
+            "--citation-diff-report",
+            str(citation_diff),
+            "--controlled-bookmark-disposition",
+            str(disposition),
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout_seconds(SHORT_SUBPROCESS_TIMEOUT),
+    )
+    issues = validate_review_artifact_reports(review_inventory, review_diff, expected_final_docx=final)
+    diff_text = review_diff.read_text(encoding="utf-8", errors="replace") if review_diff.exists() else ""
+    ok = (
+        proc.returncode == 0
+        and not issues
+        and "- controlled bookmark disposition path:" in diff_text
+        and "- controlled bookmark disposition: yes" in diff_text
+    )
+    output = (proc.stdout or "") + (proc.stderr or "") + "\n" + "\n".join(issues) + "\n" + diff_text
+    return 0 if ok else 1, output
 
 
 def case_review_comments_removed_with_valid_resolution_ledger_valid(td: Path) -> tuple[int, str]:
@@ -8142,6 +8564,167 @@ def case_docx_font_audit_named_size_without_wps_rejected(td: Path) -> tuple[int,
     return proc.returncode, proc.stdout
 
 
+def case_whole_docx_structural_gate_missing_rejected(td: Path) -> tuple[int, str]:
+    review_copy, rendered_pdf, page_images, thesis_ev, para_ev, touched_ev, figure_ev, citation_audit = build_thesis_bundle(td, "thesis-only")
+    record = td / "whole_format_missing.acceptance.md"
+    make_gate_record(
+        record,
+        task_mode="thesis-only",
+        subtask="whole format structural gate missing",
+        output_path=review_copy,
+        format_task_path="none",
+        rendered_pdf=str(rendered_pdf),
+        page_images="; ".join(str(p) for p in page_images),
+        citation_audit_path=str(citation_audit),
+        thesis_paths=str(thesis_ev),
+        figure_paths=str(figure_ev),
+        paragraph_paths=str(para_ev),
+        touched_page_paths=str(touched_ev),
+        renderer_path=str(PYTHON_EXE),
+        rasterizer_path=str(PYTHON_EXE),
+        review_copy_path=str(review_copy),
+        humanizer_route_decision="humanizer-zh",
+        humanizer_target_language="zh",
+        humanizer_scope="chinese body rewrite",
+        humanizer_evidence_path="AUTO",
+    )
+    text = re.sub(r"(?m)^- final DOCX whole-format structural audit path: .*\n", "", record.read_text(encoding="utf-8"), count=1)
+    write_text(record, text)
+    proc = run_validator(record)
+    return proc.returncode, proc.stdout
+
+
+def case_whole_docx_structural_gate_failed_rejected(td: Path) -> tuple[int, str]:
+    review_copy, rendered_pdf, page_images, thesis_ev, para_ev, touched_ev, figure_ev, citation_audit = build_thesis_bundle(td, "thesis-only")
+    whole_report = td / "whole_format_failed.json"
+    make_docx_whole_format_gate_report(whole_report, docx_path=review_copy, passed=False)
+    record = td / "whole_format_failed.acceptance.md"
+    make_gate_record(
+        record,
+        task_mode="thesis-only",
+        subtask="whole format structural gate failed",
+        output_path=review_copy,
+        format_task_path="none",
+        rendered_pdf=str(rendered_pdf),
+        page_images="; ".join(str(p) for p in page_images),
+        citation_audit_path=str(citation_audit),
+        thesis_paths=str(thesis_ev),
+        figure_paths=str(figure_ev),
+        paragraph_paths=str(para_ev),
+        touched_page_paths=str(touched_ev),
+        renderer_path=str(PYTHON_EXE),
+        rasterizer_path=str(PYTHON_EXE),
+        review_copy_path=str(review_copy),
+        final_docx_whole_format_structural_audit_path=str(whole_report),
+        final_docx_whole_format_structural_audit_verdict="fail",
+        humanizer_route_decision="humanizer-zh",
+        humanizer_target_language="zh",
+        humanizer_scope="chinese body rewrite",
+        humanizer_evidence_path="AUTO",
+    )
+    proc = run_validator(record)
+    return proc.returncode, proc.stdout
+
+
+def case_whole_docx_structural_gate_stale_sha_rejected(td: Path) -> tuple[int, str]:
+    from docx import Document
+
+    review_copy, rendered_pdf, page_images, thesis_ev, para_ev, touched_ev, figure_ev, citation_audit = build_thesis_bundle(td, "thesis-only")
+    whole_report = td / "whole_format_stale.json"
+    make_docx_whole_format_gate_report(whole_report, docx_path=review_copy, passed=True)
+    doc = Document(str(review_copy))
+    doc.add_paragraph("Mutated after whole-format audit.")
+    doc.save(str(review_copy))
+    record = td / "whole_format_stale.acceptance.md"
+    make_gate_record(
+        record,
+        task_mode="thesis-only",
+        subtask="whole format structural stale sha",
+        output_path=review_copy,
+        format_task_path="none",
+        rendered_pdf=str(rendered_pdf),
+        page_images="; ".join(str(p) for p in page_images),
+        citation_audit_path=str(citation_audit),
+        thesis_paths=str(thesis_ev),
+        figure_paths=str(figure_ev),
+        paragraph_paths=str(para_ev),
+        touched_page_paths=str(touched_ev),
+        renderer_path=str(PYTHON_EXE),
+        rasterizer_path=str(PYTHON_EXE),
+        review_copy_path=str(review_copy),
+        final_docx_whole_format_structural_audit_path=str(whole_report),
+        final_docx_whole_format_structural_audit_verdict="pass",
+        humanizer_route_decision="humanizer-zh",
+        humanizer_target_language="zh",
+        humanizer_scope="chinese body rewrite",
+        humanizer_evidence_path="AUTO",
+    )
+    proc = run_validator(record)
+    return proc.returncode, proc.stdout
+
+
+def case_font_color_audit_missing_rejected(td: Path) -> tuple[int, str]:
+    review_copy, rendered_pdf, page_images, thesis_ev, para_ev, touched_ev, figure_ev, citation_audit = build_thesis_bundle(td, "thesis-only")
+    record = td / "font_color_missing.acceptance.md"
+    make_gate_record(
+        record,
+        task_mode="thesis-only",
+        subtask="font color audit missing",
+        output_path=review_copy,
+        format_task_path="none",
+        rendered_pdf=str(rendered_pdf),
+        page_images="; ".join(str(p) for p in page_images),
+        citation_audit_path=str(citation_audit),
+        thesis_paths=str(thesis_ev),
+        figure_paths=str(figure_ev),
+        paragraph_paths=str(para_ev),
+        touched_page_paths=str(touched_ev),
+        renderer_path=str(PYTHON_EXE),
+        rasterizer_path=str(PYTHON_EXE),
+        review_copy_path=str(review_copy),
+        humanizer_route_decision="humanizer-zh",
+        humanizer_target_language="zh",
+        humanizer_scope="chinese body rewrite",
+        humanizer_evidence_path="AUTO",
+    )
+    text = re.sub(r"(?m)^- final DOCX font-color audit path: .*\n", "", record.read_text(encoding="utf-8"), count=1)
+    write_text(record, text)
+    proc = run_validator(record)
+    return proc.returncode, proc.stdout
+
+
+def case_font_color_audit_failed_rejected(td: Path) -> tuple[int, str]:
+    review_copy, rendered_pdf, page_images, thesis_ev, para_ev, touched_ev, figure_ev, citation_audit = build_thesis_bundle(td, "thesis-only")
+    font_color_report = td / "font_color_failed.json"
+    make_docx_font_color_audit_report(font_color_report, docx_path=review_copy, passed=False)
+    record = td / "font_color_failed.acceptance.md"
+    make_gate_record(
+        record,
+        task_mode="thesis-only",
+        subtask="font color audit failed",
+        output_path=review_copy,
+        format_task_path="none",
+        rendered_pdf=str(rendered_pdf),
+        page_images="; ".join(str(p) for p in page_images),
+        citation_audit_path=str(citation_audit),
+        thesis_paths=str(thesis_ev),
+        figure_paths=str(figure_ev),
+        paragraph_paths=str(para_ev),
+        touched_page_paths=str(touched_ev),
+        renderer_path=str(PYTHON_EXE),
+        rasterizer_path=str(PYTHON_EXE),
+        review_copy_path=str(review_copy),
+        final_docx_font_color_audit_path=str(font_color_report),
+        final_docx_font_color_audit_verdict="fail",
+        humanizer_route_decision="humanizer-zh",
+        humanizer_target_language="zh",
+        humanizer_scope="chinese body rewrite",
+        humanizer_evidence_path="AUTO",
+    )
+    proc = run_validator(record)
+    return proc.returncode, proc.stdout
+
+
 def case_validation_command_missing_gate_record_rejected(td: Path) -> tuple[int, str]:
     review_copy, rendered_pdf, page_images, thesis_ev, para_ev, touched_ev, figure_ev, citation_audit = build_thesis_bundle(td, "thesis-only")
     record = td / "validation_command_missing_gate_record.acceptance.md"
@@ -8603,6 +9186,45 @@ def case_passed_with_caveats_rejected(td: Path) -> tuple[int, str]:
         review_copy_path=str(review_copy),
     )
     write_text(record, record.read_text(encoding="utf-8") + "\npassed with caveats\n")
+    proc = run_validator(record)
+    return proc.returncode, proc.stdout
+
+
+def case_passed_with_limitations_rejected(td: Path) -> tuple[int, str]:
+    review_copy, rendered_pdf, page_images, thesis_ev, para_ev, touched_ev, _figure_ev, citation_audit = build_thesis_bundle(td, "format-repair-only")
+    format_task = td / "limitation_task.md"
+    make_format_repair_task(
+        format_task,
+        review_copy=review_copy,
+        thesis_paths=[thesis_ev],
+        paragraph_paths=[para_ev],
+        touched_paths=[touched_ev],
+        citation_audit_path=citation_audit,
+        rendered_pdf=rendered_pdf,
+        page_images=page_images,
+        touched_blocks="font audit and protected visual surfaces",
+        format_classes="TOC; abstracts; header; footer; page numbers",
+        sentinels="TOC; Abstract; header; footer",
+        pages_to_inspect="front matter and body pages",
+    )
+    record = td / "limitation.acceptance.md"
+    make_gate_record(
+        record,
+        task_mode="format-repair-only",
+        subtask="limitation wording cannot greenwash protected-surface evidence",
+        output_path=review_copy,
+        format_task_path=str(format_task),
+        rendered_pdf=str(rendered_pdf),
+        page_images="; ".join(str(p) for p in page_images),
+        citation_audit_path=str(citation_audit),
+        thesis_paths=str(thesis_ev),
+        paragraph_paths=str(para_ev),
+        touched_page_paths=str(touched_ev),
+        renderer_path=str(PYTHON_EXE),
+        rasterizer_path=str(PYTHON_EXE),
+        review_copy_path=str(review_copy),
+    )
+    write_text(record, record.read_text(encoding="utf-8") + "\npassed with limitations: font audit limitation accepted\n")
     proc = run_validator(record)
     return proc.returncode, proc.stdout
 
@@ -9404,6 +10026,13 @@ def case_bibliography_manual_auto_numbering_rejected(td: Path) -> tuple[int, str
     return proc.returncode, proc.stdout + "\n" + report.read_text(encoding="utf-8")
 
 
+def case_body_citation_wrong_target_rejected(td: Path) -> tuple[int, str]:
+    docx = make_citation_wrong_target_docx(td / "citation_wrong_target.docx")
+    report = td / "citation_wrong_target_report.md"
+    proc = run_citation_audit(docx, report)
+    return proc.returncode, proc.stdout + "\n" + report.read_text(encoding="utf-8")
+
+
 def case_body_citation_visual_style_rejected(td: Path) -> tuple[int, str]:
     docx = make_citation_order_docx(
         td / "citation_visual_bad.docx",
@@ -9413,6 +10042,20 @@ def case_body_citation_visual_style_rejected(td: Path) -> tuple[int, str]:
         visual_variant="underlined",
     )
     report = td / "citation_visual_bad_report.md"
+    proc = run_citation_audit(docx, report)
+    return proc.returncode, proc.stdout + "\n" + report.read_text(encoding="utf-8")
+
+
+def case_body_citation_instr_text_only_hyperlink_rejected(td: Path) -> tuple[int, str]:
+    docx = make_instr_text_only_citation_docx(td / "citation_instr_text_only_bad.docx")
+    report = td / "citation_instr_text_only_bad_report.md"
+    proc = run_citation_audit(docx, report)
+    return proc.returncode, proc.stdout + "\n" + report.read_text(encoding="utf-8")
+
+
+def case_body_citation_visible_anchor_leak_rejected(td: Path) -> tuple[int, str]:
+    docx = make_visible_anchor_leak_citation_docx(td / "citation_anchor_leak_bad.docx")
+    report = td / "citation_anchor_leak_bad_report.md"
     proc = run_citation_audit(docx, report)
     return proc.returncode, proc.stdout + "\n" + report.read_text(encoding="utf-8")
 
@@ -10765,7 +11408,7 @@ def case_agent_lane_router_exposure_missing_rejected(td: Path) -> tuple[int, str
     router = copied / "references" / "user-feedback-persistence.md"
     text = router.read_text(encoding="utf-8")
     text = text.replace(
-        "- `references/agents/agent-lanes.md`: rules `AGENT-CTRL-001, AGENT-ALIAS-001, AGENT-ROSTER-001, AGENT-CONCURRENCY-001, AGENT-WORK-001, AGENT-FORMAT-001, AGENT-FORMAT-002, AGENT-FORMAT-003, AGENT-FORMAT-004, AGENT-FORMAT-005, AGENT-FORMAT-006, AGENT-AUDIT-001, AGENT-AUDIT-002, AGENT-AUDIT-003, AGENT-FALLBACK-001, AGENT-CARD-001, AGENT-EVIDENCE-001`\n",
+        "- `references/agents/agent-lanes.md`: rules `AGENT-CTRL-001, AGENT-ALIAS-001, AGENT-ROSTER-001, AGENT-CONCURRENCY-001, AGENT-WORK-001, AGENT-FORMAT-001, AGENT-FORMAT-002, AGENT-FORMAT-003, AGENT-FORMAT-004, AGENT-FORMAT-005, AGENT-FORMAT-006, AGENT-AUDIT-001, AGENT-AUDIT-002, AGENT-AUDIT-003, AGENT-AUDIT-004, AGENT-FALLBACK-001, AGENT-CARD-001, AGENT-EVIDENCE-001`\n",
         "",
         1,
     )
@@ -11133,6 +11776,209 @@ def case_agent_task_card_whole_pagination_mismatch_rejected(td: Path) -> tuple[i
         count=1,
     )
     write_text(format_task, text)
+    proc = run_validator(record)
+    return proc.returncode, proc.stdout
+
+
+def make_content_mutation_machine_vision_evidence(
+    path: Path,
+    *,
+    task_mode: str,
+    reviewed_output: Path,
+    rendered_pdf: Path,
+    page_images: list[Path],
+    evidence_type: str = "thesis-rendered-page",
+) -> None:
+    make_review_evidence(
+        path,
+        evidence_type=evidence_type,
+        task_mode=task_mode,
+        reviewed_output=reviewed_output,
+        artifact_paths=[rendered_pdf, *page_images],
+        target_surface="body_text",
+        target_identifier="content expansion touched paragraph p12 on touched page 3",
+        target_region="touched page and blast-radius neighborhood",
+        blast_radius="previous page, touched page, next page, chapter opener",
+        neighbors="body donor paragraph p11; next chapter opener p20",
+        checks=(
+            "machine-vision rendered exact output review; touched paragraph and touched page; "
+            "body donor comparison; body-vs-heading visual hierarchy; heading contamination final verdict"
+        ),
+        summary=(
+            "pass machine-vision rendered exact output review confirmed touched paragraph on touched page "
+            "matches body donor; body-vs-heading comparison found no heading contamination; final verdict pass"
+        ),
+        canonical_protected_surface_id="body_text",
+    )
+
+
+def case_content_expansion_machine_vision_missing_rejected(td: Path) -> tuple[int, str]:
+    review_copy, rendered_pdf, page_images, thesis_ev, para_ev, touched_ev, figure_ev, citation_audit = build_thesis_bundle(td, "thesis-only")
+    format_task = td / "content_expansion_missing_task.md"
+    make_format_repair_task(
+        format_task,
+        review_copy=review_copy,
+        thesis_paths=[thesis_ev],
+        paragraph_paths=[para_ev],
+        touched_paths=[touched_ev],
+        citation_audit_path=citation_audit,
+        rendered_pdf=rendered_pdf,
+        page_images=page_images,
+        touched_blocks="content expansion inserted body paragraph",
+        format_classes="body_text; body_heading_levels",
+        sentinels="inserted paragraph p12",
+        pages_to_inspect="touched page 3 and blast-radius pages",
+    )
+    record = td / "content_expansion_missing.acceptance.md"
+    make_gate_record(
+        record,
+        task_mode="thesis-only",
+        subtask="content expansion selftest body paragraph insertion word count expansion",
+        output_path=review_copy,
+        format_task_path=str(format_task),
+        rendered_pdf=str(rendered_pdf),
+        page_images="; ".join(str(p) for p in page_images),
+        citation_audit_path=str(citation_audit),
+        thesis_paths=str(thesis_ev),
+        figure_paths=str(figure_ev),
+        paragraph_paths=str(para_ev),
+        touched_page_paths=str(touched_ev),
+        renderer_path=str(PYTHON_EXE),
+        rasterizer_path=str(PYTHON_EXE),
+        review_copy_path=str(review_copy),
+        selected_thesis_workflow="content-only-paragraph-revision",
+        humanizer_route_decision="humanizer-zh",
+        humanizer_target_language="zh",
+        humanizer_scope="body content expansion",
+        humanizer_evidence_path="AUTO",
+    )
+    proc = run_validator(record)
+    return proc.returncode, proc.stdout
+
+
+def case_content_expansion_machine_vision_substitute_rejected(td: Path) -> tuple[int, str]:
+    review_copy, rendered_pdf, page_images, thesis_ev, para_ev, touched_ev, figure_ev, citation_audit = build_thesis_bundle(td, "thesis-only")
+    format_task = td / "content_expansion_substitute_task.md"
+    make_format_repair_task(
+        format_task,
+        review_copy=review_copy,
+        thesis_paths=[thesis_ev],
+        paragraph_paths=[para_ev],
+        touched_paths=[touched_ev],
+        citation_audit_path=citation_audit,
+        rendered_pdf=rendered_pdf,
+        page_images=page_images,
+        touched_blocks="content expansion inserted body paragraph",
+        format_classes="body_text; body_heading_levels",
+        sentinels="inserted paragraph p12",
+        pages_to_inspect="touched page 3 and blast-radius pages",
+    )
+    evidence = td / "content_expansion_bad_evidence.md"
+    make_content_mutation_machine_vision_evidence(
+        evidence,
+        task_mode="thesis-only",
+        reviewed_output=review_copy,
+        rendered_pdf=rendered_pdf,
+        page_images=page_images,
+    )
+    write_text(
+        evidence,
+        evidence.read_text(encoding="utf-8") + "\n- blocked substitute proof: PDF export only; not checked by machine vision\n",
+    )
+    record = td / "content_expansion_substitute.acceptance.md"
+    make_gate_record(
+        record,
+        task_mode="thesis-only",
+        subtask="content expansion selftest body paragraph insertion word count expansion",
+        output_path=review_copy,
+        format_task_path=str(format_task),
+        rendered_pdf=str(rendered_pdf),
+        page_images="; ".join(str(p) for p in page_images),
+        citation_audit_path=str(citation_audit),
+        thesis_paths=str(thesis_ev),
+        figure_paths=str(figure_ev),
+        paragraph_paths=str(para_ev),
+        touched_page_paths=str(touched_ev),
+        renderer_path=str(PYTHON_EXE),
+        rasterizer_path=str(PYTHON_EXE),
+        review_copy_path=str(review_copy),
+        selected_thesis_workflow="content-only-paragraph-revision",
+        humanizer_route_decision="humanizer-zh",
+        humanizer_target_language="zh",
+        humanizer_scope="body content expansion",
+        humanizer_evidence_path="AUTO",
+        content_mutation_rendered_page_review_path=str(evidence),
+        content_mutation_machine_vision_verdict="passed PDF export only",
+        inserted_body_heading_contamination_verdict="passed no heading contamination",
+        touched_page_blast_radius_machine_vision_evidence_paths=str(evidence),
+        format_lane_post_mutation_rendered_audit_verdict="passed",
+    )
+    proc = run_validator(record)
+    return proc.returncode, proc.stdout
+
+
+def case_content_expansion_machine_vision_valid(td: Path) -> tuple[int, str]:
+    review_copy, rendered_pdf, page_images, thesis_ev, para_ev, touched_ev, figure_ev, citation_audit = build_thesis_bundle(td, "thesis-only")
+    format_task = td / "content_expansion_valid_task.md"
+    make_format_repair_task(
+        format_task,
+        review_copy=review_copy,
+        thesis_paths=[thesis_ev],
+        paragraph_paths=[para_ev],
+        touched_paths=[touched_ev],
+        citation_audit_path=citation_audit,
+        rendered_pdf=rendered_pdf,
+        page_images=page_images,
+        touched_blocks="content expansion inserted body paragraph",
+        format_classes="body_text; body_heading_levels",
+        sentinels="inserted paragraph p12",
+        pages_to_inspect="touched page 3 and blast-radius pages",
+    )
+    evidence = td / "content_expansion_machine_vision.md"
+    make_content_mutation_machine_vision_evidence(
+        evidence,
+        task_mode="thesis-only",
+        reviewed_output=review_copy,
+        rendered_pdf=rendered_pdf,
+        page_images=page_images,
+    )
+    touched_blast = td / "content_expansion_blast_radius.md"
+    make_content_mutation_machine_vision_evidence(
+        touched_blast,
+        task_mode="thesis-only",
+        reviewed_output=review_copy,
+        rendered_pdf=rendered_pdf,
+        page_images=page_images,
+        evidence_type="touched-page-review",
+    )
+    record = td / "content_expansion_valid.acceptance.md"
+    make_gate_record(
+        record,
+        task_mode="thesis-only",
+        subtask="content expansion selftest body paragraph insertion word count expansion",
+        output_path=review_copy,
+        format_task_path=str(format_task),
+        rendered_pdf=str(rendered_pdf),
+        page_images="; ".join(str(p) for p in page_images),
+        citation_audit_path=str(citation_audit),
+        thesis_paths=str(thesis_ev),
+        figure_paths=str(figure_ev),
+        paragraph_paths=str(para_ev),
+        touched_page_paths=str(touched_ev),
+        renderer_path=str(PYTHON_EXE),
+        rasterizer_path=str(PYTHON_EXE),
+        review_copy_path=str(review_copy),
+        selected_thesis_workflow="content-only-paragraph-revision",
+        humanizer_route_decision="humanizer-zh",
+        humanizer_target_language="zh",
+        humanizer_scope="body content expansion",
+        humanizer_evidence_path="AUTO",
+        content_mutation_rendered_page_review_path=str(evidence),
+        content_mutation_machine_vision_verdict="passed machine-vision exact-output rendered body review",
+        inserted_body_heading_contamination_verdict="passed inserted body prose has no heading contamination",
+        touched_page_blast_radius_machine_vision_evidence_paths=str(touched_blast),
+        format_lane_post_mutation_rendered_audit_verdict="passed format lane reviewed post-mutation rendered exact output",
+    )
     proc = run_validator(record)
     return proc.returncode, proc.stdout
 
@@ -12357,6 +13203,67 @@ def case_user_reported_visual_geometry_missing_rejected(td: Path) -> tuple[int, 
         review_copy_path=str(review_copy),
         user_reported_issue_ledger_path=str(ledger),
         user_reported_visual_defect_surfaces="TOC; references pagination; body font",
+        user_reported_visual_defect_render_geometry_evidence_path="none",
+        user_reported_visual_defect_template_vs_target_binding_verdict="not-applicable",
+        user_reported_visual_defect_full_page_key_surface_binding_verdict="not-applicable",
+    )
+    proc = run_validator(record)
+    return proc.returncode, proc.stdout
+
+
+def case_user_reported_abstract_header_footer_visual_geometry_missing_rejected(td: Path) -> tuple[int, str]:
+    review_copy, rendered_pdf, page_images, thesis_ev, para_ev, touched_ev, _figure_ev, citation_audit = build_thesis_bundle(td, "format-repair-only")
+    format_task = td / "user_reported_abstract_header_footer_visual_missing_task.md"
+    make_format_repair_task(
+        format_task,
+        review_copy=review_copy,
+        thesis_paths=[thesis_ev],
+        paragraph_paths=[para_ev],
+        touched_paths=[touched_ev],
+        citation_audit_path=citation_audit,
+        rendered_pdf=rendered_pdf,
+        page_images=page_images,
+        touched_blocks="reported protected visual surface closure",
+        format_classes="protected visual closure",
+        sentinels="reported page",
+        pages_to_inspect="reported protected pages",
+    )
+    ledger = td / "user_reported_abstract_header_footer_visual_missing_ledger.md"
+    write_text(
+        ledger,
+        textwrap.dedent(
+            f"""
+            # User-Reported Issue Ledger
+
+            ## Issue Records
+            - issue id: issue-1
+            - user wording: abstract font is inconsistent, header has abnormal horizontal line, footer page-number position is wrong
+            - surface: abstract; header; footer; page numbers
+            - expected fix: bind abstract, header line, footer, and page-number surfaces to template-vs-target render geometry
+            - evidence path: {thesis_ev}
+            - final verdict: pass
+            """
+        ).strip()
+        + "\n",
+    )
+    record = td / "user_reported_abstract_header_footer_visual_missing.acceptance.md"
+    make_gate_record(
+        record,
+        task_mode="format-repair-only",
+        subtask="user-reported abstract font inconsistent, header line abnormal, footer page-number position wrong",
+        output_path=review_copy,
+        format_task_path=str(format_task),
+        rendered_pdf=str(rendered_pdf),
+        page_images="; ".join(str(p) for p in page_images),
+        citation_audit_path=str(citation_audit),
+        thesis_paths=str(thesis_ev),
+        paragraph_paths=str(para_ev),
+        touched_page_paths=str(touched_ev),
+        renderer_path=str(PYTHON_EXE),
+        rasterizer_path=str(PYTHON_EXE),
+        review_copy_path=str(review_copy),
+        user_reported_issue_ledger_path=str(ledger),
+        user_reported_visual_defect_surfaces="abstract; header; footer; page numbers",
         user_reported_visual_defect_render_geometry_evidence_path="none",
         user_reported_visual_defect_template_vs_target_binding_verdict="not-applicable",
         user_reported_visual_defect_full_page_key_surface_binding_verdict="not-applicable",
@@ -17295,14 +18202,39 @@ def case_acceptance_generator_reference_pagination_loss_rejected(td: Path) -> tu
     weak_json = root / "weak-reference-pagination.json"
     payload = json.loads(Path(fixture["whole_pagination_json"]).read_text(encoding="utf-8"))
     payload["tail_block_opener_page_map"] = (
-        "fail tail block rendered map: references physical page=missing; acknowledgement physical page=2; "
+        "fail tail block rendered map: references previous content physical page=missing; "
+        "references physical page=missing; acknowledgement physical page=2; "
         "references_page_found=no; references_fresh_page_verdict=fail; "
+        "references_prior_block_separation_verdict=fail; "
         "references_opener_owner_evidence=sample_self_check detector tail-block.pagination-contract failed"
     )
     payload["docx_pagination_structure_verdict"] = "pass forged despite lost reference pagination"
     payload["whole_document_pagination_verdict"] = "pass forged despite lost reference pagination"
     write_text(weak_json, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
     output = root / "acceptance-reference-pagination-loss.md"
+    proc = run_acceptance_generator_for_fixture(fixture, output, whole_pagination_json=weak_json)
+    record = output.read_text(encoding="utf-8", errors="replace") if output.exists() else ""
+    return proc.returncode, (proc.stdout or "") + (proc.stderr or "") + "\n" + record
+
+
+def case_references_pagination_changes_rejected(td: Path) -> tuple[int, str]:
+    return case_acceptance_generator_reference_pagination_loss_rejected(td)
+
+
+def case_acceptance_generator_reference_prior_page_token_missing_rejected(td: Path) -> tuple[int, str]:
+    fixture = prepare_toc_acceptance_generator_fixture(td)
+    root = Path(fixture["root"])
+    weak_json = root / "weak-reference-prior-page-token.json"
+    payload = json.loads(Path(fixture["whole_pagination_json"]).read_text(encoding="utf-8"))
+    payload["tail_block_opener_page_map"] = (
+        "pass tail block rendered map: references physical page=8; acknowledgement physical page=9; "
+        "references_page_found=yes; references_fresh_page_verdict=pass; "
+        "references_opener_owner_evidence=sample_self_check detector tail-block.pagination-contract passed"
+    )
+    payload["docx_pagination_structure_verdict"] = "pass forged without prior-block separation token"
+    payload["whole_document_pagination_verdict"] = "pass forged without prior-block separation token"
+    write_text(weak_json, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+    output = root / "acceptance-reference-prior-page-token-missing.md"
     proc = run_acceptance_generator_for_fixture(fixture, output, whole_pagination_json=weak_json)
     record = output.read_text(encoding="utf-8", errors="replace") if output.exists() else ""
     return proc.returncode, (proc.stdout or "") + (proc.stderr or "") + "\n" + record
@@ -17335,6 +18267,22 @@ def case_acceptance_generator_missing_tail_block_pagination_detector_rejected(td
     ]
     write_text(self_check, "\n".join(filtered) + "\n")
     output = root / "acceptance-missing-tail-block-pagination-detector.md"
+    proc = run_acceptance_generator_for_fixture(fixture, output)
+    record = output.read_text(encoding="utf-8", errors="replace") if output.exists() else ""
+    return proc.returncode, (proc.stdout or "") + (proc.stderr or "") + "\n" + record
+
+
+def case_acceptance_generator_missing_header_footer_page_number_detector_rejected(td: Path) -> tuple[int, str]:
+    fixture = prepare_toc_acceptance_generator_fixture(td)
+    root = Path(fixture["root"])
+    self_check = Path(fixture["self_check"])
+    filtered = [
+        line
+        for line in self_check.read_text(encoding="utf-8").splitlines()
+        if '"id":"header-footer.page-number-template-contract"' not in line
+    ]
+    write_text(self_check, "\n".join(filtered) + "\n")
+    output = root / "acceptance-missing-header-footer-page-number-detector.md"
     proc = run_acceptance_generator_for_fixture(fixture, output)
     record = output.read_text(encoding="utf-8", errors="replace") if output.exists() else ""
     return proc.returncode, (proc.stdout or "") + (proc.stderr or "") + "\n" + record
@@ -19241,13 +20189,12 @@ def case_frontmatter_audit_reports_english_indent_metrics_valid(td: Path) -> tup
     if proc.returncode != 0:
         return proc.returncode, proc.stdout + proc.stderr
     payload = json.loads(report.read_text(encoding="utf-8"))
-    en_abstract = payload["surface_details"]["en_abstract"]
+    en_abstract = payload["surface_details"]["en_abstract_body"]
     en_keyword = payload["surface_details"]["en_keyword"]
     ok = (
         en_abstract["metrics"]["indent"]["firstLine"] == "480"
         and en_abstract["metrics"]["indent"]["firstLineChars"] == "200"
-        and en_abstract["label_runs"]["label_text"] == "Abstract:"
-        and en_abstract["label_runs"]["label_content_split"] is True
+        and payload["surface_details"]["en_abstract_title"]["text_prefix"] == "Abstract"
         and en_keyword["label_runs"]["label_text"] == "Key words:"
         and en_keyword["label_runs"]["content_bold_count"] == 0
     )
@@ -20883,8 +21830,10 @@ def case_pagination_raw_unexpected_near_empty_rejected(td: Path) -> tuple[int, s
         "page_number_restart_verdict": "pass",
         "blank_near_empty_page_scan_verdict": blank_scan,
         "tail_block_opener_page_map": (
-            "pass tail block rendered map: references physical page=8; acknowledgement physical page=9; "
+            "pass tail block rendered map: references previous content physical page=7; "
+            "references physical page=8; acknowledgement physical page=9; "
             "references_page_found=yes; references_fresh_page_verdict=pass; "
+            "references_prior_block_separation_verdict=pass; "
             "references_opener_owner_evidence=sample_self_check detector tail-block.pagination-contract passed"
         ),
     }
@@ -21291,6 +22240,11 @@ def case_repair_thesis_surface_format_bounded_valid(td: Path) -> tuple[int, str]
     ref_title = escape("\u53c2\u8003\u6587\u732e")
     fig_caption = escape("\u56fe1-1 \u7cfb\u7edf\u67b6\u6784\u56fe")
     target_body = escape("\u88ab\u6c61\u67d3\u7684\u6b63\u6587\u6bb5\u843d\u9700\u8981\u6062\u590d\u6a21\u677f\u6b63\u6587\u683c\u5f0f")
+    heading_ppr = (
+        '<w:pPr><w:pStyle w:val="2"/>'
+        '<w:spacing w:before="0" w:after="0" w:line="360" w:lineRule="auto"/>'
+        '</w:pPr>'
+    )
     template = make_raw_docx(
         td / "surface-template.docx",
         f'''
@@ -21389,13 +22343,15 @@ def case_repair_thesis_surface_format_bounded_valid(td: Path) -> tuple[int, str]
     body_indent = body_ppr.find("./w:ind", ns) if body_ppr is not None else None
     holder_ppr = paragraphs[8].find("./w:pPr", ns)
     holder_jc = holder_ppr.find("./w:jc", ns) if holder_ppr is not None else None
+    holder_spacing = holder_ppr.find("./w:spacing", ns) if holder_ppr is not None else None
     report = json.loads(report_path.read_text(encoding="utf-8"))
     ok = (
         para_text(1) == "\u4fee\u590d\u540e\u7684\u4e2d\u6587\u6458\u8981\u3002"
         and p_style(1) == "Normal"
         and p_style(7) == "Normal"
         and body_spacing is not None
-        and body_spacing.get(w_attr("line")) == "440"
+        and body_spacing.get(w_attr("line")) == "360"
+        and body_spacing.get(w_attr("lineRule")) == "auto"
         and body_indent is not None
         and body_indent.get(w_attr("firstLineChars")) == "200"
         and paragraphs[7].find('.//w:vertAlign', ns) is not None
@@ -21405,7 +22361,9 @@ def case_repair_thesis_surface_format_bounded_valid(td: Path) -> tuple[int, str]
         and holder_jc is not None
         and holder_jc.get(w_attr("val")) == "center"
         and holder_ppr.find("./w:pageBreakBefore", ns) is None
-        and holder_ppr.find("./w:spacing", ns) is None
+        and holder_spacing is not None
+        and holder_spacing.get(w_attr("line")) == "240"
+        and holder_spacing.get(w_attr("lineRule")) == "auto"
         and p_style(9) == "CaptionBad"
         and p_style(10) == "GPBRefTitle1"
         and 7 in report["changes"]["body_prose_paragraphs_normalized"]
@@ -21437,6 +22395,96 @@ def case_repair_thesis_surface_format_skips_fullwidth_dot_headings(td: Path) -> 
         module.is_heading_text(item) for item in non_headings
     )
     return (0 if ok else 1, json.dumps({"headings": headings, "non_headings": non_headings}, ensure_ascii=False))
+
+
+def case_repair_thesis_surface_format_template_instruction_body_donor_valid(td: Path) -> tuple[int, str]:
+    source_body = escape("\u88ab\u6c61\u67d3\u7684\u6b63\u6587\u6bb5\u843d\u9700\u8981\u6062\u590d\u6a21\u677f\u6b63\u6587\u683c\u5f0f")
+    heading_ppr = (
+        '<w:pPr><w:pStyle w:val="2"/>'
+        '<w:spacing w:before="0" w:after="0" w:line="360" w:lineRule="auto"/>'
+        '</w:pPr>'
+    )
+    template = make_raw_docx(
+        td / "instruction-template.docx",
+        f'''
+    <w:p><w:pPr><w:pStyle w:val="AbsTitle"/><w:spacing w:before="800" w:after="400" w:line="400" w:lineRule="exact"/></w:pPr><w:r><w:t>\u683c\u5f0f\u6821\u5bf9\u6a21\u677f\u8bf4\u660e</w:t></w:r></w:p>
+    <w:p><w:pPr><w:pStyle w:val="Normal"/><w:ind w:firstLineChars="200"/><w:spacing w:line="360" w:lineRule="auto"/></w:pPr><w:r><w:rPr><w:rFonts w:eastAsia="SimSun" w:ascii="Times New Roman"/><w:sz w:val="24"/></w:rPr><w:t>\u6b63\u6587\u8bf4\u660e\u6bb5\u4f7f\u7528\u5c0f\u56db\u53f7\u5b8b\u4f53\u548cTimes New Roman\uff0c\u9996\u884c\u7f29\u8fdb\u4e24\u5b57\u7b26\uff0c\u53ef\u4f5c\u4e3a\u6ca1\u6709\u771f\u5b9e\u7ae0\u6807\u9898\u7684\u6821\u5bf9\u6a21\u677f\u6b63\u6587donor\u3002</w:t></w:r></w:p>
+''',
+    )
+    source = make_raw_docx(
+        td / "instruction-source.docx",
+        f'''
+    <w:p>{heading_ppr}<w:r><w:t>1 Introduction</w:t></w:r></w:p>
+    <w:p><w:pPr><w:pStyle w:val="Heading2"/><w:spacing w:line="240"/></w:pPr><w:r><w:rPr><w:sz w:val="40"/></w:rPr><w:t>{source_body}</w:t></w:r></w:p>
+''',
+    )
+    plan = td / "instruction-plan.json"
+    plan.write_text(
+        json.dumps(
+            {
+                "repair_abstract_surfaces": False,
+                "normalize_body_prose": True,
+                "normalize_image_holders": False,
+                "normalize_body_headings": False,
+                "force_real_firstline_twips": "420",
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    repaired = td / "instruction-output.docx"
+    report_path = td / "instruction-report.json"
+    proc = subprocess.run(
+        [
+            str(PYTHON_EXE),
+            str(SURFACE_REPAIR_SCRIPT),
+            "--input-docx",
+            str(source),
+            "--template-docx",
+            str(template),
+            "--output-docx",
+            str(repaired),
+            "--plan",
+            str(plan),
+            "--report",
+            str(report_path),
+        ],
+        cwd=str(SKILL_ROOT),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout_seconds(SHORT_SUBPROCESS_TIMEOUT),
+    )
+    if proc.returncode != 0:
+        return proc.returncode, proc.stdout
+    with zipfile.ZipFile(repaired) as zf:
+        root = ET.fromstring(zf.read("word/document.xml"))
+    ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+
+    def w_attr(name: str) -> str:
+        return f"{{{ns['w']}}}{name}"
+
+    paragraphs = root.findall(".//w:body/w:p", ns)
+    ppr = paragraphs[1].find("./w:pPr", ns)
+    style = ppr.find("./w:pStyle", ns) if ppr is not None else None
+    spacing = ppr.find("./w:spacing", ns) if ppr is not None else None
+    indent = ppr.find("./w:ind", ns) if ppr is not None else None
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    ok = (
+        style is not None
+        and style.get(w_attr("val")) == "Normal"
+        and spacing is not None
+        and spacing.get(w_attr("line")) == "360"
+        and spacing.get(w_attr("lineRule")) == "auto"
+        and indent is not None
+        and indent.get(w_attr("firstLine")) == "420"
+        and report["changes"]["body_donor_template_index"] == 1
+        and 1 in report["changes"]["body_prose_paragraphs_normalized"]
+    )
+    return (0 if ok else 1, proc.stdout + json.dumps(report, ensure_ascii=False))
 
 
 def case_repair_thesis_surface_format_keyword_toc_template_donor_fallback_valid(td: Path) -> tuple[int, str]:
@@ -21923,6 +22971,27 @@ def case_sample_self_check_tail_block_pagination_loss_rejected(td: Path) -> tupl
     )
     issues, summary, evidence = extract_tail_block_pagination_checks(docx, {"references": 2, "ack": 3})
     ok = summary == "failed" and any("tail-block opener lacks exactly one pagination owner" in item for item in issues)
+    return (0 if ok else 1, summary + "\n" + json.dumps(evidence, ensure_ascii=False))
+
+
+def case_sample_self_check_tail_block_previous_page_merge_rejected(td: Path) -> tuple[int, str]:
+    from sample_self_check import extract_tail_block_pagination_checks
+
+    references_title = escape("\u53c2\u8003\u6587\u732e")
+    docx = make_raw_docx(
+        td / "tail-block-previous-page-merge.docx",
+        f"""
+    <w:p><w:pPr><w:pageBreakBefore/></w:pPr><w:r><w:t>{escape('1 Introduction')}</w:t></w:r></w:p>
+    <w:p><w:r><w:t>{escape('body tail paragraph before references')}</w:t></w:r></w:p>
+    <w:p><w:pPr><w:pageBreakBefore/></w:pPr><w:r><w:t>{references_title}</w:t></w:r></w:p>
+    <w:p><w:r><w:t>{escape('[1] Example reference.')}</w:t></w:r></w:p>
+    """,
+    )
+    issues, summary, evidence = extract_tail_block_pagination_checks(
+        docx,
+        {"references_previous": 2, "references": 2, "ack": 3},
+    )
+    ok = summary == "failed" and any("not rendered after the previous chapter/block" in item for item in issues)
     return (0 if ok else 1, summary + "\n" + json.dumps(evidence, ensure_ascii=False))
 
 
@@ -23115,6 +24184,41 @@ def case_figure_manifest_structural_line_crosses_node_rejected(td: Path) -> tupl
     )
     issues = validate_figure_manifest(manifest)
     ok = any("connector crosses non-endpoint shape interior" in item for item in issues)
+    return (0 if ok else 1, "\n".join(issues))
+
+
+def case_figure_manifest_structural_non_orthogonal_connector_rejected(td: Path) -> tuple[int, str]:
+    from thesis_figure_contract import build_figure_asset_manifest, validate_figure_manifest
+
+    png = td / "bad-non-orthogonal.png"
+    write_binary(png, PNG_1X1)
+    svg = write_svg(td / "bad-non-orthogonal.svg")
+    drawio = td / "bad-non-orthogonal.drawio"
+    drawio.write_text(
+        """<?xml version='1.0' encoding='utf-8'?>
+<mxfile><diagram><mxGraphModel><root>
+<mxCell id="0"/><mxCell id="1" parent="0"/>
+<mxCell id="left" value="入口" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontColor=#000000;" vertex="1" parent="1"><mxGeometry x="20" y="20" width="80" height="40" as="geometry"/></mxCell>
+<mxCell id="right" value="出口" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;fontColor=#000000;" vertex="1" parent="1"><mxGeometry x="240" y="120" width="80" height="40" as="geometry"/></mxCell>
+<mxCell id="e1" style="edgeStyle=entityRelationEdgeStyle;rounded=1;curved=1;html=1;strokeColor=#000000;strokeWidth=2;endArrow=block;" edge="1" parent="1" source="left" target="right"><mxGeometry relative="1" as="geometry"/></mxCell>
+</root></mxGraphModel></diagram></mxfile>
+""",
+        encoding="utf-8",
+    )
+    manifest = build_figure_asset_manifest(
+        figure_content(
+            {
+                "family": "structure",
+                "caption": "Figure 3-4 Non-orthogonal connector",
+                "image_path": str(png),
+                "drawio_path": str(drawio),
+                "svg_path": str(svg),
+            }
+        ),
+        td,
+    )
+    issues = validate_figure_manifest(manifest)
+    ok = any("must use orthogonal right-angle routing" in item for item in issues)
     return (0 if ok else 1, "\n".join(issues))
 
 
@@ -24436,6 +25540,27 @@ def case_final_acceptance_user_reported_visual_defect_page_binding_missing_rejec
     return case_final_acceptance_template_field_missing(
         td,
         "- user-reported visual defect full-page/key-surface binding verdict:\n",
+    )
+
+
+def case_final_acceptance_content_mutation_machine_vision_fields_missing_rejected(td: Path) -> tuple[int, str]:
+    return case_final_acceptance_template_field_missing(
+        td,
+        "- content mutation machine-vision verdict:\n",
+    )
+
+
+def case_final_acceptance_whole_format_audit_field_missing_rejected(td: Path) -> tuple[int, str]:
+    return case_final_acceptance_template_field_missing(
+        td,
+        "- final DOCX whole-format structural audit path:\n",
+    )
+
+
+def case_final_acceptance_font_color_audit_field_missing_rejected(td: Path) -> tuple[int, str]:
+    return case_final_acceptance_template_field_missing(
+        td,
+        "- final DOCX font-color audit path:\n",
     )
 
 
@@ -28321,6 +29446,155 @@ def case_body_citation_diff_source_hyperlink_removed_rejected(td: Path) -> tuple
     return (0 if any("lost hyperlink host" in item for item in issues) else 1), report
 
 
+def case_body_citation_duplicate_occurrence_plain_text_rejected(td: Path) -> tuple[int, str]:
+    docx = make_mixed_duplicate_citation_docx(td / "citation_duplicate_occurrence_bad.docx")
+    report = td / "citation_duplicate_occurrence_bad_report.md"
+    proc = run_citation_audit(docx, report)
+    return proc.returncode, proc.stdout + "\n" + report.read_text(encoding="utf-8")
+
+
+def case_body_citation_diff_duplicate_occurrence_plain_text_rejected(td: Path) -> tuple[int, str]:
+    from audit_docx_review_artifacts import build_citation_diff_report, collect_citation_snapshot
+
+    source = make_citation_order_docx(
+        td / "citation-duplicate-source.docx",
+        body_sequences=[[1]],
+        bibliography_count=1,
+        superscript=True,
+    )
+    final = make_mixed_duplicate_citation_docx(td / "citation-duplicate-final.docx")
+    report, issues = build_citation_diff_report(
+        collect_citation_snapshot(source),
+        collect_citation_snapshot(final),
+    )
+    return (0 if any("lost superscript run state" in item for item in issues) else 1), report
+
+
+def case_body_citation_snapshot_stops_at_references_heading(td: Path) -> tuple[int, str]:
+    from audit_docx_review_artifacts import collect_citation_snapshot
+
+    docx = make_reference_boundary_citation_docx(td / "citation-reference-boundary.docx")
+    snapshot = collect_citation_snapshot(docx)
+    ok = snapshot.citation_numbers == [1] and all(item.number == 1 for item in snapshot.records)
+    return (
+        0 if ok else 1,
+        json.dumps(
+            {
+                "citation_numbers": snapshot.citation_numbers,
+                "records": [item.__dict__ for item in snapshot.records],
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+    )
+
+
+def case_body_citation_occurrence_moved_without_ledger_rejected(td: Path) -> tuple[int, str]:
+    from audit_docx_review_artifacts import build_citation_diff_report, collect_citation_snapshot
+
+    source = make_raw_docx(
+        td / "citation-occurrence-source.docx",
+        f'''
+    <w:p w14:paraId="AAAA0001" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml">
+      <w:r><w:t>{escape("Original source host")}</w:t></w:r>
+      <w:hyperlink w:anchor="cite_ref_1"><w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:t>[1]</w:t></w:r></w:hyperlink>
+      <w:r><w:t>.</w:t></w:r>
+    </w:p>
+    <w:p><w:r><w:t>{chr(0x53C2)}{chr(0x8003)}{chr(0x6587)}{chr(0x732E)}</w:t></w:r></w:p>
+    <w:p><w:bookmarkStart w:id="1" w:name="cite_ref_1"/><w:bookmarkEnd w:id="1"/><w:r><w:t>[1] Example Journal Paper[J].</w:t></w:r></w:p>
+''',
+    )
+    final = make_same_number_moved_citation_docx(td / "citation-occurrence-final.docx")
+    report, issues = build_citation_diff_report(
+        collect_citation_snapshot(source),
+        collect_citation_snapshot(final),
+    )
+    return (0 if any("source occurrence missing" in item for item in issues) else 1), report
+
+
+def case_body_citation_no_para_id_host_changed_rejected(td: Path) -> tuple[int, str]:
+    from audit_docx_review_artifacts import build_citation_diff_report, collect_citation_snapshot
+
+    source = make_no_para_id_citation_host_docx(td / "citation-no-para-id-source.docx", "Original source host")
+    final = make_no_para_id_citation_host_docx(td / "citation-no-para-id-final.docx", "Different final host")
+    report, issues = build_citation_diff_report(
+        collect_citation_snapshot(source),
+        collect_citation_snapshot(final),
+    )
+    return (0 if any("host text changed" in item for item in issues) else 1), report
+
+
+def case_gate_source_citation_surface_stripped_rejected(td: Path) -> tuple[int, str]:
+    source = make_citation_order_docx(
+        td / "citation-surface-source.docx",
+        body_sequences=[[1]],
+        bibliography_count=1,
+    )
+    final = make_raw_docx(
+        td / "citation-surface-stripped-final.docx",
+        f'''
+    <w:p><w:r><w:t>{escape("Citation surface was stripped from this final document.")}</w:t></w:r></w:p>
+''',
+    )
+    record = make_preservation_gate_record_for_docs(
+        td,
+        "citation_surface_stripped",
+        source_docx=source,
+        final_docx=final,
+    )
+    text = record.read_text(encoding="utf-8")
+    text = re.sub(
+        r"(?m)^- source body-citation run inventory path: .*$",
+        "- source body-citation run inventory path: none",
+        text,
+        count=1,
+    )
+    text = re.sub(
+        r"(?m)^- final body-citation run diff path: .*$",
+        "- final body-citation run diff path: none",
+        text,
+        count=1,
+    )
+    text = re.sub(
+        r"(?m)^- citation audit source-to-final run diff path: .*$",
+        "- citation audit source-to-final run diff path: none",
+        text,
+        count=1,
+    )
+    write_text(record, text)
+    proc = run_validator(record)
+    return proc.returncode, proc.stdout
+
+
+def case_gate_citation_reference_coupled_chain_missing_rejected(td: Path) -> tuple[int, str]:
+    source = make_citation_order_docx(
+        td / "citation-coupled-source.docx",
+        body_sequences=[[1]],
+        bibliography_count=1,
+    )
+    final = make_citation_order_docx(
+        td / "citation-coupled-final.docx",
+        body_sequences=[[1]],
+        bibliography_count=1,
+    )
+    record = make_preservation_gate_record_for_docs(
+        td,
+        "citation_coupled_chain_missing",
+        source_docx=source,
+        final_docx=final,
+    )
+    text = record.read_text(encoding="utf-8")
+    text = re.sub(
+        r"(?m)^- citation-reference coupled-chain verdict: .*$",
+        "- citation-reference coupled-chain verdict: not checked",
+        text,
+        count=1,
+    )
+    write_text(record, text)
+    proc = run_validator(record)
+    return proc.returncode, proc.stdout
+
+
 def case_heading_collector_bilingual_valid_v2(td: Path) -> tuple[int, str]:
     docx_path = td / "heading_collector.docx"
     output_json = td / "heading_pages.json"
@@ -28414,7 +29688,130 @@ def case_integration_gate_full_valid(td: Path) -> tuple[int, str]:
     return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
 
 
-EXPECTED_INTEGRATION_CASES = [
+def case_frontmatter_audit_abstract_title_echo_rejected(td: Path) -> tuple[int, str]:
+    ppr = frontmatter_inline_ppr()
+    docx = make_frontmatter_structure_docx(
+        td / "abstract-title-echo.docx",
+        f"""
+    <w:p>{ppr}<w:r><w:t>摘要</w:t></w:r></w:p>
+    <w:p>{ppr}<w:r><w:t>中文摘要正文。</w:t></w:r></w:p>
+    <w:p>{ppr}<w:r><w:rPr><w:b/><w:bCs/></w:rPr><w:t>关键词：</w:t></w:r><w:r><w:t>校园；异常</w:t></w:r></w:p>
+    <w:p>{ppr}<w:r><w:t>Abstract</w:t></w:r></w:p>
+    <w:p>{ppr}<w:r><w:t>ABSTRACT</w:t></w:r></w:p>
+    <w:p>{ppr}<w:r><w:rPr><w:b/><w:bCs/></w:rPr><w:t>Key words:</w:t></w:r><w:r><w:t> campus; anomaly</w:t></w:r></w:p>
+    <w:p><w:r><w:t>目录</w:t></w:r></w:p>
+    <w:p><w:r><w:t>1 绪论</w:t></w:r></w:p>
+""",
+    )
+    report = td / "abstract-title-echo-report.json"
+    proc = run_frontmatter_structure_audit(docx, report)
+    text = proc.stdout + proc.stderr
+    ok = proc.returncode != 0 and "duplicated abstract title" in text
+    return (0 if ok else 1, text)
+
+
+def case_frontmatter_audit_orphan_english_abstract_body_rejected(td: Path) -> tuple[int, str]:
+    ppr = frontmatter_inline_ppr()
+    docx = make_frontmatter_structure_docx(
+        td / "abstract-orphan-body.docx",
+        f"""
+    <w:p>{ppr}<w:r><w:t>摘要</w:t></w:r></w:p>
+    <w:p>{ppr}<w:r><w:t>中文摘要正文。</w:t></w:r></w:p>
+    <w:p>{ppr}<w:r><w:rPr><w:b/><w:bCs/></w:rPr><w:t>关键词：</w:t></w:r><w:r><w:t>校园；异常</w:t></w:r></w:p>
+    <w:p>{ppr}<w:r><w:t>Abstract</w:t></w:r></w:p>
+    <w:p>{ppr}<w:r><w:t></w:t></w:r></w:p>
+    <w:p>{ppr}<w:r><w:rPr><w:b/><w:bCs/></w:rPr><w:t>Key words:</w:t></w:r><w:r><w:t> campus; anomaly</w:t></w:r></w:p>
+    <w:p><w:r><w:t>目录</w:t></w:r></w:p>
+    <w:p><w:r><w:t>1 绪论</w:t></w:r></w:p>
+""",
+    )
+    report = td / "abstract-orphan-body-report.json"
+    proc = run_frontmatter_structure_audit(docx, report)
+    text = proc.stdout + proc.stderr
+    ok = proc.returncode != 0 and "English abstract title must be followed by one standalone abstract body paragraph" in text
+    return (0 if ok else 1, text)
+
+
+def case_frontmatter_audit_missing_firstline_chars_rejected(td: Path) -> tuple[int, str]:
+    bad_ppr = (
+        '<w:pPr><w:pStyle w:val="Style17"/>'
+        '<w:spacing w:before="0" w:after="0" w:line="360" w:lineRule="auto"/>'
+        '<w:ind w:firstLine="480"/></w:pPr>'
+    )
+    docx = make_frontmatter_structure_docx(
+        td / "frontmatter-missing-firstlinechars.docx",
+        f"""
+    <w:p>{bad_ppr}<w:r><w:t>摘要</w:t></w:r></w:p>
+    <w:p>{bad_ppr}<w:r><w:t>中文摘要正文。</w:t></w:r></w:p>
+    <w:p>{bad_ppr}<w:r><w:rPr><w:b/><w:bCs/></w:rPr><w:t>关键词：</w:t></w:r><w:r><w:t>校园；异常</w:t></w:r></w:p>
+    <w:p>{bad_ppr}<w:r><w:t>Abstract</w:t></w:r></w:p>
+    <w:p>{bad_ppr}<w:r><w:t>English abstract body text.</w:t></w:r></w:p>
+    <w:p>{bad_ppr}<w:r><w:rPr><w:b/><w:bCs/></w:rPr><w:t>Key words:</w:t></w:r><w:r><w:t> campus; anomaly</w:t></w:r></w:p>
+    <w:p><w:r><w:t>目录</w:t></w:r></w:p>
+    <w:p><w:r><w:t>1 绪论</w:t></w:r></w:p>
+""",
+    )
+    report = td / "frontmatter-missing-firstlinechars-report.json"
+    proc = run_frontmatter_structure_audit(docx, report)
+    text = proc.stdout + proc.stderr
+    ok = proc.returncode != 0 and "firstLineChars=200" in text
+    return (0 if ok else 1, text)
+
+
+def case_frontmatter_audit_english_separator_missing_rejected(td: Path) -> tuple[int, str]:
+    ppr = frontmatter_inline_ppr()
+    docx = make_frontmatter_structure_docx(
+        td / "frontmatter-english-separator-missing.docx",
+        f"""
+    <w:p>{ppr}<w:r><w:t>摘要</w:t></w:r></w:p>
+    <w:p>{ppr}<w:r><w:t>中文摘要正文。</w:t></w:r></w:p>
+    <w:p>{ppr}<w:r><w:rPr><w:b/><w:bCs/></w:rPr><w:t>关键词：</w:t></w:r><w:r><w:t>校园；异常</w:t></w:r></w:p>
+    <w:p>{ppr}<w:r><w:t>Abstract</w:t></w:r></w:p>
+    <w:p>{ppr}<w:r><w:t>English abstract body text.</w:t></w:r></w:p>
+    <w:p>{ppr}<w:r><w:rPr><w:b/><w:bCs/></w:rPr><w:t>Key words:</w:t></w:r><w:r><w:t>campus; anomaly</w:t></w:r></w:p>
+    <w:p><w:r><w:t>目录</w:t></w:r></w:p>
+    <w:p><w:r><w:t>1 绪论</w:t></w:r></w:p>
+""",
+    )
+    report = td / "frontmatter-english-separator-missing-report.json"
+    proc = run_frontmatter_structure_audit(docx, report)
+    text = proc.stdout + proc.stderr
+    ok = proc.returncode != 0 and "separator space" in text
+    return (0 if ok else 1, text)
+
+
+def case_frontmatter_audit_reports_english_indent_metrics_valid(td: Path) -> tuple[int, str]:
+    ppr = frontmatter_inline_ppr()
+    docx = make_frontmatter_structure_docx(
+        td / "frontmatter-reports-english-indent.docx",
+        f"""
+    <w:p>{ppr}<w:r><w:t>摘要</w:t></w:r></w:p>
+    <w:p>{ppr}<w:r><w:t>中文摘要正文。</w:t></w:r></w:p>
+    <w:p>{ppr}<w:r><w:rPr><w:b/><w:bCs/></w:rPr><w:t>关键词：</w:t></w:r><w:r><w:t>校园；异常</w:t></w:r></w:p>
+    <w:p>{ppr}<w:r><w:t>Abstract</w:t></w:r></w:p>
+    <w:p>{ppr}<w:r><w:t>English abstract body text.</w:t></w:r></w:p>
+    <w:p>{ppr}<w:r><w:rPr><w:b/><w:bCs/></w:rPr><w:t>Key words:</w:t></w:r><w:r><w:t> campus; anomaly</w:t></w:r></w:p>
+    <w:p><w:r><w:t>目录</w:t></w:r></w:p>
+    <w:p><w:r><w:t>1 绪论</w:t></w:r></w:p>
+""",
+    )
+    report = td / "frontmatter-reports-english-indent-report.json"
+    proc = run_frontmatter_structure_audit(docx, report)
+    if proc.returncode != 0:
+        return proc.returncode, proc.stdout + proc.stderr
+    payload = json.loads(report.read_text(encoding="utf-8"))
+    en_abstract = payload["surface_details"]["en_abstract_body"]
+    en_keyword = payload["surface_details"]["en_keyword"]
+    ok = (
+        en_abstract["metrics"]["indent"]["firstLine"] == "480"
+        and en_abstract["metrics"]["indent"]["firstLineChars"] == "200"
+        and payload["surface_details"]["en_abstract_title"]["text_prefix"] == "Abstract"
+        and en_keyword["label_runs"]["label_text"] == "Key words:"
+        and en_keyword["label_runs"]["content_bold_count"] == 0
+    )
+    return (0 if ok else 1, json.dumps(payload, ensure_ascii=False))
+
+CASES = [
     "frontmatter_roundtrip",
     "lock_competition",
     "tail_pages_roundtrip",
@@ -28687,6 +30084,7 @@ CASES = [
     ("stale_sample_self_check_report_rejected", case_stale_sample_self_check_report_rejected, 1, "sample self-check report final DOCX path does not match"),
     ("sample_self_check_heading_detector_required_rejected", case_sample_self_check_heading_detector_required_rejected, 1, "missing required detector `heading.baseline-contract`"),
     ("sample_self_check_toc_visible_detector_required_rejected", case_sample_self_check_toc_visible_detector_required_rejected, 1, "missing required detector `toc.visible-format-contract`"),
+    ("sample_self_check_header_footer_page_number_detector_required_rejected", case_sample_self_check_header_footer_page_number_detector_required_rejected, 1, "missing required detector `header-footer.page-number-template-contract`"),
     ("sample_self_check_figure_family_detector_required_rejected", case_sample_self_check_figure_family_detector_required_rejected, 1, "missing required detector `figure.family-style-contract`"),
     ("selected_thesis_workflow_invalid_rejected", case_selected_thesis_workflow_invalid_rejected, 1, "selected thesis workflow must be one of"),
     ("helper_target_missing_rejected", case_helper_target_missing_rejected, 1, "exact helper-script target path"),
@@ -28699,6 +30097,7 @@ CASES = [
     ("broken_evidence_record_rejected", case_broken_evidence_record_rejected, 1, "missing heading"),
     ("stale_citation_audit_rejected", case_stale_citation_audit_rejected, 1, "citation audit report in"),
     ("review_artifact_inventory_missing_rejected", case_review_artifact_inventory_missing_rejected, 1, "source review-artifact inventory path: none"),
+    ("empty_paragraph_bookmark_disposition_valid", case_empty_paragraph_bookmark_disposition_valid, 0, "controlled bookmark disposition path"),
     ("body_citation_run_diff_missing_rejected", case_body_citation_run_diff_missing_rejected, 1, "final body-citation run diff path: none"),
     ("citation_audit_final_sha_mismatch_rejected", case_citation_audit_final_sha_mismatch_rejected, 1, "citation audit final DOCX SHA256 does not match"),
     ("review_comments_deleted_rejected", case_review_comments_deleted_rejected, 1, "source comments.xml was stripped"),
@@ -28717,6 +30116,11 @@ CASES = [
     ("stale_font_audit_rejected", case_stale_font_audit_rejected, 1, "docx font audit report in"),
     ("docx_font_audit_same_path_sha_drift_rejected", case_docx_font_audit_same_path_sha_drift_rejected, 1, "docx font audit report sha256"),
     ("docx_font_audit_named_size_without_wps_rejected", case_docx_font_audit_named_size_without_wps_rejected, 1, "explicit named-size policy lacks WPS named-size evidence"),
+    ("whole_docx_structural_gate_missing_rejected", case_whole_docx_structural_gate_missing_rejected, 1, "gate record must contain exactly one '- final DOCX whole-format structural audit path:' line"),
+    ("whole_docx_structural_gate_failed_rejected", case_whole_docx_structural_gate_failed_rejected, 1, "whole-format DOCX gate report is not pass"),
+    ("whole_docx_structural_gate_stale_sha_rejected", case_whole_docx_structural_gate_stale_sha_rejected, 1, "whole-format DOCX gate report sha256 does not match"),
+    ("font_color_audit_missing_rejected", case_font_color_audit_missing_rejected, 1, "thesis gate records must contain exactly one '- final DOCX font-color audit path:' line"),
+    ("font_color_audit_failed_rejected", case_font_color_audit_failed_rejected, 1, "font-color DOCX audit report is not pass"),
     ("abstract_lane_mixed_with_citation_rejected", case_abstract_lane_mixed_with_citation_rejected, 1, "must not mix abstract repair with TOC refresh/rebuild"),
     ("thesis_only_whole_rebuild_abstract_toc_valid", case_thesis_only_whole_rebuild_abstract_toc_valid, 0, ""),
     ("citation_bibliography_lane_audit_missing_rejected", case_citation_bibliography_lane_audit_missing_rejected, 1, "must provide a citation audit report path when citation/bibliography surfaces are touched"),
@@ -28725,6 +30129,7 @@ CASES = [
     ("template_discovery_prefers_format_template_over_repair_outputs", case_template_discovery_prefers_format_template_over_repair_outputs, 0, "selected_template_name=格式模板.doc"),
     ("repair_thesis_surface_format_bounded_valid", case_repair_thesis_surface_format_bounded_valid, 0, "output_sha256"),
     ("repair_thesis_surface_format_skips_fullwidth_dot_headings", case_repair_thesis_surface_format_skips_fullwidth_dot_headings, 0, "1．1"),
+    ("repair_thesis_surface_format_template_instruction_body_donor_valid", case_repair_thesis_surface_format_template_instruction_body_donor_valid, 0, "body_donor_template_index"),
     ("repair_thesis_surface_format_keyword_toc_template_donor_fallback_valid", case_repair_thesis_surface_format_keyword_toc_template_donor_fallback_valid, 0, "target_abstract_body_fallback"),
     ("repair_thesis_surface_format_abstract_role_format_valid", case_repair_thesis_surface_format_abstract_role_format_valid, 0, "abstract_body_content_not_bold"),
     ("repair_thesis_surface_format_image_display_resize_without_manifest_rejected", case_repair_thesis_surface_format_image_display_resize_without_manifest_rejected, 0, "image_display_resize requires a transaction-owned figure manifest"),
@@ -28733,6 +30138,7 @@ CASES = [
     ("format_template_fingerprint_mismatch_rejected", case_format_template_fingerprint_mismatch_rejected, 1, "active template fingerprint does not match active template path"),
     ("template_lock_metadata_missing_rejected", case_template_lock_metadata_missing_rejected, 1, "lacks generated_at_utc timestamp"),
     ("passed_with_caveats_rejected", case_passed_with_caveats_rejected, 1, "forbidden caveated-pass wording"),
+    ("passed_with_limitations_rejected", case_passed_with_limitations_rejected, 1, "forbidden caveated-pass wording"),
     ("validation_command_missing_gate_record_rejected", case_validation_command_missing_gate_record_rejected, 1, "validation command must validate the exact acceptance record with --gate-record"),
     ("validation_command_wrong_gate_record_rejected", case_validation_command_wrong_gate_record_rejected, 1, "validation command --gate-record must point to this exact acceptance record"),
     ("review_copy_exact_output_mismatch_rejected", case_review_copy_exact_output_mismatch_rejected, 1, "review-copy path actually rendered must match exact output DOCX"),
@@ -28794,6 +30200,9 @@ CASES = [
     ("agent_format_lane_card_missing_rejected", case_agent_format_lane_card_missing_rejected, 1, "gate record required lanes must include full canonical role roster: missing content-worker"),
     ("program_plus_thesis_valid", case_program_plus_thesis_valid, 0, "SKILL GATE PASSED"),
     ("humanizer_content_valid", case_humanizer_content_valid, 0, "SKILL GATE PASSED"),
+    ("content_expansion_machine_vision_missing_rejected", case_content_expansion_machine_vision_missing_rejected, 1, "gate record lacks - content mutation rendered-page review path:"),
+    ("content_expansion_machine_vision_substitute_rejected", case_content_expansion_machine_vision_substitute_rejected, 1, "content expansion machine-vision evidence contains blocked substitute proof wording"),
+    ("content_expansion_machine_vision_valid", case_content_expansion_machine_vision_valid, 0, "SKILL GATE PASSED"),
     ("humanizer_missing_rejected", case_humanizer_missing_rejected, 1, "thesis-related gate record cannot use humanizer route none unless the subtask is explicitly non-content"),
     ("humanizer_wrong_language_rejected", case_humanizer_wrong_language_rejected, 1, "humanizer-zh route must target Chinese text"),
     ("format_only_humanizer_rejected", case_format_only_humanizer_rejected, 1, "format-repair-only gate record must set humanizer route decision to none"),
@@ -28824,11 +30233,21 @@ CASES = [
     ("body_citation_superscript_rejected", case_body_citation_superscript_rejected, 1, "citation not superscript"),
     ("body_citation_audit_valid", case_body_citation_audit_valid, 0, "Body citation audit: PASS"),
     ("body_citation_order_rejected", case_body_citation_order_rejected, 1, "BODY_CITATION_ORDER"),
+    ("body_citation_wrong_target_rejected", case_body_citation_wrong_target_rejected, 1, "BODY_CITATION_WRONG_HYPERLINK_TARGET"),
     ("body_citation_visual_style_rejected", case_body_citation_visual_style_rejected, 1, "BODY_CITATION_VISUAL_STYLE"),
+    ("body_citation_instr_text_only_hyperlink_rejected", case_body_citation_instr_text_only_hyperlink_rejected, 1, "BODY_CITATION_NOT_HYPERLINK"),
+    ("body_citation_visible_anchor_leak_rejected", case_body_citation_visible_anchor_leak_rejected, 1, "BODY_CITATION_ANCHOR_LEAK"),
     ("body_citation_multi_marker_sentence_rejected", case_body_citation_multi_marker_sentence_rejected, 1, "BODY_CITATION_MULTI_MARKER_SENTENCE"),
     ("body_citation_multi_number_marker_rejected", case_body_citation_multi_number_marker_rejected, 1, "BODY_CITATION_MULTI_NUMBER_MARKER"),
+    ("body_citation_duplicate_occurrence_plain_text_rejected", case_body_citation_duplicate_occurrence_plain_text_rejected, 1, "BODY_CITATION_NOT_SUPERSCRIPT"),
+    ("body_citation_snapshot_stops_at_references_heading", case_body_citation_snapshot_stops_at_references_heading, 0, "\"citation_numbers\": [\n    1\n  ]"),
+    ("body_citation_occurrence_moved_without_ledger_rejected", case_body_citation_occurrence_moved_without_ledger_rejected, 0, "source occurrence missing"),
+    ("body_citation_no_para_id_host_changed_rejected", case_body_citation_no_para_id_host_changed_rejected, 0, "host text changed"),
+    ("gate_source_citation_surface_stripped_rejected", case_gate_source_citation_surface_stripped_rejected, 1, "source body-citation run inventory path"),
+    ("gate_citation_reference_coupled_chain_missing_rejected", case_gate_citation_reference_coupled_chain_missing_rejected, 1, "citation-reference coupled-chain verdict"),
     ("body_citation_diff_source_without_hyperlinks_valid", case_body_citation_diff_source_without_hyperlinks_valid, 0, "not-applicable-source-has-no-citation-hyperlinks"),
     ("body_citation_diff_source_hyperlink_removed_rejected", case_body_citation_diff_source_hyperlink_removed_rejected, 0, "lost hyperlink host"),
+    ("body_citation_diff_duplicate_occurrence_plain_text_rejected", case_body_citation_diff_duplicate_occurrence_plain_text_rejected, 0, "lost superscript run state"),
     ("uncited_bibliography_rejected", case_uncited_bibliography_rejected, 1, "UNCITED_BIBLIOGRAPHY_ITEMS"),
     ("bibliography_manual_auto_numbering_rejected", case_bibliography_manual_auto_numbering_rejected, 1, "BIBLIOGRAPHY_MANUAL_AND_AUTO_NUMBERING"),
     ("toc_restoration_valid", case_toc_restoration_valid, 0, "SKILL GATE PASSED"),
@@ -28905,6 +30324,9 @@ CASES = [
     ("final_acceptance_user_reported_visual_defect_geometry_missing_rejected", case_final_acceptance_user_reported_visual_defect_geometry_missing_rejected, 1, "final acceptance template must contain exactly one '- user-reported visual defect render-geometry evidence path:' line"),
     ("final_acceptance_user_reported_visual_defect_template_binding_missing_rejected", case_final_acceptance_user_reported_visual_defect_template_binding_missing_rejected, 1, "final acceptance template must contain exactly one '- user-reported visual defect template-vs-target binding verdict:' line"),
     ("final_acceptance_user_reported_visual_defect_page_binding_missing_rejected", case_final_acceptance_user_reported_visual_defect_page_binding_missing_rejected, 1, "final acceptance template must contain exactly one '- user-reported visual defect full-page/key-surface binding verdict:' line"),
+    ("final_acceptance_content_mutation_machine_vision_fields_missing_rejected", case_final_acceptance_content_mutation_machine_vision_fields_missing_rejected, 1, "final acceptance template must contain exactly one '- content mutation machine-vision verdict:' line"),
+    ("final_acceptance_whole_format_audit_field_missing_rejected", case_final_acceptance_whole_format_audit_field_missing_rejected, 1, "final acceptance template must contain exactly one '- final DOCX whole-format structural audit path:' line"),
+    ("final_acceptance_font_color_audit_field_missing_rejected", case_final_acceptance_font_color_audit_field_missing_rejected, 1, "final acceptance template must contain exactly one '- final DOCX font-color audit path:' line"),
     ("review_evidence_template_schema_missing_rejected", case_review_evidence_template_schema_missing_rejected, 1, "review evidence template must contain exactly one '- target identifier:' line"),
     ("router_coverage_rejected", case_router_coverage_rejected, 1, "owner file is not exposed by router"),
     ("rule_owner_manifest_missing_owner_rejected", case_rule_owner_manifest_missing_owner_rejected, 1, "owner_file missing"),
@@ -28921,7 +30343,7 @@ CASES = [
     ("agent_lane_doc_missing_rejected", case_agent_lane_doc_missing_rejected, 1, "missing required file: references/agents/agent-lanes.md"),
     ("agent_task_card_template_missing_rejected", case_agent_task_card_template_missing_rejected, 1, "missing required file: assets/agents/agent-task-card-template.md"),
     ("agent_run_manifest_template_missing_rejected", case_agent_run_manifest_template_missing_rejected, 1, "missing required file: assets/agents/agent-run-manifest-template.md"),
-    ("agent_lane_router_exposure_missing_rejected", case_agent_lane_router_exposure_missing_rejected, 1, "missing required rule line in references/user-feedback-persistence.md: - `references/agents/agent-lanes.md`: rules `AGENT-CTRL-001, AGENT-ALIAS-001, AGENT-ROSTER-001, AGENT-CONCURRENCY-001, AGENT-WORK-001, AGENT-FORMAT-001, AGENT-FORMAT-002, AGENT-FORMAT-003, AGENT-FORMAT-004, AGENT-FORMAT-005, AGENT-FORMAT-006, AGENT-AUDIT-001, AGENT-AUDIT-002, AGENT-AUDIT-003, AGENT-FALLBACK-001, AGENT-CARD-001, AGENT-EVIDENCE-001`"),
+    ("agent_lane_router_exposure_missing_rejected", case_agent_lane_router_exposure_missing_rejected, 1, "missing required rule line in references/user-feedback-persistence.md: - `references/agents/agent-lanes.md`: rules `AGENT-CTRL-001, AGENT-ALIAS-001, AGENT-ROSTER-001, AGENT-CONCURRENCY-001, AGENT-WORK-001, AGENT-FORMAT-001, AGENT-FORMAT-002, AGENT-FORMAT-003, AGENT-FORMAT-004, AGENT-FORMAT-005, AGENT-FORMAT-006, AGENT-AUDIT-001, AGENT-AUDIT-002, AGENT-AUDIT-003, AGENT-AUDIT-004, AGENT-FALLBACK-001, AGENT-CARD-001, AGENT-EVIDENCE-001`"),
     ("agent_alias_rule_missing_rejected", case_agent_alias_rule_missing_rejected, 1, "missing required rule line in references/agents/agent-lanes.md: - Use the canonical Chinese role aliases `总控`, `内容`, `格式`, `图表`, `引用`, `程序`, `验收`, and `审核`; the audit lane alias must be `审核`."),
     ("agent_core_orchestration_guard_rejected", case_agent_core_orchestration_guard_rejected, 1, "missing required rule line in SKILL.md: - For every substantial run, if the current user has explicitly authorized subagents, delegation, or parallel agent work for this turn and parallel subagents are available, the controller must split work into the relevant worker lanes plus an independent audit agent and record the dispatch in an agent run manifest before handoff."),
     ("agent_lane_substantial_loading_missing_rejected", case_agent_lane_substantial_loading_missing_rejected, 1, "missing required rule line in references/user-feedback-persistence.md: - For every substantial run invoked through this skill, load `references/agents/agent-lanes.md`, externalize `assets/agents/agent-run-manifest-template.md`, and fill `assets/agents/agent-task-card-template.md` for the controller and audit lanes before mutation or handoff; task cards are required for every canonical role lane (`总控`, `内容`, `格式`, `图表`, `引用`, `程序`, `验收`, `审核`); skipped or not-applicable lanes must be recorded with reasons."),
@@ -28999,8 +30421,11 @@ CASES = [
     ("acceptance_generator_toc_geometry_stale_docx_rejected", case_acceptance_generator_toc_geometry_stale_docx_rejected, 1, "TOC geometry JSON targets"),
     ("acceptance_generator_whole_pagination_weak_blank_scan_rejected", case_acceptance_generator_whole_pagination_weak_blank_scan_rejected, 1, "blank_near_empty_page_scan_verdict lacks template_blank_pages="),
     ("acceptance_generator_reference_pagination_loss_rejected", case_acceptance_generator_reference_pagination_loss_rejected, 1, "tail_block_opener_page_map records lost references pagination"),
+    ("references_pagination_changes_rejected", case_references_pagination_changes_rejected, 1, "tail_block_opener_page_map records lost references pagination"),
+    ("acceptance_generator_reference_prior_page_token_missing_rejected", case_acceptance_generator_reference_prior_page_token_missing_rejected, 1, "tail_block_opener_page_map lacks references previous content physical page="),
     ("acceptance_generator_missing_chapter_format_detector_rejected", case_acceptance_generator_missing_chapter_format_detector_rejected, 1, "failed missing detector chapter.format-preservation-contract"),
     ("acceptance_generator_missing_tail_block_pagination_detector_rejected", case_acceptance_generator_missing_tail_block_pagination_detector_rejected, 1, "failed missing detector tail-block.pagination-contract"),
+    ("acceptance_generator_missing_header_footer_page_number_detector_rejected", case_acceptance_generator_missing_header_footer_page_number_detector_rejected, 1, "failed missing detector header-footer.page-number-template-contract"),
     ("acceptance_generator_failed_chapter_format_detector_rejected", case_acceptance_generator_failed_chapter_format_detector_rejected, 1, "failed detector chapter.format-preservation-contract"),
     ("blocked_protected_surface_false_green_rejected", case_blocked_protected_surface_cannot_keep_handoff_pass, 1, "blocking evidence but handoff status is pass"),
     ("inspect_docx_pagination_structure_pgnum_drift_rejected", case_inspect_docx_pagination_structure_pgnum_drift_rejected, 1, "page_number_format_restart_map"),
@@ -29026,6 +30451,7 @@ CASES = [
     ("user_reported_toc_font_reference_indent_ledger_missing_rejected", case_user_reported_toc_font_reference_indent_ledger_missing_rejected, 1, "lacks user-reported issue ledger path"),
     ("user_reported_ledger_template_verdict_rejected", case_user_reported_ledger_template_verdict_rejected, 1, "final verdict must be exactly pass"),
     ("user_reported_visual_geometry_missing_rejected", case_user_reported_visual_geometry_missing_rejected, 1, "gate record lacks - user-reported visual defect render-geometry evidence path:"),
+    ("user_reported_abstract_header_footer_visual_geometry_missing_rejected", case_user_reported_abstract_header_footer_visual_geometry_missing_rejected, 1, "gate record lacks - user-reported visual defect render-geometry evidence path:"),
     ("user_reported_visual_geometry_valid", case_user_reported_visual_geometry_valid, 0, "SKILL GATE PASSED"),
     ("user_reported_repeated_defect_bundle_ledger_missing_rejected", case_user_reported_repeated_defect_bundle_ledger_missing_rejected, 1, "lacks user-reported issue ledger path"),
     ("user_reported_repeated_defect_bundle_partial_ledger_rejected", case_user_reported_repeated_defect_bundle_partial_ledger_rejected, 1, "user-reported issue ledger missing heading coverage"),
@@ -29137,10 +30563,10 @@ CASES = [
     ("repair_frontmatter_toc_structure_tail_order_and_toc_entries_valid", case_repair_frontmatter_toc_structure_tail_order_and_toc_entries_valid, 0, "tail_block_order_repaired"),
     ("repair_frontmatter_toc_structure_preserves_frontmatter_valid", case_repair_frontmatter_toc_structure_preserves_frontmatter_valid, 0, "frontmatter TOC structure repair preserved front matter"),
     ("frontmatter_audit_abstract_title_echo_rejected", case_frontmatter_audit_abstract_title_echo_rejected, 0, "duplicated abstract title"),
-    ("frontmatter_audit_orphan_english_abstract_body_rejected", case_frontmatter_audit_orphan_english_abstract_body_rejected, 0, "English abstract body must be merged"),
+    ("frontmatter_audit_orphan_english_abstract_body_rejected", case_frontmatter_audit_orphan_english_abstract_body_rejected, 0, "English abstract title must be followed by one standalone abstract body paragraph"),
     ("frontmatter_audit_missing_firstline_chars_rejected", case_frontmatter_audit_missing_firstline_chars_rejected, 0, "firstLineChars=200"),
     ("frontmatter_audit_english_separator_missing_rejected", case_frontmatter_audit_english_separator_missing_rejected, 0, "separator space"),
-    ("frontmatter_audit_reports_english_indent_metrics_valid", case_frontmatter_audit_reports_english_indent_metrics_valid, 0, "Abstract:"),
+    ("frontmatter_audit_reports_english_indent_metrics_valid", case_frontmatter_audit_reports_english_indent_metrics_valid, 0, "\"text_prefix\": \"Abstract\""),
     ("repair_frontmatter_inline_preserves_comment_anchor_valid", case_repair_frontmatter_inline_preserves_comment_anchor_valid, 0, "English abstract body text."),
     ("repair_frontmatter_toc_structure_same_path_rejected", case_repair_frontmatter_toc_structure_same_path_rejected, 0, "output DOCX must be a new review-copy path"),
     ("repair_frontmatter_toc_structure_unknown_operation_rejected", case_repair_frontmatter_toc_structure_unknown_operation_rejected, 0, "unknown operation(s): global-rewrite"),
@@ -29274,6 +30700,7 @@ CASES = [
     ("sample_self_check_cover_value_line_ignores_reference_legend_valid", case_sample_self_check_cover_value_line_ignores_reference_legend_valid, 0, "not-applicable"),
     ("sample_self_check_chapter_pagination_loss_rejected", case_sample_self_check_chapter_pagination_loss_rejected, 0, "pagination owner"),
     ("sample_self_check_tail_block_pagination_loss_rejected", case_sample_self_check_tail_block_pagination_loss_rejected, 0, "tail-block opener lacks exactly one pagination owner"),
+    ("sample_self_check_tail_block_previous_page_merge_rejected", case_sample_self_check_tail_block_previous_page_merge_rejected, 0, "not rendered after the previous chapter/block"),
     ("sample_self_check_chapter_format_damage_rejected", case_sample_self_check_chapter_format_damage_rejected, 0, "body paragraphs use heading style family"),
     ("sample_self_check_chapter_heading_normal_direct_template_valid", case_sample_self_check_chapter_heading_normal_direct_template_valid, 0, "passed"),
     ("sample_self_check_chapter_heading_style_drift_when_reference_normal_rejected", case_sample_self_check_chapter_heading_style_drift_when_reference_normal_rejected, 0, "direct baseline drift"),
@@ -29313,6 +30740,7 @@ CASES = [
     ("figure_manifest_structural_figures_without_diagram_rejected", case_figure_manifest_structural_figures_without_diagram_rejected, 0, "structural figure missing matching diagrams manifest entry"),
     ("figure_manifest_structural_router_collision_rejected", case_figure_manifest_structural_router_collision_rejected, 0, "invisible point/router vertex"),
     ("figure_manifest_structural_line_crosses_node_rejected", case_figure_manifest_structural_line_crosses_node_rejected, 0, "connector crosses non-endpoint shape interior"),
+    ("figure_manifest_structural_non_orthogonal_connector_rejected", case_figure_manifest_structural_non_orthogonal_connector_rejected, 0, "must use orthogonal right-angle routing"),
     ("figure_manifest_runtime_screenshot_evidence_rejected", case_figure_manifest_runtime_screenshot_evidence_rejected, 0, "runtime screenshot missing real route/page URL"),
     ("figure_manifest_chinese_ui_raster_source_rejected", case_figure_manifest_chinese_ui_raster_source_rejected, 0, "runtime screenshot missing real route/page URL"),
     ("figure_manifest_runtime_screenshot_full_window_valid", case_figure_manifest_runtime_screenshot_full_window_valid, 0, ""),
@@ -29383,6 +30811,7 @@ LEGACY_PRE_SPLIT_FAST_CASE_NAMES = {
     "template_discovery_prefers_format_template_over_repair_outputs",
     "repair_thesis_surface_format_bounded_valid",
     "repair_thesis_surface_format_skips_fullwidth_dot_headings",
+    "repair_thesis_surface_format_template_instruction_body_donor_valid",
     "table_authority_valid",
     "final_acceptance_template_schema_missing_rejected",
     "final_acceptance_body_opener_header_title_consistency_missing_rejected",
@@ -29437,6 +30866,7 @@ LEGACY_PRE_SPLIT_FAST_CASE_NAMES = {
     "figure_manifest_structural_png_only_rejected",
     "figure_manifest_structural_router_collision_rejected",
     "figure_manifest_structural_line_crosses_node_rejected",
+    "figure_manifest_structural_non_orthogonal_connector_rejected",
     "figure_manifest_runtime_screenshot_evidence_rejected",
     "figure_manifest_runtime_screenshot_full_window_valid",
     "figure_manifest_runtime_screenshot_widget_grab_rejected",
@@ -29465,6 +30895,9 @@ LEGACY_PRE_SPLIT_FAST_CASE_NAMES = {
     "table_rendered_family_rejected",
     "user_reported_en_abstract_indent_evidence_missing_rejected",
     "style_blast_radius_missing_sibling_evidence_rejected",
+    "content_expansion_machine_vision_missing_rejected",
+    "content_expansion_machine_vision_substitute_rejected",
+    "content_expansion_machine_vision_valid",
     "user_reported_cross_surface_ledger_missing_rejected",
     "user_reported_header_title_consistency_missing_rejected",
     "user_reported_header_title_consistency_valid",
@@ -29494,7 +30927,9 @@ LEGACY_PRE_SPLIT_FAST_CASE_NAMES = {
     "acceptance_generator_toc_geometry_stale_docx_rejected",
     "acceptance_generator_whole_pagination_weak_blank_scan_rejected",
     "acceptance_generator_reference_pagination_loss_rejected",
+    "acceptance_generator_reference_prior_page_token_missing_rejected",
     "acceptance_generator_missing_tail_block_pagination_detector_rejected",
+    "acceptance_generator_missing_header_footer_page_number_detector_rejected",
     "surface_hardfields_typography_drift_rejected",
     "surface_hardfields_caption_missing_pair_numeric_valid",
     "surface_hardfields_reference_toc_binding_valid",
@@ -29547,6 +30982,7 @@ FAST_CORE_CASE_NAMES = {
     "rule_owner_hard_closure_missing_rejected",
     "pagination_raw_unexpected_near_empty_rejected",
     "sample_self_check_tail_block_pagination_loss_rejected",
+    "sample_self_check_tail_block_previous_page_merge_rejected",
     "references_hard_metric_drift_rejected",
     "acknowledgement_body_title_contamination_drift_rejected",
     "docx_font_audit_explicit_halfpoint_template_conflict_rejected",
@@ -29567,6 +31003,7 @@ FAST_THESIS_RECORD_CASE_NAMES = {
     "format_repair_valid",
     "format_repair_sample_self_check_missing_rejected",
     "stale_sample_self_check_report_rejected",
+    "sample_self_check_header_footer_page_number_detector_required_rejected",
     "stale_citation_audit_rejected",
     "review_artifact_inventory_missing_rejected",
     "body_citation_run_diff_missing_rejected",
@@ -29641,6 +31078,9 @@ FAST_THESIS_RECORD_CASE_NAMES = {
     "user_reported_cross_surface_ledger_missing_rejected",
     "user_reported_header_title_consistency_missing_rejected",
     "user_reported_header_title_consistency_valid",
+    "passed_with_limitations_rejected",
+    "acceptance_generator_missing_header_footer_page_number_detector_rejected",
+    "user_reported_abstract_header_footer_visual_geometry_missing_rejected",
     "figure_manifest_algorithm_result_schematic_rejected",
     "figure_manifest_algorithm_result_real_provenance_valid",
     "figure_manifest_unauthorized_existing_image_replacement_rejected",
@@ -29689,6 +31129,7 @@ FAST_THESIS_RECORD_CASE_NAMES = {
     "picture_extent_repair_requires_manifest_source_and_transaction",
     "picture_extent_repair_transaction_binding_rejected",
     "repair_thesis_surface_format_image_display_resize_without_manifest_rejected",
+    "repair_thesis_surface_format_template_instruction_body_donor_valid",
     "repair_thesis_surface_format_keyword_toc_template_donor_fallback_valid",
     "repair_thesis_surface_format_abstract_role_format_valid",
     "figure_manifest_image_word_body_paragraph_not_caption_valid",

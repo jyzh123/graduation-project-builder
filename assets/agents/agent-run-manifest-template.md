@@ -68,6 +68,11 @@
 - toc_visible_run_typography_verdict:
 - whole_document_pagination_evidence_path:
 - whole_document_pagination_verdict:
+- content_mutation_rendered_review_path:
+- content_mutation_machine_vision_verdict:
+- inserted_body_heading_contamination_verdict:
+- touched_page_blast_radius_machine_vision_evidence_paths:
+- format_lane_post_mutation_rendered_audit_verdict:
 - frontmatter_toc_structure_repair_report_path:
 - frontmatter_toc_structure_repair_operations:
 - frontmatter_toc_structure_changed_zip_parts_verdict:
