@@ -43,6 +43,25 @@ function Read-FontProperty($Font, [string]$Name) {
     }
 }
 
+function Get-ReferenceEntryIndex($Paragraph, [string]$Text) {
+    if ($Text -match "^\s*\[(\d{1,3})\]") {
+        return [int]$Matches[1]
+    }
+    if ($Text -match "^\s*(\d{1,3})(?:[\.．、])(?=\s|[^\d])") {
+        return [int]$Matches[1]
+    }
+    $listString = ""
+    try {
+        $listString = [string]$Paragraph.Range.ListFormat.ListString
+    } catch {
+        $listString = ""
+    }
+    if ($listString -match "\d{1,3}") {
+        return [int]$Matches[0]
+    }
+    return $null
+}
+
 $resolvedDocx = (Resolve-Path -LiteralPath $DocxPath).Path
 $ReferenceHeading = Join-Chars @(0x53C2, 0x8003, 0x6587, 0x732E)
 $AcknowledgementHeading = Join-Chars @(0x81F4, 0x8C22)
@@ -91,20 +110,7 @@ try {
         if ($text.StartsWith($AcknowledgementHeading) -or $text.StartsWith($AppendixHeading) -or $text -match "^(acknowledgements?|appendix)\b") {
             break
         }
-        $entryIndex = $null
-        if ($text -match "^\s*\[(\d{1,3})\]") {
-            $entryIndex = [int]$Matches[1]
-        } else {
-            $listString = ""
-            try {
-                $listString = [string]$paragraph.Range.ListFormat.ListString
-            } catch {
-                $listString = ""
-            }
-            if ($listString -match "\d{1,3}") {
-                $entryIndex = [int]$Matches[0]
-            }
-        }
+        $entryIndex = Get-ReferenceEntryIndex $paragraph $text
         if ($null -eq $entryIndex) {
             continue
         }

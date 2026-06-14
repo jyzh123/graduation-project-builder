@@ -202,6 +202,8 @@ Implementation-chapter screenshot drafting rule:
 - each subsection must start with a lead-in paragraph
 - each subsection should normally be at least 300 Chinese characters
 - unless the user explicitly overrides it, the full thesis body should default to no less than 10000 Chinese characters
+- For mechanical-design whole-thesis rebuilds, lock the stronger profile before drafting or final QA unless the current user or school template gives a different target: at least 20000 visible Chinese-character/word units, at least 60 substantive bibliography entries, at least 10 foreign/English bibliography entries, formulas as real Word equation objects in body calculation/design chapters, body figures in the main narrative, and all final CAD sheet renders embedded again in the appendix.
+- The mechanical-design profile is a single profile, not separate optional preferences. A pass on appendix drawings, formula count, reference count, or body figures cannot compensate for a miss in another profile field.
 - do not leave sections as one-sentence placeholders
 - keep wording consistent with the implemented system
 - treat the English abstract as a translation of the Chinese abstract, not as an independently rewritten summary

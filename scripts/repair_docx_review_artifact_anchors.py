@@ -120,6 +120,23 @@ def make_reference_run(comment_id: str) -> ET.Element:
     return run
 
 
+def paragraph_content_child_indices(paragraph: ET.Element) -> list[int]:
+    result: list[int] = []
+    for index, child in enumerate(list(paragraph)):
+        if child.tag in {f"{W}pPr", f"{W}commentRangeStart", f"{W}commentRangeEnd", f"{W}bookmarkStart", f"{W}bookmarkEnd"}:
+            continue
+        if (
+            child.find(".//w:t", NS) is not None
+            or child.find(".//w:drawing", NS) is not None
+            or child.find(".//w:pict", NS) is not None
+            or child.find(".//w:fldChar", NS) is not None
+            or child.find(".//w:instrText", NS) is not None
+            or child.find(".//w:tab", NS) is not None
+        ):
+            result.append(index)
+    return result
+
+
 def restore_anchor_on_paragraph(paragraph: ET.Element, comment_id: str) -> bool:
     present = final_anchor_ids(paragraph)
     required = {
@@ -130,18 +147,19 @@ def restore_anchor_on_paragraph(paragraph: ET.Element, comment_id: str) -> bool:
     if required.issubset(present):
         return False
     picture_indices = picture_child_indices(paragraph)
-    if not picture_indices:
+    content_indices = picture_indices or paragraph_content_child_indices(paragraph)
+    if not content_indices:
         return False
-    first_picture = picture_indices[0]
-    last_picture = picture_indices[-1]
+    first_content = content_indices[0]
+    last_content = content_indices[-1]
     if ("commentRangeStart", comment_id) not in present:
-        paragraph.insert(first_picture, make_anchor("commentRangeStart", comment_id))
-        last_picture += 1
+        paragraph.insert(first_content, make_anchor("commentRangeStart", comment_id))
+        last_content += 1
     if ("commentRangeEnd", comment_id) not in present:
-        paragraph.insert(last_picture + 1, make_anchor("commentRangeEnd", comment_id))
-        last_picture += 1
+        paragraph.insert(last_content + 1, make_anchor("commentRangeEnd", comment_id))
+        last_content += 1
     if ("commentReference", comment_id) not in present:
-        paragraph.insert(last_picture + 1, make_reference_run(comment_id))
+        paragraph.insert(last_content + 1, make_reference_run(comment_id))
     return True
 
 
@@ -162,11 +180,10 @@ def repair(source_docx: Path, final_docx: Path, output_docx: Path, comment_ids: 
         if paragraph is None:
             skipped.append({"comment_id": comment_id, "para_id": pid, "reason": "matching final paragraph not found"})
             continue
-        if not has_picture(paragraph):
-            skipped.append({"comment_id": comment_id, "para_id": pid, "reason": "matching final paragraph has no picture"})
-            continue
         if restore_anchor_on_paragraph(paragraph, comment_id):
             restored.append({"comment_id": comment_id, "para_id": pid, "final_text": paragraph_text(paragraph)})
+        else:
+            skipped.append({"comment_id": comment_id, "para_id": pid, "reason": "matching final paragraph has no restorable content or already complete"})
 
     members["word/document.xml"] = ET.tostring(root, encoding="utf-8", xml_declaration=True)
     with tempfile.TemporaryDirectory() as temp_dir:

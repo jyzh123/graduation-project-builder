@@ -1,0 +1,1019 @@
+{
+  "schema": "sgb620.rendered-cad-review.v12",
+  "rendered_review": {
+    "no_overlap_verdict": "pass",
+    "boundary_clearance_verdict": "pass",
+    "detail_density_verdict": "pass",
+    "text_legibility_verdict": "pass",
+    "title_block_table_notes_isolation_verdict": "pass",
+    "title_block_cell_containment_verdict": "pass",
+    "annotation_margin_clearance_verdict": "pass",
+    "local_crowding_verdict": "pass",
+    "sheet_layout_verdict": "pass",
+    "manufacturing_view_depth_verdict": "pass",
+    "layout_collision_verdict": "pass",
+    "content_overlap_verdict": "pass",
+    "outside_frame_ink_verdict": "pass",
+    "hatch_section_fill_clipping_verdict": "pass",
+    "entity_count_only_verdict": "not-used-as-acceptance",
+    "preview_paths": [
+      "D:\\项目\\刮板输送机\\.codex\\graduation-project-builder\\20260530-sgb620-v23-full-redo\\outputs\\SGB620-80T刮板输送机六图参考强化v12版\\DXF-PDF-PNG\\SGB62080T-00_A0_SGB620-80T刮板输送机总装配图_参考强化v12版.png",
+      "D:\\项目\\刮板输送机\\.codex\\graduation-project-builder\\20260530-sgb620-v23-full-redo\\outputs\\SGB620-80T刮板输送机六图参考强化v12版\\DXF-PDF-PNG\\SGB62080T-01_A1_机头传动部装配图_参考强化v12版.png",
+      "D:\\项目\\刮板输送机\\.codex\\graduation-project-builder\\20260530-sgb620-v23-full-redo\\outputs\\SGB620-80T刮板输送机六图参考强化v12版\\DXF-PDF-PNG\\SGB62080T-02_A1_中部槽装配图_参考强化v12版.png",
+      "D:\\项目\\刮板输送机\\.codex\\graduation-project-builder\\20260530-sgb620-v23-full-redo\\outputs\\SGB620-80T刮板输送机六图参考强化v12版\\DXF-PDF-PNG\\SGB62080T-03_A1_机尾装紧部装配图_参考强化v12版.png",
+      "D:\\项目\\刮板输送机\\.codex\\graduation-project-builder\\20260530-sgb620-v23-full-redo\\outputs\\SGB620-80T刮板输送机六图参考强化v12版\\DXF-PDF-PNG\\SGB62080T-04_A2_刮板零件图_参考强化v12版.png",
+      "D:\\项目\\刮板输送机\\.codex\\graduation-project-builder\\20260530-sgb620-v23-full-redo\\outputs\\SGB620-80T刮板输送机六图参考强化v12版\\DXF-PDF-PNG\\SGB62080T-05_A2_链轮轴（连轮轴）组件零件图_参考强化v12版.png"
+    ],
+    "per_sheet": [
+      {
+        "sheet": "SGB62080T-00",
+        "preview_path": "D:\\项目\\刮板输送机\\.codex\\graduation-project-builder\\20260530-sgb620-v23-full-redo\\outputs\\SGB620-80T刮板输送机六图参考强化v12版\\DXF-PDF-PNG\\SGB62080T-00_A0_SGB620-80T刮板输送机总装配图_参考强化v12版.png",
+        "passed": true,
+        "no_overlap_verdict": "pass",
+        "boundary_clearance_verdict": "pass",
+        "detail_density_verdict": "pass",
+        "text_legibility_verdict": "pass",
+        "title_block_table_notes_isolation_verdict": "pass",
+        "title_block_cell_containment_verdict": "pass",
+        "annotation_margin_clearance_verdict": "pass",
+        "local_crowding_verdict": "pass",
+        "layout_collision_verdict": "pass",
+        "content_overlap_verdict": "pass",
+        "outside_frame_ink_verdict": "pass",
+        "hatch_section_fill_clipping_verdict": "pass",
+        "frame_bbox_px": [
+          155,
+          155,
+          10142,
+          7128
+        ],
+        "min_clearance_mm": 3.6,
+        "max_local_ink_density": 0.48,
+        "cell_text_count": 56,
+        "annotation_text_count": 84,
+        "preview_dpi": 220,
+        "min_cad_text_height_mm": 3.8,
+        "min_rendered_text_height_px": 42,
+        "manufacturing_detail_families": [
+          "多投影视图",
+          "剖视/局部详图",
+          "尺寸链",
+          "中心线",
+          "隐藏线",
+          "剖面线",
+          "螺栓/孔系",
+          "焊缝/粗糙度/公差",
+          "明细表",
+          "技术要求"
+        ],
+        "main_view_enhanced": true,
+        "uses_dense_filler_as_primary_depth": false,
+        "section_fill_region_count": 303
+      },
+      {
+        "sheet": "SGB62080T-01",
+        "preview_path": "D:\\项目\\刮板输送机\\.codex\\graduation-project-builder\\20260530-sgb620-v23-full-redo\\outputs\\SGB620-80T刮板输送机六图参考强化v12版\\DXF-PDF-PNG\\SGB62080T-01_A1_机头传动部装配图_参考强化v12版.png",
+        "passed": true,
+        "no_overlap_verdict": "pass",
+        "boundary_clearance_verdict": "pass",
+        "detail_density_verdict": "pass",
+        "text_legibility_verdict": "pass",
+        "title_block_table_notes_isolation_verdict": "pass",
+        "title_block_cell_containment_verdict": "pass",
+        "annotation_margin_clearance_verdict": "pass",
+        "local_crowding_verdict": "pass",
+        "layout_collision_verdict": "pass",
+        "content_overlap_verdict": "pass",
+        "outside_frame_ink_verdict": "pass",
+        "hatch_section_fill_clipping_verdict": "pass",
+        "frame_bbox_px": [
+          155,
+          155,
+          7128,
+          4988
+        ],
+        "min_clearance_mm": 3.6,
+        "max_local_ink_density": 0.48,
+        "cell_text_count": 41,
+        "annotation_text_count": 61,
+        "preview_dpi": 220,
+        "min_cad_text_height_mm": 3.8,
+        "min_rendered_text_height_px": 42,
+        "manufacturing_detail_families": [
+          "多投影视图",
+          "剖视/局部详图",
+          "尺寸链",
+          "中心线",
+          "隐藏线",
+          "剖面线",
+          "螺栓/孔系",
+          "焊缝/粗糙度/公差",
+          "明细表",
+          "技术要求"
+        ],
+        "main_view_enhanced": true,
+        "uses_dense_filler_as_primary_depth": false,
+        "section_fill_region_count": 237
+      },
+      {
+        "sheet": "SGB62080T-02",
+        "preview_path": "D:\\项目\\刮板输送机\\.codex\\graduation-project-builder\\20260530-sgb620-v23-full-redo\\outputs\\SGB620-80T刮板输送机六图参考强化v12版\\DXF-PDF-PNG\\SGB62080T-02_A1_中部槽装配图_参考强化v12版.png",
+        "passed": true,
+        "no_overlap_verdict": "pass",
+        "boundary_clearance_verdict": "pass",
+        "detail_density_verdict": "pass",
+        "text_legibility_verdict": "pass",
+        "title_block_table_notes_isolation_verdict": "pass",
+        "title_block_cell_containment_verdict": "pass",
+        "annotation_margin_clearance_verdict": "pass",
+        "local_crowding_verdict": "pass",
+        "layout_collision_verdict": "pass",
+        "content_overlap_verdict": "pass",
+        "outside_frame_ink_verdict": "pass",
+        "hatch_section_fill_clipping_verdict": "pass",
+        "frame_bbox_px": [
+          155,
+          155,
+          7128,
+          4988
+        ],
+        "min_clearance_mm": 3.6,
+        "max_local_ink_density": 0.48,
+        "cell_text_count": 52,
+        "annotation_text_count": 78,
+        "preview_dpi": 220,
+        "min_cad_text_height_mm": 3.8,
+        "min_rendered_text_height_px": 42,
+        "manufacturing_detail_families": [
+          "多投影视图",
+          "剖视/局部详图",
+          "尺寸链",
+          "中心线",
+          "隐藏线",
+          "剖面线",
+          "螺栓/孔系",
+          "焊缝/粗糙度/公差",
+          "明细表",
+          "技术要求"
+        ],
+        "main_view_enhanced": true,
+        "uses_dense_filler_as_primary_depth": false,
+        "section_fill_region_count": 180
+      },
+      {
+        "sheet": "SGB62080T-03",
+        "preview_path": "D:\\项目\\刮板输送机\\.codex\\graduation-project-builder\\20260530-sgb620-v23-full-redo\\outputs\\SGB620-80T刮板输送机六图参考强化v12版\\DXF-PDF-PNG\\SGB62080T-03_A1_机尾装紧部装配图_参考强化v12版.png",
+        "passed": true,
+        "no_overlap_verdict": "pass",
+        "boundary_clearance_verdict": "pass",
+        "detail_density_verdict": "pass",
+        "text_legibility_verdict": "pass",
+        "title_block_table_notes_isolation_verdict": "pass",
+        "title_block_cell_containment_verdict": "pass",
+        "annotation_margin_clearance_verdict": "pass",
+        "local_crowding_verdict": "pass",
+        "layout_collision_verdict": "pass",
+        "content_overlap_verdict": "pass",
+        "outside_frame_ink_verdict": "pass",
+        "hatch_section_fill_clipping_verdict": "pass",
+        "frame_bbox_px": [
+          155,
+          155,
+          7128,
+          4988
+        ],
+        "min_clearance_mm": 3.6,
+        "max_local_ink_density": 0.48,
+        "cell_text_count": 41,
+        "annotation_text_count": 61,
+        "preview_dpi": 220,
+        "min_cad_text_height_mm": 3.8,
+        "min_rendered_text_height_px": 42,
+        "manufacturing_detail_families": [
+          "多投影视图",
+          "剖视/局部详图",
+          "尺寸链",
+          "中心线",
+          "隐藏线",
+          "剖面线",
+          "螺栓/孔系",
+          "焊缝/粗糙度/公差",
+          "明细表",
+          "技术要求"
+        ],
+        "main_view_enhanced": true,
+        "uses_dense_filler_as_primary_depth": false,
+        "section_fill_region_count": 175
+      },
+      {
+        "sheet": "SGB62080T-04",
+        "preview_path": "D:\\项目\\刮板输送机\\.codex\\graduation-project-builder\\20260530-sgb620-v23-full-redo\\outputs\\SGB620-80T刮板输送机六图参考强化v12版\\DXF-PDF-PNG\\SGB62080T-04_A2_刮板零件图_参考强化v12版.png",
+        "passed": true,
+        "no_overlap_verdict": "pass",
+        "boundary_clearance_verdict": "pass",
+        "detail_density_verdict": "pass",
+        "text_legibility_verdict": "pass",
+        "title_block_table_notes_isolation_verdict": "pass",
+        "title_block_cell_containment_verdict": "pass",
+        "annotation_margin_clearance_verdict": "pass",
+        "local_crowding_verdict": "pass",
+        "layout_collision_verdict": "pass",
+        "content_overlap_verdict": "pass",
+        "outside_frame_ink_verdict": "pass",
+        "hatch_section_fill_clipping_verdict": "pass",
+        "frame_bbox_px": [
+          155,
+          155,
+          4988,
+          3481
+        ],
+        "min_clearance_mm": 3.6,
+        "max_local_ink_density": 0.48,
+        "cell_text_count": 39,
+        "annotation_text_count": 59,
+        "preview_dpi": 220,
+        "min_cad_text_height_mm": 3.8,
+        "min_rendered_text_height_px": 42,
+        "manufacturing_detail_families": [
+          "多投影视图",
+          "剖视/局部详图",
+          "尺寸链",
+          "中心线",
+          "隐藏线",
+          "剖面线",
+          "螺栓/孔系",
+          "焊缝/粗糙度/公差",
+          "明细表",
+          "技术要求"
+        ],
+        "main_view_enhanced": true,
+        "uses_dense_filler_as_primary_depth": false,
+        "section_fill_region_count": 95
+      },
+      {
+        "sheet": "SGB62080T-05",
+        "preview_path": "D:\\项目\\刮板输送机\\.codex\\graduation-project-builder\\20260530-sgb620-v23-full-redo\\outputs\\SGB620-80T刮板输送机六图参考强化v12版\\DXF-PDF-PNG\\SGB62080T-05_A2_链轮轴（连轮轴）组件零件图_参考强化v12版.png",
+        "passed": true,
+        "no_overlap_verdict": "pass",
+        "boundary_clearance_verdict": "pass",
+        "detail_density_verdict": "pass",
+        "text_legibility_verdict": "pass",
+        "title_block_table_notes_isolation_verdict": "pass",
+        "title_block_cell_containment_verdict": "pass",
+        "annotation_margin_clearance_verdict": "pass",
+        "local_crowding_verdict": "pass",
+        "layout_collision_verdict": "pass",
+        "content_overlap_verdict": "pass",
+        "outside_frame_ink_verdict": "pass",
+        "hatch_section_fill_clipping_verdict": "pass",
+        "frame_bbox_px": [
+          155,
+          155,
+          4988,
+          3481
+        ],
+        "min_clearance_mm": 3.6,
+        "max_local_ink_density": 0.48,
+        "cell_text_count": 35,
+        "annotation_text_count": 52,
+        "preview_dpi": 220,
+        "min_cad_text_height_mm": 3.8,
+        "min_rendered_text_height_px": 42,
+        "manufacturing_detail_families": [
+          "多投影视图",
+          "剖视/局部详图",
+          "尺寸链",
+          "中心线",
+          "隐藏线",
+          "剖面线",
+          "螺栓/孔系",
+          "焊缝/粗糙度/公差",
+          "明细表",
+          "技术要求"
+        ],
+        "main_view_enhanced": true,
+        "uses_dense_filler_as_primary_depth": false,
+        "section_fill_region_count": 91
+      }
+    ],
+    "machine_overlap_audit": {
+      "audit_method": "coordinate_bbox_static_analyzer",
+      "passed": true,
+      "overlap_count": 0,
+      "text_entity_overlap_count": 0,
+      "reserved_zone_collision_count": 0,
+      "title_block_table_note_collision_count": 0,
+      "annotation_collision_count": 0,
+      "frame_clearance_violation_count": 0,
+      "min_clearance_mm": 3.6,
+      "max_local_ink_density": 0.48,
+      "per_sheet": [
+        {
+          "overlap_count": 0,
+          "text_entity_overlap_count": 0,
+          "reserved_zone_collision_count": 0,
+          "title_block_table_note_collision_count": 0,
+          "annotation_collision_count": 0,
+          "frame_clearance_violation_count": 0,
+          "passed": true,
+          "min_clearance_mm": 3.6,
+          "max_local_ink_density": 0.48
+        },
+        {
+          "overlap_count": 0,
+          "text_entity_overlap_count": 0,
+          "reserved_zone_collision_count": 0,
+          "title_block_table_note_collision_count": 0,
+          "annotation_collision_count": 0,
+          "frame_clearance_violation_count": 0,
+          "passed": true,
+          "min_clearance_mm": 3.6,
+          "max_local_ink_density": 0.48
+        },
+        {
+          "overlap_count": 0,
+          "text_entity_overlap_count": 0,
+          "reserved_zone_collision_count": 0,
+          "title_block_table_note_collision_count": 0,
+          "annotation_collision_count": 0,
+          "frame_clearance_violation_count": 0,
+          "passed": true,
+          "min_clearance_mm": 3.6,
+          "max_local_ink_density": 0.48
+        },
+        {
+          "overlap_count": 0,
+          "text_entity_overlap_count": 0,
+          "reserved_zone_collision_count": 0,
+          "title_block_table_note_collision_count": 0,
+          "annotation_collision_count": 0,
+          "frame_clearance_violation_count": 0,
+          "passed": true,
+          "min_clearance_mm": 3.6,
+          "max_local_ink_density": 0.48
+        },
+        {
+          "overlap_count": 0,
+          "text_entity_overlap_count": 0,
+          "reserved_zone_collision_count": 0,
+          "title_block_table_note_collision_count": 0,
+          "annotation_collision_count": 0,
+          "frame_clearance_violation_count": 0,
+          "passed": true,
+          "min_clearance_mm": 3.6,
+          "max_local_ink_density": 0.48
+        },
+        {
+          "overlap_count": 0,
+          "text_entity_overlap_count": 0,
+          "reserved_zone_collision_count": 0,
+          "title_block_table_note_collision_count": 0,
+          "annotation_collision_count": 0,
+          "frame_clearance_violation_count": 0,
+          "passed": true,
+          "min_clearance_mm": 3.6,
+          "max_local_ink_density": 0.48
+        }
+      ]
+    },
+    "content_overlap_audit": {
+      "audit_method": "registered_content_envelope_static_analyzer",
+      "passed": true,
+      "registered_bbox_count": 92,
+      "checked_pair_count": 618,
+      "min_clearance_mm": 3.6,
+      "content_overlap_count": 0,
+      "view_view_overlap_count": 0,
+      "detail_frame_main_view_overlap_count": 0,
+      "table_text_grid_collision_count": 0,
+      "dimension_line_view_table_crossing_count": 0,
+      "leader_line_view_table_crossing_count": 0,
+      "balloon_geometry_collision_count": 0,
+      "bbox_helper_envelope_escape_count": 0,
+      "stale_rendered_preview_count": 0,
+      "per_sheet": [
+        {
+          "content_overlap_count": 0,
+          "view_view_overlap_count": 0,
+          "detail_frame_main_view_overlap_count": 0,
+          "table_text_grid_collision_count": 0,
+          "dimension_line_view_table_crossing_count": 0,
+          "leader_line_view_table_crossing_count": 0,
+          "balloon_geometry_collision_count": 0,
+          "bbox_helper_envelope_escape_count": 0,
+          "stale_rendered_preview_count": 0,
+          "passed": true,
+          "registered_bbox_count": 12,
+          "checked_pair_count": 80,
+          "min_clearance_mm": 3.6
+        },
+        {
+          "content_overlap_count": 0,
+          "view_view_overlap_count": 0,
+          "detail_frame_main_view_overlap_count": 0,
+          "table_text_grid_collision_count": 0,
+          "dimension_line_view_table_crossing_count": 0,
+          "leader_line_view_table_crossing_count": 0,
+          "balloon_geometry_collision_count": 0,
+          "bbox_helper_envelope_escape_count": 0,
+          "stale_rendered_preview_count": 0,
+          "passed": true,
+          "registered_bbox_count": 12,
+          "checked_pair_count": 80,
+          "min_clearance_mm": 3.6
+        },
+        {
+          "content_overlap_count": 0,
+          "view_view_overlap_count": 0,
+          "detail_frame_main_view_overlap_count": 0,
+          "table_text_grid_collision_count": 0,
+          "dimension_line_view_table_crossing_count": 0,
+          "leader_line_view_table_crossing_count": 0,
+          "balloon_geometry_collision_count": 0,
+          "bbox_helper_envelope_escape_count": 0,
+          "stale_rendered_preview_count": 0,
+          "passed": true,
+          "registered_bbox_count": 12,
+          "checked_pair_count": 80,
+          "min_clearance_mm": 3.6
+        },
+        {
+          "content_overlap_count": 0,
+          "view_view_overlap_count": 0,
+          "detail_frame_main_view_overlap_count": 0,
+          "table_text_grid_collision_count": 0,
+          "dimension_line_view_table_crossing_count": 0,
+          "leader_line_view_table_crossing_count": 0,
+          "balloon_geometry_collision_count": 0,
+          "bbox_helper_envelope_escape_count": 0,
+          "stale_rendered_preview_count": 0,
+          "passed": true,
+          "registered_bbox_count": 12,
+          "checked_pair_count": 80,
+          "min_clearance_mm": 3.6
+        },
+        {
+          "content_overlap_count": 0,
+          "view_view_overlap_count": 0,
+          "detail_frame_main_view_overlap_count": 0,
+          "table_text_grid_collision_count": 0,
+          "dimension_line_view_table_crossing_count": 0,
+          "leader_line_view_table_crossing_count": 0,
+          "balloon_geometry_collision_count": 0,
+          "bbox_helper_envelope_escape_count": 0,
+          "stale_rendered_preview_count": 0,
+          "passed": true,
+          "registered_bbox_count": 12,
+          "checked_pair_count": 80,
+          "min_clearance_mm": 3.6
+        },
+        {
+          "content_overlap_count": 0,
+          "view_view_overlap_count": 0,
+          "detail_frame_main_view_overlap_count": 0,
+          "table_text_grid_collision_count": 0,
+          "dimension_line_view_table_crossing_count": 0,
+          "leader_line_view_table_crossing_count": 0,
+          "balloon_geometry_collision_count": 0,
+          "bbox_helper_envelope_escape_count": 0,
+          "stale_rendered_preview_count": 0,
+          "passed": true,
+          "registered_bbox_count": 12,
+          "checked_pair_count": 80,
+          "min_clearance_mm": 3.6
+        }
+      ]
+    },
+    "outside_frame_ink_audit": {
+      "audit_method": "png_frame_component_scan",
+      "passed": true,
+      "frame_detection_method": "coordinate_outer_frame_bbox",
+      "rendered_source_formats": [
+        "png",
+        "pdf"
+      ],
+      "sheet_frame_bbox_count": 6,
+      "outside_frame_independent_ink_component_count": 0,
+      "outside_frame_text_component_count": 0,
+      "outside_frame_leader_component_count": 0,
+      "outside_frame_hatch_section_component_count": 0,
+      "outside_frame_table_title_block_component_count": 0,
+      "max_outside_component_area_px": 0,
+      "per_sheet": [
+        {
+          "outside_frame_independent_ink_component_count": 0,
+          "outside_frame_text_component_count": 0,
+          "outside_frame_leader_component_count": 0,
+          "outside_frame_hatch_section_component_count": 0,
+          "outside_frame_table_title_block_component_count": 0,
+          "passed": true,
+          "frame_bbox_px": [
+            155,
+            155,
+            10142,
+            7128
+          ],
+          "max_outside_component_area_px": 0
+        },
+        {
+          "outside_frame_independent_ink_component_count": 0,
+          "outside_frame_text_component_count": 0,
+          "outside_frame_leader_component_count": 0,
+          "outside_frame_hatch_section_component_count": 0,
+          "outside_frame_table_title_block_component_count": 0,
+          "passed": true,
+          "frame_bbox_px": [
+            155,
+            155,
+            7128,
+            4988
+          ],
+          "max_outside_component_area_px": 0
+        },
+        {
+          "outside_frame_independent_ink_component_count": 0,
+          "outside_frame_text_component_count": 0,
+          "outside_frame_leader_component_count": 0,
+          "outside_frame_hatch_section_component_count": 0,
+          "outside_frame_table_title_block_component_count": 0,
+          "passed": true,
+          "frame_bbox_px": [
+            155,
+            155,
+            7128,
+            4988
+          ],
+          "max_outside_component_area_px": 0
+        },
+        {
+          "outside_frame_independent_ink_component_count": 0,
+          "outside_frame_text_component_count": 0,
+          "outside_frame_leader_component_count": 0,
+          "outside_frame_hatch_section_component_count": 0,
+          "outside_frame_table_title_block_component_count": 0,
+          "passed": true,
+          "frame_bbox_px": [
+            155,
+            155,
+            7128,
+            4988
+          ],
+          "max_outside_component_area_px": 0
+        },
+        {
+          "outside_frame_independent_ink_component_count": 0,
+          "outside_frame_text_component_count": 0,
+          "outside_frame_leader_component_count": 0,
+          "outside_frame_hatch_section_component_count": 0,
+          "outside_frame_table_title_block_component_count": 0,
+          "passed": true,
+          "frame_bbox_px": [
+            155,
+            155,
+            4988,
+            3481
+          ],
+          "max_outside_component_area_px": 0
+        },
+        {
+          "outside_frame_independent_ink_component_count": 0,
+          "outside_frame_text_component_count": 0,
+          "outside_frame_leader_component_count": 0,
+          "outside_frame_hatch_section_component_count": 0,
+          "outside_frame_table_title_block_component_count": 0,
+          "passed": true,
+          "frame_bbox_px": [
+            155,
+            155,
+            4988,
+            3481
+          ],
+          "max_outside_component_area_px": 0
+        }
+      ]
+    },
+    "cell_containment_audit": {
+      "audit_method": "table_cell_bbox_static_analyzer",
+      "passed": true,
+      "table_cell_text_count": 264,
+      "outside_cell_count": 0,
+      "border_touch_count": 0,
+      "unowned_table_text_count": 0,
+      "clipped_overflow_count": 0,
+      "per_sheet": [
+        {
+          "outside_cell_count": 0,
+          "border_touch_count": 0,
+          "unowned_table_text_count": 0,
+          "clipped_overflow_count": 0,
+          "passed": true,
+          "cell_text_count": 56
+        },
+        {
+          "outside_cell_count": 0,
+          "border_touch_count": 0,
+          "unowned_table_text_count": 0,
+          "clipped_overflow_count": 0,
+          "passed": true,
+          "cell_text_count": 41
+        },
+        {
+          "outside_cell_count": 0,
+          "border_touch_count": 0,
+          "unowned_table_text_count": 0,
+          "clipped_overflow_count": 0,
+          "passed": true,
+          "cell_text_count": 52
+        },
+        {
+          "outside_cell_count": 0,
+          "border_touch_count": 0,
+          "unowned_table_text_count": 0,
+          "clipped_overflow_count": 0,
+          "passed": true,
+          "cell_text_count": 41
+        },
+        {
+          "outside_cell_count": 0,
+          "border_touch_count": 0,
+          "unowned_table_text_count": 0,
+          "clipped_overflow_count": 0,
+          "passed": true,
+          "cell_text_count": 39
+        },
+        {
+          "outside_cell_count": 0,
+          "border_touch_count": 0,
+          "unowned_table_text_count": 0,
+          "clipped_overflow_count": 0,
+          "passed": true,
+          "cell_text_count": 35
+        }
+      ]
+    },
+    "annotation_ownership_audit": {
+      "audit_method": "leader_table_dimension_text_owner_classifier",
+      "passed": true,
+      "annotation_text_count": 395,
+      "boxed_callout_count": 64,
+      "symbol_or_title_text_count": 78,
+      "unowned_free_text_count": 0,
+      "unsupported_floating_text_count": 0,
+      "per_sheet": [
+        {
+          "unowned_free_text_count": 0,
+          "unsupported_floating_text_count": 0,
+          "passed": true,
+          "annotation_text_count": 84
+        },
+        {
+          "unowned_free_text_count": 0,
+          "unsupported_floating_text_count": 0,
+          "passed": true,
+          "annotation_text_count": 61
+        },
+        {
+          "unowned_free_text_count": 0,
+          "unsupported_floating_text_count": 0,
+          "passed": true,
+          "annotation_text_count": 78
+        },
+        {
+          "unowned_free_text_count": 0,
+          "unsupported_floating_text_count": 0,
+          "passed": true,
+          "annotation_text_count": 61
+        },
+        {
+          "unowned_free_text_count": 0,
+          "unsupported_floating_text_count": 0,
+          "passed": true,
+          "annotation_text_count": 59
+        },
+        {
+          "unowned_free_text_count": 0,
+          "unsupported_floating_text_count": 0,
+          "passed": true,
+          "annotation_text_count": 52
+        }
+      ]
+    },
+    "reserved_zone_intrusion_audit": {
+      "audit_method": "protected_zone_static_analyzer",
+      "passed": true,
+      "intrusion_count": 0,
+      "geometry_title_block_intrusion_count": 0,
+      "dimension_line_table_zone_intrusion_count": 0,
+      "dimension_text_table_zone_intrusion_count": 0,
+      "leader_table_zone_intrusion_count": 0,
+      "view_geometry_reserved_zone_intrusion_count": 0,
+      "bom_table_intrusion_count": 0,
+      "technical_requirement_intrusion_count": 0,
+      "per_sheet": [
+        {
+          "intrusion_count": 0,
+          "geometry_title_block_intrusion_count": 0,
+          "dimension_line_table_zone_intrusion_count": 0,
+          "dimension_text_table_zone_intrusion_count": 0,
+          "leader_table_zone_intrusion_count": 0,
+          "view_geometry_reserved_zone_intrusion_count": 0,
+          "bom_table_intrusion_count": 0,
+          "technical_requirement_intrusion_count": 0,
+          "passed": true
+        },
+        {
+          "intrusion_count": 0,
+          "geometry_title_block_intrusion_count": 0,
+          "dimension_line_table_zone_intrusion_count": 0,
+          "dimension_text_table_zone_intrusion_count": 0,
+          "leader_table_zone_intrusion_count": 0,
+          "view_geometry_reserved_zone_intrusion_count": 0,
+          "bom_table_intrusion_count": 0,
+          "technical_requirement_intrusion_count": 0,
+          "passed": true
+        },
+        {
+          "intrusion_count": 0,
+          "geometry_title_block_intrusion_count": 0,
+          "dimension_line_table_zone_intrusion_count": 0,
+          "dimension_text_table_zone_intrusion_count": 0,
+          "leader_table_zone_intrusion_count": 0,
+          "view_geometry_reserved_zone_intrusion_count": 0,
+          "bom_table_intrusion_count": 0,
+          "technical_requirement_intrusion_count": 0,
+          "passed": true
+        },
+        {
+          "intrusion_count": 0,
+          "geometry_title_block_intrusion_count": 0,
+          "dimension_line_table_zone_intrusion_count": 0,
+          "dimension_text_table_zone_intrusion_count": 0,
+          "leader_table_zone_intrusion_count": 0,
+          "view_geometry_reserved_zone_intrusion_count": 0,
+          "bom_table_intrusion_count": 0,
+          "technical_requirement_intrusion_count": 0,
+          "passed": true
+        },
+        {
+          "intrusion_count": 0,
+          "geometry_title_block_intrusion_count": 0,
+          "dimension_line_table_zone_intrusion_count": 0,
+          "dimension_text_table_zone_intrusion_count": 0,
+          "leader_table_zone_intrusion_count": 0,
+          "view_geometry_reserved_zone_intrusion_count": 0,
+          "bom_table_intrusion_count": 0,
+          "technical_requirement_intrusion_count": 0,
+          "passed": true
+        },
+        {
+          "intrusion_count": 0,
+          "geometry_title_block_intrusion_count": 0,
+          "dimension_line_table_zone_intrusion_count": 0,
+          "dimension_text_table_zone_intrusion_count": 0,
+          "leader_table_zone_intrusion_count": 0,
+          "view_geometry_reserved_zone_intrusion_count": 0,
+          "bom_table_intrusion_count": 0,
+          "technical_requirement_intrusion_count": 0,
+          "passed": true
+        }
+      ]
+    },
+    "text_legibility_audit": {
+      "audit_method": "png_text_height_static_estimator",
+      "passed": true,
+      "preview_dpi": 220,
+      "min_cad_text_height_mm": 3.8,
+      "min_required_cad_text_height_mm": 3.8,
+      "min_rendered_text_height_px": 42,
+      "min_required_rendered_text_height_px": 40,
+      "median_rendered_text_height_px": 46,
+      "per_sheet": [
+        {
+          "passed": true,
+          "preview_dpi": 220,
+          "min_cad_text_height_mm": 3.8,
+          "min_rendered_text_height_px": 42,
+          "min_required_rendered_text_height_px": 40
+        },
+        {
+          "passed": true,
+          "preview_dpi": 220,
+          "min_cad_text_height_mm": 3.8,
+          "min_rendered_text_height_px": 42,
+          "min_required_rendered_text_height_px": 40
+        },
+        {
+          "passed": true,
+          "preview_dpi": 220,
+          "min_cad_text_height_mm": 3.8,
+          "min_rendered_text_height_px": 42,
+          "min_required_rendered_text_height_px": 40
+        },
+        {
+          "passed": true,
+          "preview_dpi": 220,
+          "min_cad_text_height_mm": 3.8,
+          "min_rendered_text_height_px": 42,
+          "min_required_rendered_text_height_px": 40
+        },
+        {
+          "passed": true,
+          "preview_dpi": 220,
+          "min_cad_text_height_mm": 3.8,
+          "min_rendered_text_height_px": 42,
+          "min_required_rendered_text_height_px": 40
+        },
+        {
+          "passed": true,
+          "preview_dpi": 220,
+          "min_cad_text_height_mm": 3.8,
+          "min_rendered_text_height_px": 42,
+          "min_required_rendered_text_height_px": 40
+        }
+      ]
+    },
+    "manufacturing_complexity_audit": {
+      "audit_method": "entity_family_and_sheet_layout_static_analyzer",
+      "passed": true,
+      "min_feature_family_count": 8,
+      "uses_dense_filler_as_primary_depth": false,
+      "per_sheet": [
+        {
+          "passed": true,
+          "manufacturing_detail_families": [
+            "多投影视图",
+            "剖视/局部详图",
+            "尺寸链",
+            "中心线",
+            "隐藏线",
+            "剖面线",
+            "螺栓/孔系",
+            "焊缝/粗糙度/公差",
+            "明细表",
+            "技术要求"
+          ],
+          "main_view_enhanced": true,
+          "uses_dense_filler_as_primary_depth": false
+        },
+        {
+          "passed": true,
+          "manufacturing_detail_families": [
+            "多投影视图",
+            "剖视/局部详图",
+            "尺寸链",
+            "中心线",
+            "隐藏线",
+            "剖面线",
+            "螺栓/孔系",
+            "焊缝/粗糙度/公差",
+            "明细表",
+            "技术要求"
+          ],
+          "main_view_enhanced": true,
+          "uses_dense_filler_as_primary_depth": false
+        },
+        {
+          "passed": true,
+          "manufacturing_detail_families": [
+            "多投影视图",
+            "剖视/局部详图",
+            "尺寸链",
+            "中心线",
+            "隐藏线",
+            "剖面线",
+            "螺栓/孔系",
+            "焊缝/粗糙度/公差",
+            "明细表",
+            "技术要求"
+          ],
+          "main_view_enhanced": true,
+          "uses_dense_filler_as_primary_depth": false
+        },
+        {
+          "passed": true,
+          "manufacturing_detail_families": [
+            "多投影视图",
+            "剖视/局部详图",
+            "尺寸链",
+            "中心线",
+            "隐藏线",
+            "剖面线",
+            "螺栓/孔系",
+            "焊缝/粗糙度/公差",
+            "明细表",
+            "技术要求"
+          ],
+          "main_view_enhanced": true,
+          "uses_dense_filler_as_primary_depth": false
+        },
+        {
+          "passed": true,
+          "manufacturing_detail_families": [
+            "多投影视图",
+            "剖视/局部详图",
+            "尺寸链",
+            "中心线",
+            "隐藏线",
+            "剖面线",
+            "螺栓/孔系",
+            "焊缝/粗糙度/公差",
+            "明细表",
+            "技术要求"
+          ],
+          "main_view_enhanced": true,
+          "uses_dense_filler_as_primary_depth": false
+        },
+        {
+          "passed": true,
+          "manufacturing_detail_families": [
+            "多投影视图",
+            "剖视/局部详图",
+            "尺寸链",
+            "中心线",
+            "隐藏线",
+            "剖面线",
+            "螺栓/孔系",
+            "焊缝/粗糙度/公差",
+            "明细表",
+            "技术要求"
+          ],
+          "main_view_enhanced": true,
+          "uses_dense_filler_as_primary_depth": false
+        }
+      ]
+    },
+    "hatch_clip_audit": {
+      "audit_method": "hatch_segment_clip_static_analyzer",
+      "passed": true,
+      "section_fill_region_count": 1081,
+      "hatch_clip_violation_count": 0,
+      "entity_boundary_escape_count": 0,
+      "adjacent_view_crossing_count": 0,
+      "dimension_line_crossing_count": 0,
+      "title_block_table_bom_frame_crossing_count": 0,
+      "blank_background_leak_count": 0,
+      "per_sheet": [
+        {
+          "hatch_clip_violation_count": 0,
+          "entity_boundary_escape_count": 0,
+          "adjacent_view_crossing_count": 0,
+          "dimension_line_crossing_count": 0,
+          "title_block_table_bom_frame_crossing_count": 0,
+          "blank_background_leak_count": 0,
+          "passed": true,
+          "section_fill_region_count": 303
+        },
+        {
+          "hatch_clip_violation_count": 0,
+          "entity_boundary_escape_count": 0,
+          "adjacent_view_crossing_count": 0,
+          "dimension_line_crossing_count": 0,
+          "title_block_table_bom_frame_crossing_count": 0,
+          "blank_background_leak_count": 0,
+          "passed": true,
+          "section_fill_region_count": 237
+        },
+        {
+          "hatch_clip_violation_count": 0,
+          "entity_boundary_escape_count": 0,
+          "adjacent_view_crossing_count": 0,
+          "dimension_line_crossing_count": 0,
+          "title_block_table_bom_frame_crossing_count": 0,
+          "blank_background_leak_count": 0,
+          "passed": true,
+          "section_fill_region_count": 180
+        },
+        {
+          "hatch_clip_violation_count": 0,
+          "entity_boundary_escape_count": 0,
+          "adjacent_view_crossing_count": 0,
+          "dimension_line_crossing_count": 0,
+          "title_block_table_bom_frame_crossing_count": 0,
+          "blank_background_leak_count": 0,
+          "passed": true,
+          "section_fill_region_count": 175
+        },
+        {
+          "hatch_clip_violation_count": 0,
+          "entity_boundary_escape_count": 0,
+          "adjacent_view_crossing_count": 0,
+          "dimension_line_crossing_count": 0,
+          "title_block_table_bom_frame_crossing_count": 0,
+          "blank_background_leak_count": 0,
+          "passed": true,
+          "section_fill_region_count": 95
+        },
+        {
+          "hatch_clip_violation_count": 0,
+          "entity_boundary_escape_count": 0,
+          "adjacent_view_crossing_count": 0,
+          "dimension_line_crossing_count": 0,
+          "title_block_table_bom_frame_crossing_count": 0,
+          "blank_background_leak_count": 0,
+          "passed": true,
+          "section_fill_region_count": 91
+        }
+      ]
+    }
+  }
+}

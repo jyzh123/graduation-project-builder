@@ -1,0 +1,1813 @@
+{
+  "schema": "graduation-project-builder.cad-dxf-linework-fidelity-audit.v1",
+  "path": "D:\\项目\\刮板输送机\\最终交付\\SGB620-80T刮板输送机图纸包_PDF-DWG-DXF_参考强化v10版.zip",
+  "path_sha256": "4127CE2213A4A56371DA34639AF754B352EB394C521B949E8741B0BF5E8FCDD0",
+  "package_sha256": "4127CE2213A4A56371DA34639AF754B352EB394C521B949E8741B0BF5E8FCDD0",
+  "passed": true,
+  "dxf_file_count": 6,
+  "issues": [],
+  "per_file": [
+    {
+      "file": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\cad-linework-v1mr6oj4\\DXF-PDF-PNG\\SGB62080T-00_A0_SGB620-80T刮板输送机总装配图_参考强化v10版.dxf",
+      "passed": true,
+      "acadver": "AC1015",
+      "headers": {
+        "$LTSCALE": 1.0,
+        "$CELTSCALE": 1.0,
+        "$PSLTSCALE": 0,
+        "$LWDISPLAY": 1
+      },
+      "layer_count": 18,
+      "layers": [
+        {
+          "name": "FRAME",
+          "lineweight": 50,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "OUTLINE",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "CENTER",
+          "lineweight": 25,
+          "linetype": "CENTER",
+          "color": 170,
+          "effective_rgb": [
+            0,
+            0,
+            255
+          ],
+          "color_luminance": 18.41,
+          "color_distance_from_white": 360.62,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "HIDDEN",
+          "lineweight": 25,
+          "linetype": "HIDDEN",
+          "color": 252,
+          "effective_rgb": [
+            102,
+            102,
+            102
+          ],
+          "color_luminance": 102.0,
+          "color_distance_from_white": 265.0,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "DIM",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 172,
+          "effective_rgb": [
+            0,
+            0,
+            165
+          ],
+          "color_luminance": 11.91,
+          "color_distance_from_white": 371.69,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "TEXT",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "ANNO",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "HATCH",
+          "lineweight": 18,
+          "linetype": "CONTINUOUS",
+          "color": 253,
+          "effective_rgb": [
+            153,
+            153,
+            153
+          ],
+          "color_luminance": 153.0,
+          "color_distance_from_white": 176.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "BOM",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "TITLE",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "0",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "Defpoints",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 7,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "BOM_GRID",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 251,
+          "effective_rgb": [
+            101,
+            101,
+            101
+          ],
+          "color_luminance": 101.0,
+          "color_distance_from_white": 266.74,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "OBJECT_THICK",
+          "lineweight": 35,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "OBJECT_THIN",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 251,
+          "effective_rgb": [
+            101,
+            101,
+            101
+          ],
+          "color_luminance": 101.0,
+          "color_distance_from_white": 266.74,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "LEADER",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 94,
+          "effective_rgb": [
+            0,
+            127,
+            0
+          ],
+          "color_luminance": 90.83,
+          "color_distance_from_white": 382.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "NOTE",
+          "lineweight": 18,
+          "linetype": "CONTINUOUS",
+          "color": 251,
+          "effective_rgb": [
+            101,
+            101,
+            101
+          ],
+          "color_luminance": 101.0,
+          "color_distance_from_white": 266.74,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "WELD",
+          "lineweight": 18,
+          "linetype": "CONTINUOUS",
+          "color": 14,
+          "effective_rgb": [
+            127,
+            0,
+            0
+          ],
+          "color_luminance": 27.0,
+          "color_distance_from_white": 382.67,
+          "readable_on_white_plot": true
+        }
+      ],
+      "drawable_entity_count": 17026,
+      "layer_entity_counts": {
+        "CENTER": 563,
+        "DIM": 301,
+        "FRAME": 2,
+        "HATCH": 15618,
+        "HIDDEN": 77,
+        "LEADER": 66,
+        "NOTE": 2,
+        "OBJECT_THICK": 189,
+        "TEXT": 175,
+        "TITLE": 33
+      },
+      "source_line_family_counts": {
+        "thick_solid": 224,
+        "thin_solid": 544,
+        "center_dash_dot": 563,
+        "hidden_dashed": 77,
+        "section_hatch": 15618,
+        "dimension": 301,
+        "leader_or_annotation": 241
+      },
+      "explicit_lineweight_count": 0,
+      "bylayer_with_layer_weight_count": 17026,
+      "missing_lineweight_count": 0,
+      "linetype_scale_count": 0,
+      "missing_linetype_scale_count": 16808,
+      "center_hidden_linetype_count": 640,
+      "center_hidden_linetype_issue_count": 0,
+      "low_contrast_color_count": 0,
+      "low_contrast_color_samples": [],
+      "min_readable_color_distance_from_white": 80.0,
+      "max_readable_color_luminance": 190.0,
+      "issues": []
+    },
+    {
+      "file": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\cad-linework-v1mr6oj4\\DXF-PDF-PNG\\SGB62080T-01_A1_机头传动部装配图_参考强化v10版.dxf",
+      "passed": true,
+      "acadver": "AC1015",
+      "headers": {
+        "$LTSCALE": 1.0,
+        "$CELTSCALE": 1.0,
+        "$PSLTSCALE": 0,
+        "$LWDISPLAY": 1
+      },
+      "layer_count": 18,
+      "layers": [
+        {
+          "name": "FRAME",
+          "lineweight": 50,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "OUTLINE",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "CENTER",
+          "lineweight": 25,
+          "linetype": "CENTER",
+          "color": 170,
+          "effective_rgb": [
+            0,
+            0,
+            255
+          ],
+          "color_luminance": 18.41,
+          "color_distance_from_white": 360.62,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "HIDDEN",
+          "lineweight": 25,
+          "linetype": "HIDDEN",
+          "color": 252,
+          "effective_rgb": [
+            102,
+            102,
+            102
+          ],
+          "color_luminance": 102.0,
+          "color_distance_from_white": 265.0,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "DIM",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 172,
+          "effective_rgb": [
+            0,
+            0,
+            165
+          ],
+          "color_luminance": 11.91,
+          "color_distance_from_white": 371.69,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "TEXT",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "ANNO",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "HATCH",
+          "lineweight": 18,
+          "linetype": "CONTINUOUS",
+          "color": 253,
+          "effective_rgb": [
+            153,
+            153,
+            153
+          ],
+          "color_luminance": 153.0,
+          "color_distance_from_white": 176.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "BOM",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "TITLE",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "0",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "Defpoints",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 7,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "BOM_GRID",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 251,
+          "effective_rgb": [
+            101,
+            101,
+            101
+          ],
+          "color_luminance": 101.0,
+          "color_distance_from_white": 266.74,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "OBJECT_THICK",
+          "lineweight": 35,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "OBJECT_THIN",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 251,
+          "effective_rgb": [
+            101,
+            101,
+            101
+          ],
+          "color_luminance": 101.0,
+          "color_distance_from_white": 266.74,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "LEADER",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 94,
+          "effective_rgb": [
+            0,
+            127,
+            0
+          ],
+          "color_luminance": 90.83,
+          "color_distance_from_white": 382.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "NOTE",
+          "lineweight": 18,
+          "linetype": "CONTINUOUS",
+          "color": 251,
+          "effective_rgb": [
+            101,
+            101,
+            101
+          ],
+          "color_luminance": 101.0,
+          "color_distance_from_white": 266.74,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "WELD",
+          "lineweight": 18,
+          "linetype": "CONTINUOUS",
+          "color": 14,
+          "effective_rgb": [
+            127,
+            0,
+            0
+          ],
+          "color_luminance": 27.0,
+          "color_distance_from_white": 382.67,
+          "readable_on_white_plot": true
+        }
+      ],
+      "drawable_entity_count": 5460,
+      "layer_entity_counts": {
+        "BOM_GRID": 8,
+        "CENTER": 363,
+        "DIM": 304,
+        "FRAME": 2,
+        "HATCH": 3462,
+        "HIDDEN": 760,
+        "LEADER": 51,
+        "NOTE": 3,
+        "OBJECT_THICK": 228,
+        "TEXT": 246,
+        "TITLE": 33
+      },
+      "source_line_family_counts": {
+        "thick_solid": 263,
+        "thin_solid": 612,
+        "center_dash_dot": 363,
+        "hidden_dashed": 760,
+        "section_hatch": 3462,
+        "dimension": 304,
+        "leader_or_annotation": 305
+      },
+      "explicit_lineweight_count": 0,
+      "bylayer_with_layer_weight_count": 5460,
+      "missing_lineweight_count": 0,
+      "linetype_scale_count": 0,
+      "missing_linetype_scale_count": 5171,
+      "center_hidden_linetype_count": 1123,
+      "center_hidden_linetype_issue_count": 0,
+      "low_contrast_color_count": 0,
+      "low_contrast_color_samples": [],
+      "min_readable_color_distance_from_white": 80.0,
+      "max_readable_color_luminance": 190.0,
+      "issues": []
+    },
+    {
+      "file": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\cad-linework-v1mr6oj4\\DXF-PDF-PNG\\SGB62080T-02_A1_中部槽装配图_参考强化v10版.dxf",
+      "passed": true,
+      "acadver": "AC1015",
+      "headers": {
+        "$LTSCALE": 1.0,
+        "$CELTSCALE": 1.0,
+        "$PSLTSCALE": 0,
+        "$LWDISPLAY": 1
+      },
+      "layer_count": 18,
+      "layers": [
+        {
+          "name": "FRAME",
+          "lineweight": 50,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "OUTLINE",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "CENTER",
+          "lineweight": 25,
+          "linetype": "CENTER",
+          "color": 170,
+          "effective_rgb": [
+            0,
+            0,
+            255
+          ],
+          "color_luminance": 18.41,
+          "color_distance_from_white": 360.62,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "HIDDEN",
+          "lineweight": 25,
+          "linetype": "HIDDEN",
+          "color": 252,
+          "effective_rgb": [
+            102,
+            102,
+            102
+          ],
+          "color_luminance": 102.0,
+          "color_distance_from_white": 265.0,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "DIM",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 172,
+          "effective_rgb": [
+            0,
+            0,
+            165
+          ],
+          "color_luminance": 11.91,
+          "color_distance_from_white": 371.69,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "TEXT",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "ANNO",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "HATCH",
+          "lineweight": 18,
+          "linetype": "CONTINUOUS",
+          "color": 253,
+          "effective_rgb": [
+            153,
+            153,
+            153
+          ],
+          "color_luminance": 153.0,
+          "color_distance_from_white": 176.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "BOM",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "TITLE",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "0",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "Defpoints",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 7,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "BOM_GRID",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 251,
+          "effective_rgb": [
+            101,
+            101,
+            101
+          ],
+          "color_luminance": 101.0,
+          "color_distance_from_white": 266.74,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "OBJECT_THICK",
+          "lineweight": 35,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "OBJECT_THIN",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 251,
+          "effective_rgb": [
+            101,
+            101,
+            101
+          ],
+          "color_luminance": 101.0,
+          "color_distance_from_white": 266.74,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "LEADER",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 94,
+          "effective_rgb": [
+            0,
+            127,
+            0
+          ],
+          "color_luminance": 90.83,
+          "color_distance_from_white": 382.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "NOTE",
+          "lineweight": 18,
+          "linetype": "CONTINUOUS",
+          "color": 251,
+          "effective_rgb": [
+            101,
+            101,
+            101
+          ],
+          "color_luminance": 101.0,
+          "color_distance_from_white": 266.74,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "WELD",
+          "lineweight": 18,
+          "linetype": "CONTINUOUS",
+          "color": 14,
+          "effective_rgb": [
+            127,
+            0,
+            0
+          ],
+          "color_luminance": 27.0,
+          "color_distance_from_white": 382.67,
+          "readable_on_white_plot": true
+        }
+      ],
+      "drawable_entity_count": 7202,
+      "layer_entity_counts": {
+        "CENTER": 441,
+        "DIM": 590,
+        "FRAME": 2,
+        "HATCH": 5475,
+        "HIDDEN": 6,
+        "LEADER": 60,
+        "NOTE": 2,
+        "OBJECT_THICK": 304,
+        "TEXT": 263,
+        "TITLE": 59
+      },
+      "source_line_family_counts": {
+        "thick_solid": 365,
+        "thin_solid": 915,
+        "center_dash_dot": 441,
+        "hidden_dashed": 6,
+        "section_hatch": 5475,
+        "dimension": 590,
+        "leader_or_annotation": 323
+      },
+      "explicit_lineweight_count": 0,
+      "bylayer_with_layer_weight_count": 7202,
+      "missing_lineweight_count": 0,
+      "linetype_scale_count": 0,
+      "missing_linetype_scale_count": 6869,
+      "center_hidden_linetype_count": 447,
+      "center_hidden_linetype_issue_count": 0,
+      "low_contrast_color_count": 0,
+      "low_contrast_color_samples": [],
+      "min_readable_color_distance_from_white": 80.0,
+      "max_readable_color_luminance": 190.0,
+      "issues": []
+    },
+    {
+      "file": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\cad-linework-v1mr6oj4\\DXF-PDF-PNG\\SGB62080T-03_A1_机尾张紧部装配图_参考强化v10版.dxf",
+      "passed": true,
+      "acadver": "AC1015",
+      "headers": {
+        "$LTSCALE": 1.0,
+        "$CELTSCALE": 1.0,
+        "$PSLTSCALE": 0,
+        "$LWDISPLAY": 1
+      },
+      "layer_count": 18,
+      "layers": [
+        {
+          "name": "FRAME",
+          "lineweight": 50,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "OUTLINE",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "CENTER",
+          "lineweight": 25,
+          "linetype": "CENTER",
+          "color": 170,
+          "effective_rgb": [
+            0,
+            0,
+            255
+          ],
+          "color_luminance": 18.41,
+          "color_distance_from_white": 360.62,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "HIDDEN",
+          "lineweight": 25,
+          "linetype": "HIDDEN",
+          "color": 252,
+          "effective_rgb": [
+            102,
+            102,
+            102
+          ],
+          "color_luminance": 102.0,
+          "color_distance_from_white": 265.0,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "DIM",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 172,
+          "effective_rgb": [
+            0,
+            0,
+            165
+          ],
+          "color_luminance": 11.91,
+          "color_distance_from_white": 371.69,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "TEXT",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "ANNO",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "HATCH",
+          "lineweight": 18,
+          "linetype": "CONTINUOUS",
+          "color": 253,
+          "effective_rgb": [
+            153,
+            153,
+            153
+          ],
+          "color_luminance": 153.0,
+          "color_distance_from_white": 176.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "BOM",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "TITLE",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "0",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "Defpoints",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 7,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "BOM_GRID",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 251,
+          "effective_rgb": [
+            101,
+            101,
+            101
+          ],
+          "color_luminance": 101.0,
+          "color_distance_from_white": 266.74,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "OBJECT_THICK",
+          "lineweight": 35,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "OBJECT_THIN",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 251,
+          "effective_rgb": [
+            101,
+            101,
+            101
+          ],
+          "color_luminance": 101.0,
+          "color_distance_from_white": 266.74,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "LEADER",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 94,
+          "effective_rgb": [
+            0,
+            127,
+            0
+          ],
+          "color_luminance": 90.83,
+          "color_distance_from_white": 382.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "NOTE",
+          "lineweight": 18,
+          "linetype": "CONTINUOUS",
+          "color": 251,
+          "effective_rgb": [
+            101,
+            101,
+            101
+          ],
+          "color_luminance": 101.0,
+          "color_distance_from_white": 266.74,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "WELD",
+          "lineweight": 18,
+          "linetype": "CONTINUOUS",
+          "color": 14,
+          "effective_rgb": [
+            127,
+            0,
+            0
+          ],
+          "color_luminance": 27.0,
+          "color_distance_from_white": 382.67,
+          "readable_on_white_plot": true
+        }
+      ],
+      "drawable_entity_count": 13398,
+      "layer_entity_counts": {
+        "CENTER": 367,
+        "DIM": 243,
+        "FRAME": 2,
+        "HATCH": 12177,
+        "HIDDEN": 116,
+        "LEADER": 48,
+        "NOTE": 2,
+        "OBJECT_THICK": 215,
+        "TEXT": 185,
+        "TITLE": 43
+      },
+      "source_line_family_counts": {
+        "thick_solid": 260,
+        "thin_solid": 478,
+        "center_dash_dot": 367,
+        "hidden_dashed": 116,
+        "section_hatch": 12177,
+        "dimension": 243,
+        "leader_or_annotation": 233
+      },
+      "explicit_lineweight_count": 0,
+      "bylayer_with_layer_weight_count": 13398,
+      "missing_lineweight_count": 0,
+      "linetype_scale_count": 0,
+      "missing_linetype_scale_count": 13186,
+      "center_hidden_linetype_count": 483,
+      "center_hidden_linetype_issue_count": 0,
+      "low_contrast_color_count": 0,
+      "low_contrast_color_samples": [],
+      "min_readable_color_distance_from_white": 80.0,
+      "max_readable_color_luminance": 190.0,
+      "issues": []
+    },
+    {
+      "file": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\cad-linework-v1mr6oj4\\DXF-PDF-PNG\\SGB62080T-04_A2_刮板零件图_参考强化v10版.dxf",
+      "passed": true,
+      "acadver": "AC1015",
+      "headers": {
+        "$LTSCALE": 1.0,
+        "$CELTSCALE": 1.0,
+        "$PSLTSCALE": 0,
+        "$LWDISPLAY": 1
+      },
+      "layer_count": 18,
+      "layers": [
+        {
+          "name": "FRAME",
+          "lineweight": 50,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "OUTLINE",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "CENTER",
+          "lineweight": 25,
+          "linetype": "CENTER",
+          "color": 170,
+          "effective_rgb": [
+            0,
+            0,
+            255
+          ],
+          "color_luminance": 18.41,
+          "color_distance_from_white": 360.62,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "HIDDEN",
+          "lineweight": 25,
+          "linetype": "HIDDEN",
+          "color": 252,
+          "effective_rgb": [
+            102,
+            102,
+            102
+          ],
+          "color_luminance": 102.0,
+          "color_distance_from_white": 265.0,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "DIM",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 172,
+          "effective_rgb": [
+            0,
+            0,
+            165
+          ],
+          "color_luminance": 11.91,
+          "color_distance_from_white": 371.69,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "TEXT",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "ANNO",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "HATCH",
+          "lineweight": 18,
+          "linetype": "CONTINUOUS",
+          "color": 253,
+          "effective_rgb": [
+            153,
+            153,
+            153
+          ],
+          "color_luminance": 153.0,
+          "color_distance_from_white": 176.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "BOM",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "TITLE",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "0",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "Defpoints",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 7,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "BOM_GRID",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 251,
+          "effective_rgb": [
+            101,
+            101,
+            101
+          ],
+          "color_luminance": 101.0,
+          "color_distance_from_white": 266.74,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "OBJECT_THICK",
+          "lineweight": 35,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "OBJECT_THIN",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 251,
+          "effective_rgb": [
+            101,
+            101,
+            101
+          ],
+          "color_luminance": 101.0,
+          "color_distance_from_white": 266.74,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "LEADER",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 94,
+          "effective_rgb": [
+            0,
+            127,
+            0
+          ],
+          "color_luminance": 90.83,
+          "color_distance_from_white": 382.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "NOTE",
+          "lineweight": 18,
+          "linetype": "CONTINUOUS",
+          "color": 251,
+          "effective_rgb": [
+            101,
+            101,
+            101
+          ],
+          "color_luminance": 101.0,
+          "color_distance_from_white": 266.74,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "WELD",
+          "lineweight": 18,
+          "linetype": "CONTINUOUS",
+          "color": 14,
+          "effective_rgb": [
+            127,
+            0,
+            0
+          ],
+          "color_luminance": 27.0,
+          "color_distance_from_white": 382.67,
+          "readable_on_white_plot": true
+        }
+      ],
+      "drawable_entity_count": 3904,
+      "layer_entity_counts": {
+        "CENTER": 103,
+        "DIM": 89,
+        "FRAME": 2,
+        "HATCH": 3540,
+        "HIDDEN": 10,
+        "LEADER": 18,
+        "NOTE": 2,
+        "OBJECT_THICK": 43,
+        "TEXT": 85,
+        "TITLE": 12
+      },
+      "source_line_family_counts": {
+        "thick_solid": 57,
+        "thin_solid": 194,
+        "center_dash_dot": 103,
+        "hidden_dashed": 10,
+        "section_hatch": 3540,
+        "dimension": 89,
+        "leader_or_annotation": 103
+      },
+      "explicit_lineweight_count": 0,
+      "bylayer_with_layer_weight_count": 3904,
+      "missing_lineweight_count": 0,
+      "linetype_scale_count": 0,
+      "missing_linetype_scale_count": 3806,
+      "center_hidden_linetype_count": 113,
+      "center_hidden_linetype_issue_count": 0,
+      "low_contrast_color_count": 0,
+      "low_contrast_color_samples": [],
+      "min_readable_color_distance_from_white": 80.0,
+      "max_readable_color_luminance": 190.0,
+      "issues": []
+    },
+    {
+      "file": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\cad-linework-v1mr6oj4\\DXF-PDF-PNG\\SGB62080T-05_A2_链轮轴组件零件图_参考强化v10版.dxf",
+      "passed": true,
+      "acadver": "AC1015",
+      "headers": {
+        "$LTSCALE": 1.0,
+        "$CELTSCALE": 1.0,
+        "$PSLTSCALE": 0,
+        "$LWDISPLAY": 1
+      },
+      "layer_count": 18,
+      "layers": [
+        {
+          "name": "FRAME",
+          "lineweight": 50,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "OUTLINE",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "CENTER",
+          "lineweight": 25,
+          "linetype": "CENTER",
+          "color": 170,
+          "effective_rgb": [
+            0,
+            0,
+            255
+          ],
+          "color_luminance": 18.41,
+          "color_distance_from_white": 360.62,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "HIDDEN",
+          "lineweight": 25,
+          "linetype": "HIDDEN",
+          "color": 252,
+          "effective_rgb": [
+            102,
+            102,
+            102
+          ],
+          "color_luminance": 102.0,
+          "color_distance_from_white": 265.0,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "DIM",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 172,
+          "effective_rgb": [
+            0,
+            0,
+            165
+          ],
+          "color_luminance": 11.91,
+          "color_distance_from_white": 371.69,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "TEXT",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "ANNO",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "HATCH",
+          "lineweight": 18,
+          "linetype": "CONTINUOUS",
+          "color": 253,
+          "effective_rgb": [
+            153,
+            153,
+            153
+          ],
+          "color_luminance": 153.0,
+          "color_distance_from_white": 176.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "BOM",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "TITLE",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "0",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "Defpoints",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 7,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "BOM_GRID",
+          "lineweight": 13,
+          "linetype": "CONTINUOUS",
+          "color": 251,
+          "effective_rgb": [
+            101,
+            101,
+            101
+          ],
+          "color_luminance": 101.0,
+          "color_distance_from_white": 266.74,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "OBJECT_THICK",
+          "lineweight": 35,
+          "linetype": "CONTINUOUS",
+          "color": 250,
+          "effective_rgb": [
+            0,
+            0,
+            0
+          ],
+          "color_luminance": 0.0,
+          "color_distance_from_white": 441.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "OBJECT_THIN",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 251,
+          "effective_rgb": [
+            101,
+            101,
+            101
+          ],
+          "color_luminance": 101.0,
+          "color_distance_from_white": 266.74,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "LEADER",
+          "lineweight": 25,
+          "linetype": "CONTINUOUS",
+          "color": 94,
+          "effective_rgb": [
+            0,
+            127,
+            0
+          ],
+          "color_luminance": 90.83,
+          "color_distance_from_white": 382.67,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "NOTE",
+          "lineweight": 18,
+          "linetype": "CONTINUOUS",
+          "color": 251,
+          "effective_rgb": [
+            101,
+            101,
+            101
+          ],
+          "color_luminance": 101.0,
+          "color_distance_from_white": 266.74,
+          "readable_on_white_plot": true
+        },
+        {
+          "name": "WELD",
+          "lineweight": 18,
+          "linetype": "CONTINUOUS",
+          "color": 14,
+          "effective_rgb": [
+            127,
+            0,
+            0
+          ],
+          "color_luminance": 27.0,
+          "color_distance_from_white": 382.67,
+          "readable_on_white_plot": true
+        }
+      ],
+      "drawable_entity_count": 5876,
+      "layer_entity_counts": {
+        "BOM_GRID": 8,
+        "CENTER": 278,
+        "DIM": 330,
+        "FRAME": 2,
+        "HATCH": 3984,
+        "HIDDEN": 718,
+        "LEADER": 81,
+        "NOTE": 1,
+        "OBJECT_THICK": 188,
+        "TEXT": 239,
+        "TITLE": 47
+      },
+      "source_line_family_counts": {
+        "thick_solid": 237,
+        "thin_solid": 659,
+        "center_dash_dot": 278,
+        "hidden_dashed": 718,
+        "section_hatch": 3984,
+        "dimension": 330,
+        "leader_or_annotation": 328
+      },
+      "explicit_lineweight_count": 0,
+      "bylayer_with_layer_weight_count": 5876,
+      "missing_lineweight_count": 0,
+      "linetype_scale_count": 0,
+      "missing_linetype_scale_count": 5594,
+      "center_hidden_linetype_count": 996,
+      "center_hidden_linetype_issue_count": 0,
+      "low_contrast_color_count": 0,
+      "low_contrast_color_samples": [],
+      "min_readable_color_distance_from_white": 80.0,
+      "max_readable_color_luminance": 190.0,
+      "issues": []
+    }
+  ]
+}

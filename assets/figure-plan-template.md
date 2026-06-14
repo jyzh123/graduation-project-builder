@@ -61,6 +61,10 @@
 ## Acceptance Plan
 - pre-insertion checks:
 - post-insertion checks:
+- post-caption body style verdict:
+- post-caption label-prefix leakage verdict:
+- caption sibling contamination audit path:
+- body donor paragraph evidence:
 - rendered-page target:
 - review evidence record paths:
 - dense-zone crop evidence paths:

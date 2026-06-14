@@ -207,6 +207,10 @@ Verify:
 - page numbers align
 - no stale or duplicate TOC blocks remain
 
+## 6A. External Format Report Review
+
+When a supplied format report names a surface, review that surface as gate-required even if the local task card did not originally mark it touched. The class review must include report-ledger rows and final evidence for structure order, TOC entries, front-matter spacing, headers, footers, page numbers, table cells, captions, headings, references, and acknowledgement/conclusion titles when those rows appear in the report. Report reminders that require author judgement, such as abstract length, must be dispositioned separately and must not be silently rewritten by a format-only repair.
+
 ## 7. Inspection Order
 
 Use this order by default:

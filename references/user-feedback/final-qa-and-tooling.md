@@ -50,6 +50,8 @@ Use this file for durable final-review, render-verification, abstract, paginatio
 - A thesis with known abnormal blank pages is incomplete even if all other format classes look acceptable.
 - Page references must remain aligned and readable.
 - Heading lines must not break or wrap abnormally after the repair.
+- A near-empty page immediately before the references opener is only acceptable when the tail-block pagination contract and rendered page map explicitly prove it is the intended body-to-references boundary.
+- Otherwise, treat that page as a blank-artifact failure and repair the pagination root cause instead of white-listing it by default.
 
 ### QA-FINAL-005 (legacy 34). Final PDF Page Review Is Mandatory (Mandatory)
 
@@ -562,6 +564,7 @@ Render Review Page-Number Distinction Detail
 - If rendered body pages show internal bookmark names, helper text, or field-display artifacts such as `cite_ref_1`, `bookmark_3`, `HYPERLINK`, or similar internal identifiers near citation markers, the citation task has failed.
 - Do not accept the manuscript merely because the DOCX package contains hyperlinks or bookmarks.
 - The accepted visible result is that only the citation marker itself appears to the reader.
+- Final QA must consume the dedicated citation-anchor pollution audit and reject missing, stale, or failing reports. The report must scan all DOCX visible text parts and the rendered PDF text when a PDF is delivered.
 
 ### QA-FINAL-042 (legacy 108). Runtime Screenshot Family Must Be Route-Verified During Final QA (Mandatory)
 
@@ -801,3 +804,18 @@ Render Review Page-Number Distinction Detail
 - The `content mutation machine-vision verdict` must be pass-shaped and must name the reviewed exact DOCX/PDF path, page images, touched paragraph/page ids, body-vs-heading comparison, and final body-contamination verdict.
 - A final acceptance record that says `XML only`, `PDF export only`, `page count only`, `manual visual only`, `sampled-only`, `not checked`, `no machine vision`, or any equivalent substitute proof for this surface is failed evidence.
 - Multi-agent, sequential-fallback, or single-agent audit cannot accept worker claims for content expansion unless the audit parses the rendered machine-vision evidence and confirms the format lane reviewed the post-mutation exact output.
+
+### QA-FINAL-059. Mechanical Design Thesis Profile Must Close As One Gate (Mandatory)
+
+- For a mechanical, structural, exchanger, crane, conveyor, reducer, fixture, tooling, or similar engineering-design whole-thesis rebuild, final QA must lock one effective profile before handoff.
+- Unless the current user, task book, or school rule sets a different target, the effective mechanical profile is:
+  - visible manuscript length at least 20000 Chinese-character/word units
+  - bibliography count at least 60 substantive entries
+  - foreign/English bibliography count at least 10
+  - zero label-only or content-missing bibliography entries
+  - at least 200 real Word equation objects in the body calculation/design chapters for CAD/mechanical drawing theses, with body formula count reported separately from total formula count
+  - body figures in the main narrative, not only drawings in the appendix
+  - all final CAD sheet renders embedded in the appendix and bound to the exact final CAD package hashes
+- The profile must be checked as a coupled gate. Passing CAD appendix binding does not satisfy body-figure coverage; passing total formula count does not satisfy body formula placement; passing reference count does not satisfy foreign-reference or empty-entry checks.
+- The bibliography audit command must carry the effective thresholds, for example `scripts/audit_bibliography_school_requirements.py --min-reference-count 60 --min-foreign-count 10`, and the report must bind those thresholds to the exact final DOCX SHA256.
+- The acceptance record must report the effective profile, length evidence, bibliography audit evidence, formula-object/body-formula evidence, body-figure evidence, CAD appendix binding evidence, and any project-specific override. A handoff that lists these checks separately but omits the coupled profile verdict is incomplete.

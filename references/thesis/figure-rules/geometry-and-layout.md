@@ -28,6 +28,7 @@ Every connector line must obey all of these rules:
 - it must end at a real target node boundary
 - it must be a boundary-bound draw.io edge with real visible `source` and `target` nodes, not a free line, center-to-center line, invisible router point, or source/targetless manual segment
 - it must use orthogonal routing with right-angle bends; in draw.io terms use `edgeStyle=orthogonalEdgeStyle` with `rounded=0`, and redraw any connector that needs a diagonal or curved leg
+- it must follow the vertical-first connector preference: when two related nodes can be aligned in one column, use a single vertical connector; use horizontal branch lines only for real sibling fan-out, and avoid extra bends or detours
 - it must not extend beyond the intended target or point into empty space
 - it must not terminate at a location where no node or relation symbol exists
 - it must not cross through boxes, diamonds, ellipses, or text unless the sample explicitly requires that layout
@@ -42,6 +43,8 @@ For thesis flowcharts and structural figures, connector geometry is a hard accep
 - A connector must not borrow a box border, page edge, or container frame as a routing lane.
 - A connector must be drawn as an orthogonal draw.io edge between visible nodes. Freehand lines, center-to-center strokes, invisible point routers, and source/targetless `mxPoint` routes are rejected.
 - Every bend must be a right angle. If a route appears to need a diagonal, curved, or rounded corner to avoid another node, the layout must be expanded or rearranged instead.
+- Prefer vertical straight connectors whenever the source and target can be aligned without collision. A connector that bends only because the nodes were placed off-column is a layout defect; relayout the nodes first instead of adding an elbow route.
+- For module trees, architecture trees, flowcharts, and layered structure diagrams, minimize bend count. A simple vertical parent-child line is preferred over a multi-segment route; a horizontal segment is acceptable for a sibling branch, but chained elbows, U-shaped routes, and long bypass paths are rejected unless the task card records why a vertical route is impossible.
 - When an edge cannot connect boundary-to-boundary without crossing a frame, the figure must be relaid out before export; do not hide the violation by making the line thinner, moving it behind the box, or relying on arrowheads.
 
 ### Separation Rule
@@ -63,9 +66,10 @@ After drawing a structural figure, explicitly verify:
 1. every line has a valid destination
 2. every branch corresponds to a real node or relation symbol
 3. every connector is a boundary-to-boundary orthogonal edge with right-angle bends
-4. no connector visually collides with text or shape borders
-5. no connector route crosses the interior of any unrelated frame, box, diamond, ellipse, or text node
-6. the final geometry still matches the stored sample style
+4. every parent-child relation that can be column-aligned uses a vertical connector instead of an elbow route
+5. no connector visually collides with text or shape borders
+6. no connector route crosses the interior of any unrelated frame, box, diamond, ellipse, or text node
+7. the final geometry still matches the stored sample style
 
 If any of these checks fail, the figure must be redrawn or relaid out before insertion.
 
@@ -221,6 +225,7 @@ The canonical geometry check must reject:
 - connectors without real visible source and target node ids
 - connectors that use invisible point/router vertices to route through or around nodes
 - connectors that omit `edgeStyle=orthogonalEdgeStyle` or use rounded, curved, diagonal, or freehand routing
+- connectors that use avoidable bends when a vertical parent-child line or a simpler sibling branch would communicate the same relationship
 - source/targetless line segments that substitute for real node-to-node edges
 - any connector path that crosses the interior of a non-endpoint box, diamond, ellipse, unrelated group frame, or text-bearing node
 
@@ -315,6 +320,10 @@ The following constraints are mandatory for thesis ER diagrams, use-case diagram
 - reserve visible outer margins on all four sides of the image canvas
 - no box, ellipse, diamond, line, arrowhead, text, or cardinality label may touch the canvas edge
 - do not rely on Word scaling to rescue a near-edge layout; redraw first, insert later
+- This canvas-edge rule is for thesis diagrams and does not weaken the mechanical CAD sheet-frame rule in `baseline-and-sourcing.md`: formal CAD sheet renders must be audited against the detected drawing frame, and the area outside that frame must contain zero independent ink components.
+- For mechanical CAD sheet renders, an inner safe margin is mandatory as well. Business view geometry, leaders, leader text, dimensions, detail panels, tables, and notes must stay out of the reserved inner safe strip even when the outer frame still contains them. Clipping, export padding, or Word scaling do not make a near-edge placement acceptable.
+- For mechanical CAD sheet renders, content-overlap is a separate hard failure from boundary overflow. Main views, detail frames, tables, note blocks, title blocks, dimension bands, leader zones, and balloon callouts must each have their own visible envelope; unrelated envelopes may not overlap, even partially, unless the owner map explicitly records the overlap as part of the same owned detail group. The exact literal keywords `content-overlap audit`, `view-view overlap`, `detail-frame-main-view overlap`, `table-text/grid collision`, `dimension-line table-zone intrusion`, `leader-line view crossing`, `balloon geometry collision`, and `bbox-helper-envelope audit` must remain present in the routed mechanical CAD rule text and validator-facing documentation.
+- A rendered pass that only proves the outer frame and inner safe strip are clear is incomplete if content envelopes still collide. If a view box crosses a table zone, a leader enters a detail frame, a dimension line slices a note block, or a balloon overlaps another owned view envelope, the figure must be relaid out before acceptance.
 
 ### Figure Constraint C. Text Containment Rule
 

@@ -34,6 +34,9 @@ W = f"{{{W_NS}}}"
 R = f"{{{R_NS}}}"
 A = f"{{{A_NS}}}"
 NS = {"w": W_NS, "r": R_NS, "a": A_NS}
+BODY_CHAPTER_RE = re.compile(r"^\s*(?:第[一二三四五六七八九十百零\d]+章|[1-9]\s+)")
+BACK_MATTER_RE = re.compile(r"^\s*(?:参考文献|附录|致谢)(?:\s|$|[A-Za-z0-9一二三四五六七八九十])")
+APPENDIX_CAPTION_RE = re.compile(r"^\s*(?:附图|附表)\s*[A-Za-z0-9一二三四五六七八九十]*[.．、-]")
 STRUCTURAL_FIGURE_TOKENS = (
     "结构图",
     "流程图",
@@ -64,6 +67,80 @@ def emu_to_cm(value: int) -> float:
 
 def paragraph_text(paragraph: ET.Element) -> str:
     return "".join(node.text or "" for node in paragraph.findall(".//w:t", NS))
+
+
+def _paragraph_style(paragraph: ET.Element) -> str:
+    pstyle = paragraph.find(".//w:pPr/w:pStyle", NS)
+    if pstyle is None:
+        return ""
+    return pstyle.attrib.get(f"{W}val", "")
+
+
+def _is_toc_cache_paragraph(paragraph: ET.Element, text: str, style: str) -> bool:
+    """Identify visible TOC cache rows even when a template stores them as Normal.
+
+    Some official templates keep TOC entries visually formatted with direct
+    paragraph properties instead of TOC1/TOC2 styles. Those rows can contain
+    chapter/back-matter text plus a cached page number, so body-boundary scans
+    must ignore them or body figures are misclassified as back matter.
+    """
+    if style.upper().startswith("TOC"):
+        return True
+    for instr in paragraph.findall(".//w:instrText", NS):
+        if "TOC" in (instr.text or "").upper():
+            return True
+    if paragraph.find(".//w:tab", NS) is not None and text.rstrip()[-1:].isdigit():
+        return True
+    return False
+
+
+def body_scope_bounds(docx_path: Path) -> dict[str, int | None]:
+    """Return body/back-matter paragraph bounds using the main document XML.
+
+    The figure rows returned by thesis_figure_contract intentionally include
+    appendix surfaces so appendix CAD sheets can be audited elsewhere. This
+    audit's body-figure gate must not count those appendix drawings.
+    """
+    try:
+        with zipfile.ZipFile(docx_path) as zf:
+            root = ET.fromstring(zf.read("word/document.xml"))
+    except Exception:
+        return {"body_start_paragraph_index": None, "back_matter_start_paragraph_index": None}
+    body = root.find(f".//{W}body")
+    if body is None:
+        return {"body_start_paragraph_index": None, "back_matter_start_paragraph_index": None}
+    body_start: int | None = None
+    back_start: int | None = None
+    paragraphs = body.findall(f".//{W}p")
+    for index, paragraph in enumerate(paragraphs, start=1):
+        text = paragraph_text(paragraph).strip()
+        style = _paragraph_style(paragraph)
+        if text and _is_toc_cache_paragraph(paragraph, text, style):
+            continue
+        if body_start is None and text and BODY_CHAPTER_RE.match(text):
+            body_start = index
+            continue
+        if body_start is not None and text and BACK_MATTER_RE.match(text):
+            back_start = index
+            break
+    return {
+        "body_start_paragraph_index": body_start,
+        "back_matter_start_paragraph_index": back_start,
+    }
+
+
+def is_body_figure_scope(row: dict[str, Any], bounds: dict[str, int | None]) -> bool:
+    paragraph_index = int(row.get("paragraph_index") or 0)
+    text = str(row.get("text") or "").strip()
+    body_start = bounds.get("body_start_paragraph_index")
+    back_start = bounds.get("back_matter_start_paragraph_index")
+    if body_start is not None and paragraph_index < int(body_start):
+        return False
+    if back_start is not None and paragraph_index >= int(back_start):
+        return False
+    if BACK_MATTER_RE.match(text) or APPENDIX_CAPTION_RE.match(text):
+        return False
+    return True
 
 
 def paragraph_relationship_ids(paragraph: ET.Element) -> list[str]:
@@ -156,10 +233,44 @@ def nearest_text(rows: list[dict[str, Any]], start: int, step: int) -> str:
     return ""
 
 
+def media_sha_set(media_signature: str) -> set[str]:
+    values: set[str] = set()
+    for item in (media_signature or "").split(";"):
+        parts = item.split("|")
+        if len(parts) >= 3 and parts[-1].strip():
+            values.add(parts[-1].strip().lower())
+    return values
+
+
+def drawing_matches_template_donor(final_drawing: dict[str, Any], template_drawing: dict[str, Any]) -> bool:
+    """Match front-matter donor drawings while ignoring local relationship ids."""
+    for field in ("story_part", "paragraph_index", "drawing_kind", "extent_signature"):
+        if str(final_drawing.get(field, "")) != str(template_drawing.get(field, "")):
+            return False
+    final_hashes = media_sha_set(str(final_drawing.get("media_signature", "")))
+    template_hashes = media_sha_set(str(template_drawing.get("media_signature", "")))
+    if final_hashes or template_hashes:
+        return bool(final_hashes) and final_hashes == template_hashes
+    return str(final_drawing.get("sha256", "")) == str(template_drawing.get("sha256", ""))
+
+
+def front_matter_drawings_preserved_from_template(
+    final_rows: dict[str, dict[str, Any]],
+    template_drawings: dict[str, dict[str, Any]],
+) -> bool:
+    if not final_rows or not template_drawings:
+        return False
+    for final_drawing in final_rows.values():
+        if not any(drawing_matches_template_donor(final_drawing, template_drawing) for template_drawing in template_drawings.values()):
+            return False
+    return True
+
+
 def audit_figure_extents(
     final_docx: Path,
     *,
     source_docx: Path | None = None,
+    template_docx: Path | None = None,
     max_width_cm: float = 16.0,
     max_height_cm: float = 16.0,
     min_readable_width_cm: float = 8.0,
@@ -169,13 +280,22 @@ def audit_figure_extents(
     min_text_width_ratio: float = 0.95,
     require_explanations: bool = False,
     min_explanation_chars: int = 25,
+    min_body_figure_count: int | None = None,
 ) -> dict[str, object]:
     rows = docx_body_figure_paragraphs(final_docx)
+    scope_bounds = body_scope_bounds(final_docx)
+    for row in rows:
+        row["body_scope"] = is_body_figure_scope(row, scope_bounds)
     rel_ids_by_para = paragraph_relationship_id_map(final_docx)
     media_manifest = media_by_rid(final_docx)
     text_width_emu = docx_text_width_emu(final_docx) or 0
     text_height_emu = docx_text_height_emu(final_docx) or 0
     source_drawings = docx_drawing_object_manifest(source_docx) if source_docx is not None and source_docx.exists() else {}
+    template_drawings = (
+        docx_drawing_object_manifest(template_docx)
+        if template_docx is not None and template_docx.exists()
+        else {}
+    )
     final_drawings = docx_drawing_object_manifest(final_docx)
 
     issues: list[str] = []
@@ -190,13 +310,17 @@ def audit_figure_extents(
     bottom_blank_like_count = 0
     missing_caption_count = 0
     missing_explanation_count = 0
+    template_preserved_front_matter_count = 0
+    non_body_figure_count = 0
+    back_matter_figure_count = 0
+    back_matter_caption_count = 0
 
     paragraph_positions = {int(row["paragraph_index"]): pos for pos, row in enumerate(rows)}
     for row in rows:
         text = str(row.get("text") or "")
-        if row.get("is_caption") and not row.get("front_matter_drawing"):
-            formal_caption_count += 1
-        elif has_docx_figure_reference_signal(text) and not is_docx_figure_caption(text):
+        if row.get("is_caption") and not row.get("body_scope"):
+            back_matter_caption_count += 1
+        elif row.get("body_scope") and has_docx_figure_reference_signal(text) and not is_docx_figure_caption(text):
             narrative_reference_count += 1
 
     for row in rows:
@@ -213,23 +337,35 @@ def audit_figure_extents(
                 continue
             real_front_matter_count += 1
             final_key_prefix = f"word/document.xml#p{paragraph_index}#"
-            preserved = all(
-                source_drawings.get(key) == value
-                for key, value in final_drawings.items()
-                if key.startswith(final_key_prefix)
-            )
+            final_rows = {key: value for key, value in final_drawings.items() if key.startswith(final_key_prefix)}
+            preserved = all(source_drawings.get(key) == value for key, value in final_rows.items())
+            if not preserved and front_matter_drawings_preserved_from_template(final_rows, template_drawings):
+                preserved = True
+                template_preserved_front_matter_count += 1
             if not preserved:
                 issues.append(f"front-matter drawing is not source-preserved: paragraph {paragraph_index}")
+            continue
+        if not row.get("body_scope"):
+            if is_real_drawing:
+                non_body_figure_count += 1
+                if not row.get("front_matter_drawing"):
+                    back_matter_figure_count += 1
             continue
         if not is_real_drawing:
             continue
 
         pos = paragraph_positions.get(paragraph_index, -1)
         next_row = rows[pos + 1] if pos >= 0 and pos + 1 < len(rows) else None
-        caption = str(next_row.get("text") or "") if next_row and next_row.get("is_caption") else ""
+        caption = (
+            str(next_row.get("text") or "")
+            if next_row and next_row.get("is_caption") and next_row.get("body_scope")
+            else ""
+        )
         if not caption:
             missing_caption_count += 1
             issues.append(f"body figure paragraph {paragraph_index} lacks an immediate formal caption")
+        else:
+            formal_caption_count += 1
 
         previous_text = nearest_text(rows, pos - 1, -1) if pos >= 0 else ""
         following_text = nearest_text(rows, pos + 2, 1) if caption and pos >= 0 else nearest_text(rows, pos + 1, 1)
@@ -332,6 +468,11 @@ def audit_figure_extents(
             "body figure/caption count mismatch after formal-caption filtering: "
             f"body_figures={body_figure_count} formal_captions={formal_caption_count}"
         )
+    if min_body_figure_count is not None and body_figure_count < max(0, min_body_figure_count):
+        issues.append(
+            "body figure count below required minimum: "
+            f"body_figures={body_figure_count} min_body_figure_count={max(0, min_body_figure_count)}"
+        )
 
     return {
         "schema": "graduation-project-builder.figure-extents-audit.v2",
@@ -339,6 +480,8 @@ def audit_figure_extents(
         "final_docx_sha256": sha256_file(final_docx),
         "source_docx_path": str(source_docx) if source_docx else "",
         "source_docx_sha256": sha256_file(source_docx) if source_docx is not None and source_docx.exists() else "",
+        "template_docx_path": str(template_docx) if template_docx else "",
+        "template_docx_sha256": sha256_file(template_docx) if template_docx is not None and template_docx.exists() else "",
         "max_width_cm": max_width_cm,
         "max_height_cm": max_height_cm,
         "min_readable_width_cm": min_readable_width_cm,
@@ -349,11 +492,17 @@ def audit_figure_extents(
         "text_width_emu": text_width_emu,
         "text_width_cm": emu_to_cm(text_width_emu) if text_width_emu else 0.0,
         "text_height_emu": text_height_emu,
+        "body_start_paragraph_index": scope_bounds.get("body_start_paragraph_index"),
+        "back_matter_start_paragraph_index": scope_bounds.get("back_matter_start_paragraph_index"),
         "body_figure_count": body_figure_count,
+        "non_body_figure_count": non_body_figure_count,
+        "back_matter_figure_count": back_matter_figure_count,
         "formal_caption_count": formal_caption_count,
+        "back_matter_caption_count": back_matter_caption_count,
         "narrative_figure_reference_count": narrative_reference_count,
         "front_matter_real_drawing_count": real_front_matter_count,
         "front_matter_zero_extent_drawing_count": zero_extent_front_matter_count,
+        "template_preserved_front_matter_count": template_preserved_front_matter_count,
         "oversized_count": oversized_count,
         "undersized_count": undersized_count,
         "paragraph_margin_width_drift_count": paragraph_margin_width_drift_count,
@@ -361,6 +510,7 @@ def audit_figure_extents(
         "missing_caption_count": missing_caption_count,
         "missing_explanation_count": missing_explanation_count,
         "require_explanations": require_explanations,
+        "min_body_figure_count": min_body_figure_count,
         "figures": figures,
         "issues": issues,
         "passed": not issues,
@@ -435,12 +585,15 @@ def main() -> int:
     parser.add_argument("--min-text-width-ratio", type=float, default=0.95)
     parser.add_argument("--require-explanations", action="store_true")
     parser.add_argument("--min-explanation-chars", type=int, default=25)
+    parser.add_argument("--min-body-figure-count", type=int)
     args = parser.parse_args()
 
     source_docx = Path(args.source_docx).resolve() if args.source_docx else None
+    template_docx = Path(args.template_docx).resolve() if args.template_docx else None
     payload = audit_figure_extents(
         Path(args.final_docx).resolve(),
         source_docx=source_docx,
+        template_docx=template_docx,
         max_width_cm=args.max_width_cm,
         max_height_cm=args.max_height_cm,
         min_readable_width_cm=args.min_readable_width_cm,
@@ -450,8 +603,9 @@ def main() -> int:
         min_text_width_ratio=args.min_text_width_ratio,
         require_explanations=args.require_explanations,
         min_explanation_chars=args.min_explanation_chars,
+        min_body_figure_count=args.min_body_figure_count,
     )
-    text = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+    text = json.dumps(payload, ensure_ascii=True, indent=2) + "\n"
     if args.report_json:
         report = Path(args.report_json).resolve()
         report.parent.mkdir(parents=True, exist_ok=True)
@@ -467,7 +621,7 @@ def main() -> int:
                     rendered_evidence_path=str(Path(args.figure_rendered_evidence_path).resolve()) if args.figure_rendered_evidence_path else "",
                     template_docx=str(Path(args.template_docx).resolve()) if args.template_docx else "",
                 ),
-                ensure_ascii=False,
+                ensure_ascii=True,
                 indent=2,
             )
             + "\n",

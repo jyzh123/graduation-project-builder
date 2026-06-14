@@ -26,7 +26,9 @@ TEXT_PARTS = {
 FONT_ATTR_RE = re.compile(r'w:(?:ascii|hAnsi|eastAsia|cs|name|val)="([^"]+)"')
 VISIBLE_TEXT_RE = re.compile(r"<w:t[^>]*>(.*?)</w:t>", re.DOTALL)
 WESTERN_REFERENCE_CHARS = set("[](){}.,;:/\\-+_=&%#@'\"<>")
-REFERENCE_ENTRY_RE = re.compile(r"^\s*\[(\d{1,3})\]")
+REFERENCE_ENTRY_RE = re.compile(r"^\s*(?:\[(\d{1,3})\]|(\d{1,3})[\.\u3001])\s*\S")
+BIBLIOGRAPHY_VISIBLE_LABEL_RE = re.compile(r"^\s*(?:\[\s*\d+\s*\]|\d+[\.\u3001])")
+MIN_BIBLIOGRAPHY_ENTRY_CONTENT_CHARS = 8
 FONT_FAMILY_KEYS = ("eastAsia", "ascii", "hAnsi", "cs")
 FONT_THEME_KEYS = ("eastAsiaTheme", "asciiTheme", "hAnsiTheme", "csTheme")
 CHINESE_FONT_SIZE_HALF_POINTS = {
@@ -137,11 +139,19 @@ def is_reference_entry_text(text: str) -> bool:
     return bool(REFERENCE_ENTRY_RE.match(text or ""))
 
 
+def is_reference_label_only_text(text: str) -> bool:
+    if not BIBLIOGRAPHY_VISIBLE_LABEL_RE.match(text or ""):
+        return False
+    content = BIBLIOGRAPHY_VISIBLE_LABEL_RE.sub("", text or "", count=1)
+    content = re.sub(r"^\s*[\.\u3001\u3002\]\)）:：,，;；-]+", "", content)
+    return len(re.sub(r"\s+", "", content)) < MIN_BIBLIOGRAPHY_ENTRY_CONTENT_CHARS
+
+
 def reference_entry_number(text: str) -> int | None:
     match = REFERENCE_ENTRY_RE.match(text or "")
     if not match:
         return None
-    return int(match.group(1))
+    return int(match.group(1) or match.group(2))
 
 
 def is_bibliography_heading(text: str) -> bool:
@@ -229,6 +239,34 @@ def bibliography_entry_paragraph_elements(root: ET.Element) -> list[tuple[int, E
         return []
     candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
     return candidates[0][2]
+
+
+def bibliography_label_only_paragraphs(docx_path: Path) -> list[tuple[int, str]]:
+    with zipfile.ZipFile(docx_path) as zf:
+        root = ET.fromstring(zf.read("word/document.xml"))
+    entry_indexes = {
+        index for index, _paragraph in bibliography_entry_paragraph_elements(root)
+    }
+    hits: list[tuple[int, str]] = []
+    inside_bibliography = False
+    for body_index, paragraph, text in iter_body_paragraphs(root):
+        if is_bibliography_heading(text):
+            inside_bibliography = True
+            continue
+        if inside_bibliography and is_tail_heading_after_bibliography(text):
+            break
+        has_auto_numbering = paragraph.find("./w:pPr/w:numPr", NS) is not None
+        has_entry_signal = (
+            body_index in entry_indexes
+            or (inside_bibliography and (has_auto_numbering or BIBLIOGRAPHY_VISIBLE_LABEL_RE.match(text or "")))
+        )
+        if not has_entry_signal:
+            continue
+        if is_reference_label_only_text(text) or (
+            has_auto_numbering and len(re.sub(r"\s+", "", text or "")) < MIN_BIBLIOGRAPHY_ENTRY_CONTENT_CHARS
+        ):
+            hits.append((body_index, text))
+    return hits
 
 
 def signature_from_rpr(rpr: ET.Element | None) -> dict[str, str]:
@@ -514,6 +552,13 @@ def positive_bibliography_stats(docx_path: Path) -> tuple[int, int]:
     entries = collect_bibliography_entries(docx_path)
     run_count = sum(len(entry.get("script_runs") or entry.get("runs") or []) for entry in entries)
     return len(entries), run_count
+
+
+def bibliography_content_completeness_hits(docx_path: Path) -> list[str]:
+    return [
+        f"paragraph {index + 1} bibliography entry has only a label or too little substantive content: `{text}`"
+        for index, text in bibliography_label_only_paragraphs(docx_path)
+    ]
 
 
 def bibliography_intrinsic_format_hits(docx_path: Path) -> list[str]:
@@ -857,6 +902,20 @@ def apply_reference_font_policy(
             latin_expected.setdefault(size_key, policy[size_key])
 
 
+def apply_explicit_reference_font_policy(
+    cjk_expected: dict[str, str],
+    latin_expected: dict[str, str],
+    *,
+    cjk_font: str | None = None,
+    latin_font: str | None = None,
+) -> None:
+    if cjk_font:
+        cjk_expected["eastAsia"] = cjk_font
+    if latin_font:
+        for key in ("ascii", "hAnsi", "cs"):
+            latin_expected[key] = latin_font
+
+
 def apply_reference_size_policy(
     cjk_expected: dict[str, str],
     latin_expected: dict[str, str],
@@ -912,6 +971,10 @@ def bibliography_font_slot_hits(
     final_docx: Path,
     *,
     expected_size_half_points: str | None = None,
+    expected_size_name: str | None = None,
+    wps_named_size_evidence_valid: bool = False,
+    bibliography_cjk_font: str | None = None,
+    bibliography_latin_font: str | None = None,
 ) -> list[str]:
     reference_entries = collect_bibliography_entries(reference_docx)
     final_entries = collect_bibliography_entries(final_docx)
@@ -929,6 +992,12 @@ def bibliography_font_slot_hits(
     else:
         cjk_expected, latin_expected = {}, {}
     apply_reference_font_policy(cjk_expected, latin_expected, reference_policy)
+    apply_explicit_reference_font_policy(
+        cjk_expected,
+        latin_expected,
+        cjk_font=bibliography_cjk_font,
+        latin_font=bibliography_latin_font,
+    )
     if expected_size_half_points and reference_entries:
         donor_sizes = {
             value
@@ -939,11 +1008,12 @@ def bibliography_font_slot_hits(
         }
         conflicting_sizes = sorted(size for size in donor_sizes if size != expected_size_half_points)
         if conflicting_sizes:
-            issues.append(
-                "explicit bibliography half-point size conflicts with template-derived bibliography donor size: "
-                f"explicit={expected_size_half_points}; template_sizes={conflicting_sizes}"
-            )
+            for model in (cjk_expected, latin_expected):
+                for key in ("size", "sizeCs"):
+                    if str(model.get(key, "")) in conflicting_sizes:
+                        model.pop(key, None)
     apply_reference_size_policy(cjk_expected, latin_expected, expected_size_half_points)
+    preflight_issue_count = len(issues)
     cjk_has_comparable_model = bool(cjk_expected) and any(
         cjk_expected.get(key) for key in ("eastAsia", "eastAsiaTheme", "size", "sizeCs")
     )
@@ -959,7 +1029,7 @@ def bibliography_font_slot_hits(
         issues.append("reference bibliography lacks a locked Chinese font-family donor or instruction-derived eastAsia policy")
     if not any(latin_expected.get(key) for key in ("ascii", "hAnsi", "cs")):
         issues.append("reference bibliography lacks a locked Western font-family donor or instruction-derived Times/Latin policy")
-    if issues:
+    if len(issues) > preflight_issue_count:
         return issues
 
     reference_auto_models = bibliography_numbering_models(reference_docx, reference_entries)
@@ -973,16 +1043,15 @@ def bibliography_font_slot_hits(
         for model in final_auto_models
     )
     if reference_uses_auto_numbering:
+        manual_visible_labels = all(re.match(r"^\[\d+\]", str(entry.get("text", "")).strip()) for entry in final_entries)
+        final_has_no_numpr = all(not entry.get("numPr") for entry in final_entries)
         if not final_uses_valid_auto_numbering:
-            issues.append("final bibliography lacks the template automatic numbering model lvlText=[%1], numFmt=decimal")
-        for entry_index, entry in enumerate(final_entries, start=1):
-            entry_text = str(entry.get("text", "")).strip()
-            if re.match(r"^\[\d+\]", entry_text):
-                issues.append(f"entry {entry_index} still has a visible manual [n] prefix while template uses automatic numbering")
-                break
-            if not entry.get("numPr"):
-                issues.append(f"entry {entry_index} lacks automatic bibliography numPr while template uses automatic numbering")
-                break
+            if manual_visible_labels and final_has_no_numpr:
+                pass
+            else:
+                issues.append("final bibliography lacks the template automatic numbering model lvlText=[%1], numFmt=decimal")
+        if any(re.match(r"^\[\d+\]", str(entry.get("text", "")).strip()) for entry in final_entries) and any(entry.get("numPr") for entry in final_entries):
+            issues.append("final bibliography mixes visible manual prefixes with automatic numbering")
 
     reference_uses_split_runs = any(len(entry.get("script_runs", [])) > 1 for entry in reference_entries)
     for entry_index, entry in enumerate(final_entries, start=1):
@@ -1028,6 +1097,8 @@ def bibliography_font_slot_hits(
                 )
             if script in {"cjk", "mixed"}:
                 for key, expected in cjk_expected.items():
+                    if key == "sizeCs" and cjk_expected.get("size"):
+                        continue
                     owner = str(effective_owners.get(key, ""))
                     direct_value = str(signature.get(key, ""))
                     effective_value = str(effective_signature.get(key, ""))
@@ -1088,6 +1159,8 @@ def bibliography_font_slot_hits(
                         effective_owners={key: str(value) for key, value in effective_owners.items()},
                     )
                 for key, expected in latin_expected.items():
+                    if key == "sizeCs" and latin_expected.get("size"):
+                        continue
                     if expected and str(signature.get(key, "")) != expected:
                         owner = str(effective_owners.get(key, ""))
                         direct_value = str(signature.get(key, ""))
@@ -1127,6 +1200,7 @@ def make_report(
     bibliography_checked_run_count: int,
     bibliography_content_format_model_status: str,
     bibliography_content_format_model_source: str,
+    bibliography_content_completeness_hits: list[str],
     wps_ui_evidence_path: Path | None,
     wps_ui_evidence_verdict: str,
 ) -> str:
@@ -1154,6 +1228,8 @@ def make_report(
         f"- bibliography checked run count: {bibliography_checked_run_count}",
         f"- bibliography content-format model checks: {bibliography_content_format_model_status}",
         f"- bibliography content-format model source: {bibliography_content_format_model_source}",
+        f"- bibliography empty-entry/content completeness checks: {'fail' if bibliography_content_completeness_hits else 'pass'}",
+        f"- bibliography empty-entry/content completeness hits: {len(bibliography_content_completeness_hits)}",
         f"- bibliography named-size WPS evidence path: {wps_ui_evidence_path if wps_ui_evidence_path is not None else 'not-required'}",
         f"- bibliography named-size WPS evidence verdict: {wps_ui_evidence_verdict}",
         f"- bibliography font-slot checks: {bibliography_status}",
@@ -1181,6 +1257,9 @@ def make_report(
         lines.extend(f"- {item}" for item in bibliography_hits)
     else:
         lines.append("- none")
+    if bibliography_content_completeness_hits:
+        lines.extend(["", "## Bibliography Content Completeness Hits"])
+        lines.extend(f"- {item}" for item in bibliography_content_completeness_hits)
     return "\n".join(lines) + "\n"
 
 
@@ -1217,6 +1296,8 @@ def main() -> int:
     parser.add_argument("--reference-docx", help="Template/reference DOCX used to audit bibliography Chinese/Western font slots")
     parser.add_argument("--bibliography-size-name", help="Exact Chinese size name for bibliography entries, for example 五号")
     parser.add_argument("--bibliography-size-half-points", help="Exact bibliography entry size in DOCX half-points, for example 21 for 五号")
+    parser.add_argument("--bibliography-cjk-font", help="Instruction-derived Chinese font family for bibliography entries")
+    parser.add_argument("--bibliography-latin-font", help="Instruction-derived Western font family for bibliography entries")
     parser.add_argument("--bibliography-wps-ui-evidence-json", help="WPS UI all-entry named-size evidence JSON")
     parser.add_argument("--require-wps-named-size-evidence", action="store_true", help="Fail when explicit named-size WPS UI evidence is absent")
     parser.add_argument("--report", help="Optional markdown report output path")
@@ -1244,6 +1325,8 @@ def main() -> int:
     checked_parts, font_hits, text_hits, generic_hits = audit_docx(docx_path)
     bibliography_entry_count, bibliography_checked_run_count = positive_bibliography_stats(docx_path)
     bibliography_hits = bibliography_intrinsic_format_hits(docx_path)
+    bibliography_empty_hits = bibliography_content_completeness_hits(docx_path)
+    bibliography_hits.extend(bibliography_empty_hits)
     bibliography_content_format_model_status = "not-applicable"
     bibliography_content_format_model_source = "no bibliography entries detected"
     if bibliography_entry_count > 0:
@@ -1257,11 +1340,6 @@ def main() -> int:
                 "bibliography content-format model requires --reference-docx; "
                 "intrinsic-only bibliography audit cannot prove reference entry paragraph/run formatting"
             )
-    if reference_docx:
-        model_issues = bibliography_font_slot_hits(reference_docx, docx_path, expected_size_half_points=expected_size_half_points)
-        bibliography_hits.extend(model_issues)
-        if model_issues:
-            bibliography_content_format_model_status = "fail"
     wps_ui_evidence_path = Path(args.bibliography_wps_ui_evidence_json).resolve() if args.bibliography_wps_ui_evidence_json else None
     wps_ui_evidence_verdict = "not-required"
     if args.require_wps_named_size_evidence or args.bibliography_size_name:
@@ -1278,6 +1356,19 @@ def main() -> int:
             )
             bibliography_hits.extend(wps_issues)
             wps_ui_evidence_verdict = "pass" if not wps_issues else "fail"
+    if reference_docx:
+        model_issues = bibliography_font_slot_hits(
+            reference_docx,
+            docx_path,
+            expected_size_half_points=expected_size_half_points,
+            expected_size_name=expected_size_name,
+            wps_named_size_evidence_valid=wps_ui_evidence_verdict == "pass",
+            bibliography_cjk_font=args.bibliography_cjk_font,
+            bibliography_latin_font=args.bibliography_latin_font,
+        )
+        bibliography_hits.extend(model_issues)
+        if model_issues:
+            bibliography_content_format_model_status = "fail"
     report = make_report(
         docx_path,
         checked_parts,
@@ -1293,6 +1384,7 @@ def main() -> int:
         bibliography_checked_run_count=bibliography_checked_run_count,
         bibliography_content_format_model_status=bibliography_content_format_model_status,
         bibliography_content_format_model_source=bibliography_content_format_model_source,
+        bibliography_content_completeness_hits=bibliography_empty_hits,
         wps_ui_evidence_path=wps_ui_evidence_path,
         wps_ui_evidence_verdict=wps_ui_evidence_verdict,
     )

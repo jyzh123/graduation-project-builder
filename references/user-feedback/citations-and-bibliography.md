@@ -2,6 +2,11 @@
 
 Use this file for durable citation, bibliography, and citation-placement corrections.
 
+If the same thesis-scope complaint also includes visible bibliography label
+family issues or page-flow/page-number drift, load
+`references/user-feedback/maintenance-and-structure.md` as the sibling router
+before acting.
+
 ## Enforcement Status
 
 - Every numbered rule in this file is mandatory when this file is loaded for the current subtask.
@@ -24,7 +29,8 @@ Use this file for durable citation, bibliography, and citation-placement correct
 - Do not use grouped forms like `[7-13]`, `[7][8]`, or `[7,8]` in thesis superscript output unless the user explicitly overrides this rule.
 - Citations must follow the order in which they appear in the text.
 - Each sentence may contain at most one superscript citation.
-- Validate these rules before delivery instead of assuming the citation script got them right.
+- Citation-marker audits must only apply this numeric-marker rule to bracket tokens whose content is numeric citation syntax. Non-numeric formula or variable brackets such as `[sigma]`, `[MPa]`, or Greek-symbol brackets are formula/prose surfaces and must not be counted as bibliography citation markers.
+- Validate these rules on the exact final DOCX before delivery with the canonical citation audit. `BODY_CITATION_ORDER`, `BODY_CITATION_MULTI_NUMBER_MARKER`, or `BODY_CITATION_NOT_SUPERSCRIPT` are blocking failures; a hand-written pass verdict cannot override them.
 
 ### FB-CITE-003 (legacy 12). Thesis Font Fixes Must Use The Current Master Manuscript (Mandatory)
 
@@ -108,6 +114,10 @@ Use this file for durable citation, bibliography, and citation-placement correct
 - underline
 - hyperlink carryover
 - If bibliography entries still inherit heading-like emphasis or any other unintended run-level styling after the paragraph-level repair, the bibliography task is still incomplete.
+- Bibliography visible-number family must also be locked from rendered evidence before acceptance.
+- If the active school template or sample uses dot-style visible bibliography numbering, do not infer the bibliography label family from body citation brackets.
+- Bind the label-family decision to the rendered bibliography label geometry report and a separate decision note that explains why bibliography labels are distinct from body citation markers.
+- A bibliography entry that uses Word automatic non-bullet numbering is not manual numbering by itself. Validators must not mark such entries as list pollution solely because they carry `w:numPr`; visible manual labels mixed with automatic numbering remain a hard failure.
 
 ### FB-CITE-009 (legacy 54A). Bibliography Entry Baselines Must Be Locked Before Deleting Or Rebuilding The Old Bibliography Block (Mandatory)
 
@@ -156,6 +166,12 @@ Use this file for durable citation, bibliography, and citation-placement correct
   - any other internal identifier that appears alongside or instead of `[1]`
 - The final visible citation surface must contain only the citation marker text itself, usually `[n]`, while the jump target remains invisible to the reader.
 - If a citation-link implementation leaks anchor names on rendered pages, discard that implementation path and rebuild the citation marker with a safer hyperlink representation before handoff.
+- The audit scope must scan visible `w:t` text across all `word/*.xml` story parts, not only main-body paragraphs before the bibliography. Headers, footers, text boxes, footnotes, endnotes, comments, and other visible story-part text cannot expose citation anchor helper labels.
+- Treat visible numeric, nonnumeric, or bare-prefix helper labels as the same hard failure, including `cite_ref_1`, `cite_ref_`, `ref_anchor_x`, `bookmark_abc`, and concatenated forms such as `[2]cite_ref_1`.
+- `w:instrText` field instructions such as `HYPERLINK \l "cite_ref_1"` are not visible pollution by themselves, but their field result zone must not contain any `cite_ref`, `ref_anchor`, or `bookmark` helper text.
+- Final acceptance must bind a dedicated citation-anchor pollution audit generated after the last DOCX mutation and after PDF export. The record must include the exact final DOCX SHA256, the rendered PDF path/SHA256 when a PDF is delivered, visible DOCX hit count `0`, field-result hit count `0`, rendered PDF hit count `0`, and a pass verdict.
+- A passing citation-anchor pollution audit only proves that internal helper labels are not visible to the reader. It must never be used as a substitute for canonical citation-object validation.
+- If the exact final DOCX still fails `scripts/audit_thesis_citations.py` with `BODY_CITATION_NOT_SUPERSCRIPT`, `BODY_CITATION_NOT_HYPERLINK`, `BODY_CITATION_ORDER`, wrong-target, visual-style, or coupled-chain errors, the handoff remains blocked even when DOCX/PDF anchor-pollution counts are all zero.
 
 ### FB-CITE-013 (legacy 56B). Citation-Bearing Body Rewrites Must Replay Citation Objects And Re-Audit On The Post-Edit Deliverable (Mandatory)
 
@@ -173,6 +189,7 @@ Use this file for durable citation, bibliography, and citation-placement correct
   - no underline
   - no inherited bold / italic residue
 - If a post-edit DOCX still shows plain body-text `[n]`, blue-underlined citation markers, or citation text merged back into an ordinary body run, treat that as a failed citation replay rather than as a minor formatting miss.
+- If an anchor-pollution cleanup removes visible `cite_ref` text but leaves the citation marker as a plain body run or non-clickable text, the same pass must rebuild the superscript hyperlink object and rerun the canonical citation audit before any completion claim.
 
 ### FB-CITE-014 (legacy 83). Broken Citation Placeholders Must Be Treated As Citation Corruption, Not As Normal Body Text (Mandatory)
 
@@ -320,6 +337,7 @@ Use this file for durable citation, bibliography, and citation-placement correct
 
 ### FB-CITE-042. References Pagination Must Be Treated As Part Of The Bibliography Surface (Mandatory)
 
+- A visible numbering fix that still drifts the bibliography opener or the continuation page is not done. Treat the tail block as one reflow unit and rerender it whenever the bibliography page start or continuation page shifts.
 - Do not treat references pagination as a side effect of citation repair.
 - The `参考文献` title paragraph, the first reference entry, and any continuation page are one coupled tail-block surface. If the opener page changes, page count changes, or the block merges into the prior tail block, the bibliography repair is still failing even if the entries themselves are correct.
 - After any bibliography or citation pass, inspect the rendered references page plus the next page, and compare the opener page against the locked donor. A page-fit failure is not cured by correct numbering alone.
@@ -371,6 +389,8 @@ Use this file for durable citation, bibliography, and citation-placement correct
 - A pass report must record positive coverage counts for bibliography entries and checked runs. A zero-hit report with no entry/run coverage is stale or under-scoped evidence, not a pass.
 - When the size-policy source is an explicit named-size requirement such as `五号`, the final gate must require WPS UI evidence for every bibliography entry, not only entry `[1]` or a sampled range.
 - The WPS evidence must record the exact DOCX SHA256, WPS-displayed named size, expected half-point value, checked entry count, per-entry verdicts, and overall pass verdict.
+- WPS named-size evidence collection must recognize every approved bibliography label form used by the active template or final manuscript, including bracket labels like `[1]`, manual dotted labels like `1.`, fullwidth dotted labels like `1．`, Chinese comma labels like `1、`, and Word automatic numbering labels. A zero-entry WPS evidence file is a failed detector run when the final references block visibly contains entries.
+- If the official template contains mixed or contradictory reference-entry donor sizes but the school/document requirement and WPS evidence prove the selected named size, the font audit may use the explicit named-size evidence to override only the conflicting donor size while still comparing font families, run splitting, numbering, and other reference-entry formatting.
 ### FB-CITE-033. Bibliography Entry Indentation Must Be Verified Structurally And On Rendered Geometry (Mandatory)
 
 - Reference-entry indentation cannot pass from DOCX paragraph properties alone.
@@ -381,6 +401,10 @@ Use this file for durable citation, bibliography, and citation-placement correct
 - The rendered check must compare the left x position of every visible `[n]` entry start against the locked baseline with a numeric tolerance.
 - Template instruction rows, TOC-like static page-number rows, reference title text, acknowledgement text, and appendix text must be excluded from the bibliography baseline.
 - A final references pass fails if any entry has extra left indent, hanging indent drift, body-style first-line indent residue, or a rendered `[n]` x position shifted right from the template baseline.
+- When the locked school template has conflicting bibliography-label evidence, for example prose rules mention bracketed Arabic numbers but the later example block shows `1.` labels, do not rely on the example block alone. Create a label-family decision record from the rule prose, rendered example, and current user correction before repair.
+- If the user explicitly reports that visible bibliography labels are still wrong and the official prose rule supports bracketed numbers, the repair must convert the bibliography labels to visible `[n]` form while keeping the paragraphs ordinary text paragraphs. Do not reintroduce Word automatic numbering, `w:numPr`, hanging indent, or body-style first-line indent to obtain the brackets.
+- If a run deliberately keeps Arabic-dot bibliography labels because the template and current user both accept that family, the same indentation check applies to visible `n.` labels. Do not impose `w:ind left/hanging` list-style formatting unless the template sample shows hanging continuation lines; if the sample wraps continuation lines back to the label margin, bibliography entries must remove hanging indent and be audited with plain-label geometry.
+- Bibliography label repair acceptance must include a rendered PDF geometry check over the exact final PDF: every visible bibliography label `[1]` through `[N]` or `1.` through `N.` must be detected in order according to the chosen label-family decision, and their left `x0` positions must be internally consistent with zero or explicitly justified tolerance. A structure-only audit that reports `60` entries but does not prove rendered label alignment is incomplete.
 - `sample_self_check` must receive the reference PDF when available so this rendered geometry detector cannot silently become `not-applicable` during canonical thesis builds.
 
 ### FB-CITE-034. Citation Superscripts Need Source-To-Final Run Preservation Evidence (Mandatory)
@@ -392,6 +416,13 @@ Use this file for durable citation, bibliography, and citation-placement correct
 - If the source DOCX lacks stable paragraph ids, paragraph index alone is not enough to prove occurrence continuity. The source-to-final diff must also compare a normalized host paragraph text digest and fail when the same paragraph index keeps a valid-looking marker after the host sentence has changed.
 - A source citation marker may be renumbered or moved only through a citation-lane controlled-change ledger that explains the intended mapping and proves the final bibliography chain remains synchronized.
 - A final thesis must fail if citation markers are converted into plain body text, merged into a rewritten sentence run, lose superscript, gain hyperlink-blue or underline styling, or are audited only before a later DOCX mutation.
+
+### FB-CITE-049. Final Citation Audit Report Is Non-Substitutable Evidence (Mandatory)
+
+- When the exact final DOCX contains body citation markers or a references block, final acceptance must bind `citation audit evidence path`, `citation audit final DOCX SHA256`, and `citation audit source-to-final run diff path`.
+- The evidence path must be produced by `scripts/audit_thesis_citations.py` against the exact final DOCX after the last mutation. Summary prose, manual verdict text, screenshot review, bibliography count checks, hyperlink count checks, or source-to-final run diffs cannot substitute for this report.
+- The gate must recompute the citation audit on the exact final DOCX and fail if the report is missing, stale, targets another DOCX, has a different SHA256, carries any error code, or if the recomputed audit fails.
+- The same non-substitutable audit owns both visible citation superscript preservation and first-appearance order. `BODY_CITATION_NOT_SUPERSCRIPT` and `BODY_CITATION_ORDER` must block final acceptance even when `body citation superscripts preservation verdict` or `citation-reference coupled-chain verdict` is pass-shaped.
 
 ### FB-CITE-035. Citation Superscripts And Reference Entries Are A Coupled Preservation Surface (Mandatory)
 
@@ -423,13 +454,24 @@ Use this file for durable citation, bibliography, and citation-placement correct
 - After replacement, rerun citation and review-artifact preservation checks against the exact final DOCX. A reference-content report is not enough by itself if citation markers, comments, bookmarks, or body-citation run state drifted.
 - If the replacement is meant to satisfy a year/source-count comment, the plan must state the required year/source token, and the final evidence must show that token in the replaced entry rather than relying on a conversational claim.
 
-### FB-CITE-038. Bibliography Entries Must Not Combine Manual Bracket Numbers With Word Numbering (Mandatory)
+### FB-CITE-038. Bibliography Entries Must Not Combine Manual Labels With Word Numbering (Mandatory)
 
 - A reference entry must use one numbering authority, not two.
-- If a bibliography paragraph has Word numbering properties such as `w:numPr`, the visible entry text must not also begin with a manual bracket number such as `[1]`.
-- If the visible reference text already begins with `[n]`, remove the paragraph-level Word numbering property or rebuild the entry through the approved bibliography helper before handoff.
-- A reference block that passes citation order but can render as automatic `[n]` plus manual `[n]` is a hard bibliography-format failure.
+- If a bibliography paragraph has Word numbering properties such as `w:numPr`, the visible entry text must not also begin with a manual label such as `[1]`, `1.`, or `1、`.
+- A bibliography-format repair that replays paragraph metrics from a numbered donor must explicitly choose one numbering model:
+  - automatic Word numbering with the visible manual prefix removed
+  - manual visible numbering with paragraph `w:numPr` removed
+- If the visible reference text already begins with a manual label, remove the paragraph-level Word numbering property or rebuild the entry through the approved bibliography helper before handoff.
+- A reference block that passes citation order but can render as automatic numbering plus manual numbering is a hard bibliography-format failure.
 - `scripts/audit_thesis_citations.py` must report `BIBLIOGRAPHY_MANUAL_AND_AUTO_NUMBERING` on the exact final DOCX when such overlap exists.
+
+### FB-CITE-038A. Bibliography Entry Repair Must Not Regress The References Title Layer (Mandatory)
+
+- A bibliography-entry formatting pass may touch the `参考文献` title only to preserve or restore its approved title-layer formatting.
+- If a previous title/hard-field repair has already materialized the main title font size on `参考文献`, a later bibliography-entry repair must not replace that run formatting with a smaller entry-donor or body-text run model.
+- When the bibliography helper replays paragraph metrics from a template donor, it must rematerialize the title's own style run formatting on the visible title run and rerun the whole-format gate afterwards.
+- If the live review copy already has `参考文献` bound to a main-title layer such as `Heading1`, `Title`, or a visible size at or above 30 half-points, the bibliography helper must preserve that title paragraph and must not downgrade it to the template's bibliography-entry style.
+- Treat a post-bibliography report such as `references title lacks the template main-title layer/font size` as a regression from the bibliography pass, not as a separate cosmetic issue.
 
 ### FB-CITE-039. Body-Style Audits Must Exclude Hidden Field Instructions (Mandatory)
 
@@ -453,3 +495,61 @@ Use this file for durable citation, bibliography, and citation-placement correct
 - Intrinsic-only checks may still reject obvious defects, but they cannot prove that the content runs follow the school/template model. If no `--reference-docx` or approved model source is available, the bibliography content-format model check must fail closed.
 - The model comparison must cover the reference-entry content runs, not only the bracket number. It must detect collapsed entries, mixed run font drift, run-slot loss, size drift, and paragraph/run formatting divergence from the donor.
 - Final acceptance for reference or bibliography repair must bind the DOCX font/encoding audit evidence path for the exact final DOCX; a pass-shaped summary without the content-format model source is stale or under-scoped evidence.
+
+### FB-CITE-044. Body Citation Labels And Bibliography Labels Are Separate Surfaces (Mandatory)
+
+- When the official school rule or template says正文 citation markers use bracketed superscripts such as `[1]`, keep the body citation marker text in that form.
+- When the same school rule or template shows only bibliography examples as Arabic-dot labels such as `1.`, do not force the reference list to display bracket labels merely because the body marker uses `[1]`; first check the prose rule and current user correction.
+- The bibliography entry may display `1.` while still carrying the invisible internal bookmark `cite_ref_1` used by the body `[1]` hyperlink only when the label-family decision record accepts Arabic-dot bibliography labels for that deliverable.
+- Citation audits must resolve body `[n]` hyperlinks to bibliography bookmarks rather than relying on the visible bibliography label text being `[n]`.
+- A bibliography-label repair is not complete until body citation marker style and reference-list label style are reported separately. In particular, body citations may remain bracketed superscripts while the reference list uses either visible Arabic-dot entries or visible bracketed entries according to the explicit label-family decision record.
+- Bibliography audits must evaluate the reference-list visible label style independently from the body citation marker style.
+
+### FB-CITE-045. Citation Occurrence Assignment Must Cover Every Bibliography Entry When Markers Are Available (Mandatory)
+
+- If a manuscript has enough body citation markers to cite every bibliography entry but the first-appearance chain skips entries, for example `[1], [3], [5]...` or repeats only the last item, treat it as citation-chain corruption.
+- The canonical repair path is `scripts/normalize_thesis_citation_chain.py --assign-all-bibliography-by-occurrence`, which assigns the first N visible body citation markers to bibliography entries `1..N` by occurrence order and keeps later markers on the last bibliography entry.
+- This repair must preserve citation markers as isolated superscript internal hyperlinks and must refresh `cite_ref_N` bookmarks for every bibliography entry.
+- The repair must not delete unused bibliography entries to make the citation audit pass. It must either assign existing body markers to cover all entries or fail closed when there are too few markers.
+- After occurrence assignment, rerun `scripts/audit_thesis_citations.py` and the bibliography school-requirements audit on the exact post-edit DOCX.
+
+### FB-CITE-046. Bibliography Entries Must Contain Substantive Content After The Label (Mandatory)
+
+- A reference paragraph that contains only a visible label such as `[1]`, `1.`, `1、`, or only automatic Word numbering plus a bookmark is not a bibliography entry for delivery.
+- The references block fails when any entry has fewer than eight non-space characters of substantive content after the visible label or automatic numbering marker.
+- This content-completeness gate is independent from citation order, entry count, hyperlink target, and reference-entry font checks. Those checks cannot turn a label-only paragraph into a valid reference.
+- `scripts/audit_thesis_citations.py` must report `BIBLIOGRAPHY_ENTRY_CONTENT_MISSING` for label-only or content-missing entries on the exact final DOCX.
+- `scripts/audit_docx_font_encoding.py` must report `bibliography empty-entry/content completeness checks: fail` instead of treating label-only entries as "no bibliography entries detected" or `not-applicable`.
+- `scripts/audit_bibliography_school_requirements.py` must include the empty/content-missing count so source-count and paper-only gates cannot pass with numbered placeholders.
+- Final acceptance for reference or bibliography work must bind a citation or bibliography audit report that proves zero empty/content-missing reference entries.
+
+### FB-CITE-047. Locked Bibliography Count Profiles Must Drive The Audit Command (Mandatory)
+
+- When the current user, task book, school rule, or accepted project profile locks a bibliography target, do not leave the bibliography audit on its generic defaults.
+- For mechanical-design whole-thesis rebuilds, use the locked profile `--min-reference-count 60 --min-foreign-count 10` unless the current user or school template gives a stronger or different target.
+- If the profile also specifies journal, paper-only, or recent-literature floors, pass those floors through the matching audit options instead of only mentioning them in prose.
+- A bibliography handoff fails when the report says the required count is met but the command/evidence still used a lower generic threshold.
+- When the active template uses Word automatic numbering for reference labels, the school-requirements count audit must treat that automatic numbering model as a valid single numbering authority; it must not force manual `[n]` text only to satisfy a text-extraction detector.
+- Final acceptance must record the effective bibliography profile, the audit command thresholds, total reference count, foreign/non-web count, and zero empty/content-missing entries on the exact final DOCX.
+
+### FB-CITE-048. User-Corrected Bibliography Label Family Must Be Enforced On The Final Render (Mandatory)
+
+- Do not confuse body citation markers with bibliography-entry labels. If the school template says body citations use superscript bracket markers such as `[1]` but its reference-list examples and prose say `序号.` / `1.` / `2.`, the bibliography list must use the Arabic-dot family while body citations keep bracket markers.
+- When the official school rule, active template profile, accepted sample, or current user's correction selects a visible bibliography label family, the final reference list must use exactly that family for every entry. A later repair must not silently revert the entries to another family, automatic numbering, a mixed `[n]` and `n.` block, duplicate automatic plus manual labels, or label-only paragraphs.
+- When the user has already reported the bibliography labels as wrong in the same project family, treat the latest explicit user correction plus the official template evidence as a locked label-family decision. Re-read the official template before choosing between `bracket` and `dot` instead of carrying forward an earlier failed repair assumption.
+- If the current user locks the compact bracket family, the required visible form is exactly `[1]内容` through `[n]内容`: the opening bracket, number, closing bracket, and substantive entry content must be contiguous with no intervening whitespace. `[1] 内容`, `[n] 内容`, `1. 内容`, Word automatic numbering plus hidden bracket text, or mixed bracket/dot labels are hard bibliography-format failures for that locked family.
+- `label-content spacing none` is a hard constraint when the compact bracket family is locked. It is not a cosmetic preference and must survive template replay, bibliography content replacement, citation normalization, PDF export, and any final formatting pass.
+- The bibliography label-family decision record must name: official prose evidence, rendered template/example evidence, current user correction, chosen visible label family (`bracket` or `dot`), and the exact final DOCX/PDF paths being audited.
+- Acceptance must include `bibliography label-family decision path` and a rendered final-PDF label geometry check for every visible bibliography label, produced by `scripts/audit_pdf_bibliography_labels.py --expected-style <chosen-family>`. A DOCX text scan that says `reference_count=60` is not enough when the user's complaint is a visible label defect.
+- Count-only, citation-only, or source-type audits cannot prove bibliography format correctness. `reference_count`, `unique_citation_count`, `body_unique_citations`, paper/source counts, hyperlink counts, or first-appearance order may support bibliography acceptance, but they do not prove visible label family, label/content spacing, paragraph/run baseline, or rendered label geometry.
+- The rendered bibliography-label audit must not rely on a built-in default label family. `--expected-style` is mandatory and must come from the bibliography label-family decision record or an equivalent explicit current-user/template decision.
+- When replaying bibliography entry formatting after the label family is locked, use the canonical `scripts/repair_bibliography_entry_format.py --visible-label-family <chosen-family>` path rather than an ad hoc paragraph-string replacement.
+- Do not produce a reference list by copying body paragraphs, abstract text, TOC rows, captions, appendix rows, acknowledgement text, template instructions, or any other non-bibliography block into the references style. The enforceable shorthand is: must not paste body paragraphs. Reference entries must be substantive bibliography records, then have the locked bibliography donor/baseline replayed; pasted prose that only looks like a reference paragraph is not an accepted bibliography surface.
+- If the current user, official template, or accepted sample specifies a compact visible form such as `[1]内容`, the label/content spacing is part of the locked visible bibliography-label decision. Use `scripts/repair_bibliography_entry_format.py --visible-label-family bracket` with `--label-content-spacing none` and audit the rendered PDF with `scripts/audit_pdf_bibliography_labels.py --expected-style bracket` plus `--expected-label-content-spacing none`; `[1] 内容` is still a failure for that locked compact form.
+- The rendered label detector must ignore continuation-line page ranges such as `216.` or `458.` when they are outside the locked `1..N` bibliography label range. Page ranges must not be counted as reference-entry labels or as fallback label-family failures.
+- When the current label-family decision explicitly locks compact bracket labels, `scripts/audit_bibliography_school_requirements.py` must be run with `--expected-numbering-style bracket`; it must not fail the final manuscript merely because a template example block also contains `1.` labels. The report must still expose the template-derived style separately so the override is auditable rather than silent.
+- If a later template replay or bibliography repair changes the final PDF after that check, the rendered label geometry check is stale and must be rerun. The final PDF must show the chosen family for `1..N` and zero fallback labels from the non-chosen family inside the required range.
+- Reference-entry font size is a separate surface from formula, figure-caption, and table-caption size. If the school guide says formulas/captions use 五号 but says body text uses 小四 and does not give a smaller reference-entry rule, do not force bibliography entries to 五号. Use the locked bibliography donor/template prose policy, then rerun the font-slot and rendered-page checks on the final DOCX/PDF.
+- Reference-entry visible font-size comparison must use the visible script slot: Chinese and Western runs compare `w:sz` when the donor has it. Do not fail a Chinese or Western reference run only because the donor also carries a different `w:szCs`; `w:szCs` is a complex-script slot and is not the visible CJK/Latin size authority when `w:sz` is present.
+- The reference-entry font size is separate from formula and caption size, so formula/caption evidence must not be reused as bibliography-entry font evidence.
+- For gate keyword compatibility, visible font-size comparison uses w:sz before w:szCs whenever the donor exposes both slots.

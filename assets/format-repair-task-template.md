@@ -46,7 +46,9 @@
 - helper scripts planned this round:
 - project-local helper script preflight summary:
 - project-local helper preflight report path:
+- project-local helper active run dir:
 - project-local helper risk count:
+- project-local helper scanner exit status:
 - project-local helper disposition:
 - canonical source restart required?:
 - source manuscript genealogy path:
@@ -73,6 +75,10 @@
 - active template profile path:
 - official school format requirement path:
 - official school format requirement fingerprint:
+- external format report path:
+- normalized issue ledger path:
+- report-equivalent audit path:
+- report-equivalent audit verdict:
 - official school format rule profile path:
 - official school format rule profile generated before mutation?: yes
 - official school format rule profile verdict:

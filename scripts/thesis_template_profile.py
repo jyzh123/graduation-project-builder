@@ -86,6 +86,12 @@ def looks_like_english_title(text: str) -> bool:
         or contains_template_instruction(stripped)
     ):
         return False
+    if re.match(r"^\s*(?:\d+\.|[\[\uff3b]\d+[\]\uff3d])", stripped):
+        return False
+    if re.match(r"^\s*[图表]\s*\d+(?:[.\uff0e]\d+)?", stripped):
+        return False
+    if re.search(r"[\[\uff3b]\s*[A-Z]\s*[\]\uff3d]", stripped):
+        return False
     latin_count = sum(1 for ch in stripped if ("A" <= ch <= "Z") or ("a" <= ch <= "z"))
     return latin_count >= 12 and " " in stripped and not has_cjk(stripped)
 
@@ -102,6 +108,10 @@ def is_cover_title_candidate(text: str) -> bool:
     stripped = str(text or "").strip()
     compact = normalize(stripped)
     if not stripped or len(compact) < 6 or not has_cjk(stripped) or is_date_like(stripped):
+        return False
+    if re.match(r"^\s*(?:\d+\.|[\[\uff3b]\d+[\]\uff3d])", stripped):
+        return False
+    if re.match(r"^\s*[图表]\s*\d+(?:[.\uff0e]\d+)?", stripped):
         return False
     blocked = (
         "\u5b66\u58eb\u5b66\u4f4d\u8bba\u6587",
@@ -140,6 +150,16 @@ def is_cover_title_candidate(text: str) -> bool:
         "\u4e66\u5199\u5f0f\u6837",
         "\u5e74\u6708\u65e5",
         "\u8bba\u6587\u4f5c\u8005\u7b7e\u540d",
+        "\u53c2\u8003\u6587\u732e",
+        "\u5b66\u4f4d\u8bba\u6587\u683c\u5f0f",
+        "\u5e8f\u53f7",
+        "\u4f5c\u8005",
+        "\u53d1\u8868\u5730",
+        "\u5b66\u4f4d\u6388\u4e88\u5355\u4f4d",
+        "\u5e74\u5ea6",
+        "\u56fe\u7eb8",
+        "cad",
+        "\u5185\u8499\u53e4\u79d1\u6280\u5927\u5b66",
     )
     return not contains_template_instruction(stripped) and not any(normalize(token) in compact for token in blocked)
 
@@ -270,10 +290,59 @@ def find_heading_or_prefix_marker(doc: Document, candidates: set[str]) -> tuple[
     return None
 
 
+def paragraph_style_name(paragraph: Any) -> str:
+    try:
+        return str(paragraph.style.name or "")
+    except Exception:
+        return ""
+
+
+def looks_like_toc_entry(paragraph: Any) -> bool:
+    text = str(paragraph.text or "").strip()
+    if not text:
+        return False
+    style_name = normalize(paragraph_style_name(paragraph))
+    if style_name.startswith("toc") or "\u76ee\u5f55" in style_name:
+        return True
+    # Static or cached TOC rows commonly retain the real heading text followed
+    # by a tab/leader and a rendered page token. Those rows must not become
+    # the body-opening marker for the template profile.
+    if "\t" in text:
+        return True
+    if re.search(r"(?:\.{3,}|\u2026+|\u00b7{3,})\s*(?:[ivxlcdm]+|\d+)\s*$", text, flags=re.IGNORECASE):
+        return True
+    return False
+
+
+def looks_like_body_chapter_marker(text: str) -> bool:
+    stripped = str(text or "").strip()
+    if not stripped:
+        return False
+    if re.match(r"^\d{1,2}\s+\S", stripped):
+        return True
+    return bool(re.match(r"^\u7b2c\s*[0-9\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341]+\s*\u7ae0", stripped))
+
+
 def find_first_body_marker(doc: Document) -> tuple[str, int] | None:
+    toc_found = find_heading_marker_anywhere(doc, {"\u76ee\u5f55", "\u76ee  \u5f55", "\u76ee\u25a1\u25a1\u5f55"})
+    toc_idx = toc_found[1] if toc_found else -1
+    for idx, paragraph in enumerate(doc.paragraphs):
+        text = paragraph.text.strip()
+        if not looks_like_body_chapter_marker(text):
+            continue
+        if idx <= toc_idx:
+            continue
+        if looks_like_toc_entry(paragraph):
+            continue
+        return text, idx
+    # Some templates store visible body markers in content controls. Use this
+    # only as a fallback and still reject TOC-looking cached rows.
     for text, idx in iter_sdt_paragraph_texts(doc):
-        if re.match(r"^\d{1,2}\s+\S", text) or re.match(r"^\u7b2c[0-9\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341]+\u7ae0", text):
-            return text, idx
+        if idx <= toc_idx or not looks_like_body_chapter_marker(text):
+            continue
+        if "\t" in text:
+            continue
+        return text, idx
     return None
 
 
@@ -293,6 +362,17 @@ def select_chinese_title_indices(cover_items: list[tuple[int, Any]], english_idx
     return candidates[-3:]
 
 
+def looks_like_format_requirements_document(doc: Document) -> bool:
+    sample = "\n".join(paragraph.text.strip() for paragraph in doc.paragraphs[:30] if paragraph.text.strip())
+    compact = normalize(sample)
+    required = (
+        "\u64b0\u5199\u4e0e\u88c5\u8ba2\u89c4\u8303",
+        "\u6bd5\u4e1a\u8bbe\u8ba1\u8bf4\u660e\u4e66\u6216\u6bd5\u4e1a\u8bba\u6587\u4e3b\u8981\u90e8\u5206",
+        "\u7248\u5f0f",
+    )
+    return any(normalize(token) in compact for token in required)
+
+
 def build_template_profile(template_docx: Path, template_pdf: Path | None = None) -> dict[str, Any]:
     generated_at = datetime.now(timezone.utc)
     doc = Document(str(template_docx))
@@ -301,6 +381,9 @@ def build_template_profile(template_docx: Path, template_pdf: Path | None = None
     cover_items = list(enumerate(doc.paragraphs[:end]))
     english_idx = next((idx for idx, paragraph in cover_items if looks_like_english_title(paragraph.text)), None)
     zh_indices = select_chinese_title_indices(cover_items, english_idx, end)
+    if looks_like_format_requirements_document(doc):
+        english_idx = None
+        zh_indices = []
     cover_anchor = next(
         (
             p.text.strip()
@@ -399,6 +482,9 @@ def build_template_profile(template_docx: Path, template_pdf: Path | None = None
         optional_absent.append("cover_zh_title")
     if not en_title_marker:
         optional_absent.append("cover_en_title")
+    for key in ("zh_abstract", "en_abstract", "first_body"):
+        if not markers.get(key, {}).get("text"):
+            optional_absent.append(key)
 
     return {
         "schema": SCHEMA,
@@ -427,10 +513,15 @@ def profile_readiness_issues(profile: dict[str, Any]) -> list[str]:
     markers = profile.get("markers")
     if not isinstance(markers, dict):
         return issues + ["template profile markers missing"]
+    optional_absent = set(profile.get("front_matter", {}).get("optional_absent_surfaces", []))
     for key in profile.get("front_matter", {}).get("critical_surfaces", []):
         marker = markers.get(key, {})
-        if not marker.get("text") and key not in {"toc", "first_body"}:
+        if not marker.get("text") and key not in {"toc", "first_body"} and key not in optional_absent:
             issues.append(f"template profile missing critical marker: {key}")
+    first_body = markers.get("first_body", {})
+    first_body_text = str(first_body.get("text") or "")
+    if "\t" in first_body_text:
+        issues.append("template profile first_body marker appears to be a TOC/cache row")
     return issues
 
 

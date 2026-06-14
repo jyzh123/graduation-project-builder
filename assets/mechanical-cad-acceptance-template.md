@@ -8,14 +8,78 @@
 - exact final delivery package sha256:
 - exact audited CAD package path:
 - exact audited CAD package sha256:
+- mechanical drawing package exact package path:
+- mechanical drawing package exact package sha256:
 - exact DWG package path:
 - exact DWG package sha256:
+- exact DXF package path:
+- exact DXF package sha256:
 - exact combined PDF path:
 - exact combined PDF sha256:
+- exact PNG render package path:
+- exact PNG render package sha256:
+- drawing regeneration manifest path:
+- drawing regeneration manifest sha256:
+- current package SHA binding verdict:
 
 ## Audit Evidence
 - mechanical drawing package audit path:
 - mechanical drawing package audit verdict:
+- mechanical drawing formal CAD source provenance verdict:
+- mechanical drawing schematic/concept substitute rejection verdict:
+- CAD official command route verdict:
+- CAD official command test log:
+- CAD executable or COM ProgID evidence:
+- non-CAD fallback rejection verdict:
+- external CAD case reference URL:
+- reference-use restriction:
+- no verbatim geometry copying verdict:
+- mechanical drawing reference baseline path:
+- mechanical drawing CAD open-view close-up evidence path:
+- mechanical drawing CAD open-view structural coherence verdict:
+- mechanical drawing complete assembly/object recognizability verdict:
+- mechanical drawing scattered-parts rejection verdict:
+- mechanical drawing reference-view trace alignment verdict:
+- mechanical drawing annotation/leader/title-block completeness verdict:
+- mechanical drawing structure-first redraw workflow verdict:
+- mechanical drawing dimension/leader/title-block second-pass verdict:
+- mechanical drawing loose-part collage rejection verdict:
+- mechanical drawing external-case annotation checklist path:
+- mechanical drawing A0 process flow verdict:
+- mechanical drawing A0 drive chain verdict:
+- mechanical drawing A0 support load path verdict:
+- mechanical drawing A0 internal working element verdict:
+- mechanical drawing A0 design intent readability verdict:
+- mechanical drawing A0 overall assembly layout baseline verdict:
+- mechanical drawing A0 upper full-length view count:
+- mechanical drawing A0 lower full-length view count:
+- mechanical drawing A0 BOM right-zone verdict:
+- mechanical drawing A0 balloon-to-BOM row match verdict:
+- routed owner file:
+- active checklist row:
+- agent run manifest lane owner:
+- audit lane verdict:
+- evidence path bound to exact final artifact:
+- final artifact SHA256:
+- leader-target-binding report:
+- dimension-anchor audit:
+- balloon-bom-crosswalk:
+- annotation drift rendered overlay review:
+- final DXF/DWG/PDF/PNG SHA256 binding:
+
+## Source Linework Delta
+- mechanical drawing source linework delta audit path:
+- mechanical drawing source linework delta verdict:
+- mechanical drawing source CAD package sha256:
+- mechanical drawing final CAD package sha256:
+- mechanical drawing changed source sheet count:
+- mechanical drawing identical source sheet count:
+- mechanical drawing changed source entity count:
+- mechanical drawing linework family delta count:
+- mechanical drawing old-like large circle overlay count:
+- mechanical drawing PDF-only change rejection verdict:
+- mechanical drawing minor-entity-move-only rejection verdict:
+- mechanical drawing source-to-PDF derivation verdict:
 
 ## Rendered Review
 - mechanical drawing rendered review evidence paths:
@@ -23,9 +87,155 @@
 - mechanical drawing boundary clearance verdict:
 - mechanical drawing detail density verdict:
 - mechanical drawing title block/table/notes isolation verdict:
+- mechanical drawing title-block cell containment verdict:
+- mechanical drawing title-block short-line topology audit verdict:
+- mechanical drawing missing short table line count:
+- mechanical drawing broken cell-border count:
+- mechanical drawing table-grid topology mismatch count:
+- mechanical drawing diagnostic-overlay-free title-block crop path:
 - mechanical drawing annotation margin clearance verdict:
 - mechanical drawing local crowding verdict:
 - mechanical drawing text/table/frame overlap verdict:
+- mechanical render readability audit path:
+- mechanical render readability verdict:
+- mechanical render readability source lineweight verdict:
+- mechanical render readability render-only stroke cap:
+- mechanical render readability render-only lineweight scaling:
+- text text overlap count:
+- text graphic cover count:
+- severe line crowding count:
+- mechanical render readability small-tile threshold:
+- mechanical render readability failed sheet list:
+- mechanical render readability requires crop review count:
+- mechanical render readability line bundle blocker count:
+- mechanical render readability diagnostic-overlay-free crop review path:
+- mechanical render readability standard-sheet view occupancy verdict:
+- mechanical render readability final PDF/PNG SHA evidence:
+- mechanical drawing user-reported text-cover crop audit path:
+- mechanical drawing diagnostic-overlay-free after-crop paths:
+- mechanical drawing reported crop blocker count:
+- mechanical drawing text exclusion halo audit path:
+- mechanical drawing text exclusion halo audit verdict:
+- mechanical drawing text exclusion halo violation count:
+- mechanical drawing diagonal hatch/section/flow text-cover count:
+- mechanical drawing machine overlap audit verdict:
+- mechanical drawing content-overlap audit verdict:
+- mechanical drawing content-overlap evidence path:
+- mechanical drawing registered content bbox count:
+- mechanical drawing checked content pair count:
+- mechanical drawing content overlap count:
+- mechanical drawing view-view overlap count:
+- mechanical drawing detail-frame-main-view overlap count:
+- mechanical drawing table text/grid collision count:
+- mechanical drawing table_text_grid_collision_count:
+- mechanical drawing dimension-line view/table crossing count:
+- mechanical drawing leader-line view/table crossing count:
+- mechanical drawing balloon geometry collision count:
+- mechanical drawing bbox helper envelope escape count:
+- mechanical drawing stale rendered preview count:
+- mechanical drawing outside-frame ink audit verdict:
+- mechanical drawing outside-frame ink audit evidence path:
+- mechanical drawing outside-frame independent ink component count:
+- mechanical drawing outside-frame text component count:
+- mechanical drawing outside-frame leader component count:
+- mechanical drawing outside-frame hatch/section component count:
+- mechanical drawing outside-frame table/title-block component count:
+- mechanical drawing inner-frame safe-margin audit verdict:
+- mechanical drawing inner-frame safe-margin evidence path:
+- mechanical drawing right safe-boundary intrusion count:
+- mechanical drawing leader-text inner-frame intrusion count:
+- mechanical drawing view-geometry inner-frame intrusion count:
+- mechanical drawing dimension-text inner-frame intrusion count:
+- mechanical drawing annotation ownership audit verdict:
+- mechanical drawing unowned free text count:
+- mechanical drawing unsupported floating text count:
+- mechanical drawing unbound scattered text count:
+- mechanical drawing dimension-like text without anchor count:
+- mechanical drawing orphan text examples path:
+- mechanical drawing owner-zone coverage verdict:
+- mechanical drawing user-reported crop binding review path:
+- mechanical drawing user-reported crop binding review verdict:
+- mechanical drawing min cell padding mm:
+- mechanical drawing cell padding violation count:
+- CAD text style/font audit path:
+- CAD text style/font audit verdict:
+- normal CAD text entity verdict:
+- target CAD Chinese font style:
+- actual CAD font file:
+- font fallback recorded verdict:
+- unsupported CAD font/style count:
+- artistic/vectorized text count:
+- mechanical drawing reserved-zone intrusion audit verdict:
+- mechanical drawing protected-table-zone intrusion audit verdict:
+- mechanical drawing reserved-zone intrusion count:
+- mechanical drawing protected-table-zone intrusion count:
+- mechanical drawing dimension-line table-zone intrusion count:
+- mechanical drawing dimension-text table-zone intrusion count:
+- mechanical drawing view-geometry table-zone intrusion count:
+- mechanical drawing detail-view table-zone intrusion count:
+- mechanical drawing leader/balloon table-zone intrusion count:
+- mechanical drawing dimension table-zone intrusion count:
+- mechanical drawing title-block/BOM protected-zone intrusion count:
+- mechanical drawing view-geometry reserved-zone intrusion count:
+- mechanical drawing hatch/section fill clipping audit verdict:
+- mechanical drawing hatch/section fill clipping evidence path:
+- mechanical drawing hatch/section fill boundary violation count:
+- mechanical drawing hatch/section fill adjacent-view crossing count:
+- mechanical drawing hatch/section fill dimension-line crossing count:
+- mechanical drawing hatch/section fill title-block/table/BOM/frame crossing count:
+- mechanical drawing hatch/section fill blank-background leak count:
+- mechanical drawing text entity overlap count:
+- mechanical drawing text legibility machine audit verdict:
+- mechanical drawing minimum CAD text height mm:
+- mechanical drawing minimum rendered text height px:
+- mechanical drawing text integrity audit path:
+- mechanical drawing text integrity audit verdict:
+- mechanical drawing mojibake/tofu/missing glyph count:
+- mechanical drawing missing required drawing text count:
+- DWG backread text integrity audit:
+- DWG backread question mark text count:
+- DWG backread mojibake/tofu/missing glyph count:
+- bundled CAD Chinese fallback font:
+- lower-left orphan line artifact audit:
+- source lower-left orphan line artifact count:
+- DWG backread lower-left orphan line artifact count:
+- diagnostic-overlay-free lower-left crop path:
+- diagnostic-overlay-free title-block crop path:
+- mechanical drawing text orientation audit path:
+- mechanical drawing text orientation audit verdict:
+- mechanical drawing upside-down text count:
+- mechanical drawing mirrored text count:
+- mechanical drawing lineweight/linetype fidelity audit path:
+- mechanical drawing lineweight/linetype fidelity audit verdict:
+- mechanical drawing lineweight/linetype fidelity package sha256:
+- source thick lineweight required:
+- source thick lineweight observed:
+- source thick lineweight mismatch count:
+- source thin lineweight required:
+- source thin lineweight observed:
+- source thin lineweight mismatch count:
+- mechanical drawing color-family audit path:
+- mechanical drawing color-family audit verdict:
+- mechanical drawing color-family package/path sha256:
+- mechanical drawing thin-solid-white-only verdict:
+- mechanical drawing non-thin white layer/entity count:
+- mechanical drawing expected color family count:
+- mechanical drawing entity color override count:
+- mechanical drawing source line family coverage verdict:
+- mechanical drawing PDF page-box sheet-size audit verdict:
+- mechanical drawing rendered ink contrast audit verdict:
+- mechanical drawing worst readable ink ratio:
+- mechanical drawing minimum readable ink ratio:
+- mechanical drawing effective DWG byte-density ratio:
+- mechanical drawing estimated PDF sheet workload:
+- mechanical drawing A-series page box count:
+- mechanical drawing thick solid family count:
+- mechanical drawing thin solid family count:
+- mechanical drawing center dash-dot family count:
+- mechanical drawing hidden dashed family count:
+- mechanical drawing section hatch family count:
+- mechanical drawing manufacturing complexity audit verdict:
+- mechanical drawing minimum manufacturing detail family count:
 - mechanical drawing entity-count-only false-pass verdict:
 
 ## Scope

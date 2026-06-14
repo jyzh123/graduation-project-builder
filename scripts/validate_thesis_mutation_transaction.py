@@ -22,9 +22,54 @@ from audit_thesis_comment_resolution import (
     has_all_comments_claim,
     validate_comment_resolution_ledger,
 )
+from audit_docx_review_artifacts import (
+    validate_citation_run_reports,
+    validate_review_artifact_reports,
+)
 
 
 SCHEMA = "graduation-project-builder.thesis-mutation-transaction.v1"
+PROTECTED_SURFACE_DIFF_SCHEMA = "graduation-project-builder.docx-protected-surface-diff.v1"
+CANONICAL_PROTECTED_SURFACE_IDS = (
+    "cover_style",
+    "declaration_or_title_front_matter",
+    "zh_abstract_title",
+    "zh_abstract_body",
+    "zh_keyword_line",
+    "en_abstract_title",
+    "en_abstract_body",
+    "en_keyword_line",
+    "toc_title",
+    "toc_entries",
+    "toc_dotted_leaders",
+    "toc_page_number_column",
+    "body_heading_levels",
+    "body_text",
+    "figure_table_captions_and_holders",
+    "body_citation_superscripts",
+    "review_comments_and_change_marks",
+    "references_title",
+    "references_entries",
+    "acknowledgement_title",
+    "acknowledgement_body",
+    "appendix_title",
+    "appendix_body",
+    "header",
+    "footer",
+    "page_numbers",
+    "whole_document_pagination",
+)
+STYLE_BEARING_PART_PATTERNS = (
+    re.compile(r"^word/styles\.xml$", re.IGNORECASE),
+    re.compile(r"^word/settings\.xml$", re.IGNORECASE),
+    re.compile(r"^word/numbering\.xml$", re.IGNORECASE),
+    re.compile(r"^word/fontTable\.xml$", re.IGNORECASE),
+    re.compile(r"^word/theme/", re.IGNORECASE),
+    re.compile(r"^word/header\d+\.xml$", re.IGNORECASE),
+    re.compile(r"^word/footer\d+\.xml$", re.IGNORECASE),
+    re.compile(r"(^|/)_rels/.*\.rels$", re.IGNORECASE),
+    re.compile(r"^customXml/.*\.rels$", re.IGNORECASE),
+)
 WORKFLOWS = {
     "new-thesis-production",
     "whole-thesis-revision",
@@ -84,6 +129,37 @@ TOC_PAGE_NUMBER_SURFACES = {
     "toc_page_number_column",
     "toc page-number column",
     "toc page number column",
+}
+TOC_SURFACE_TOKENS = {
+    "toc",
+    "toc_entries",
+    "toc entries",
+    "table of contents",
+    "live toc",
+    "toc field",
+    "toc cache",
+    "toc hyperlink",
+    "toc bookmark",
+    "toc page-number",
+    "toc page number",
+    "目录",
+}
+BODY_VISUAL_COMPLAINT_TOKENS = {
+    "body pollution",
+    "body typography",
+    "body font",
+    "body font-size",
+    "font-size pollution",
+    "looks different",
+    "visual pollution",
+    "rendered body",
+    "strict-direct-visible",
+    "正文污染",
+    "正文字体",
+    "正文字号",
+    "正文格式",
+    "样式不一样",
+    "看起来不一样",
 }
 COMMENT_DRIVEN_TOKENS = {
     "comment",
@@ -442,7 +518,14 @@ def load_markdown_record(path: Path) -> dict[str, Any]:
         if not stripped.startswith("- ") or ":" not in stripped:
             continue
         key, value = stripped[2:].split(":", 1)
-        data[key.strip().replace("-", "_").replace(" ", "_")] = value.strip()
+        value_text = value.strip()
+        parsed_value: Any = value_text
+        if value_text.startswith(("{", "[")):
+            try:
+                parsed_value = json.loads(value_text)
+            except json.JSONDecodeError:
+                parsed_value = value_text
+        data[key.strip().replace("-", "_").replace(" ", "_")] = parsed_value
     return data
 
 
@@ -453,6 +536,13 @@ def load_record(path: Path) -> dict[str, Any]:
             raise ValueError("transaction record JSON root must be an object")
         return payload
     return load_markdown_record(path)
+
+
+def load_json_object(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"JSON root must be an object: {path}")
+    return payload
 
 
 def resolve_path(value: object, base: Path) -> Path | None:
@@ -477,6 +567,94 @@ def evidence_object(payload: dict[str, Any], name: str) -> dict[str, Any]:
     if value is not None and "path" not in result:
         result["path"] = value
     return result
+
+
+def evidence_field(payload: dict[str, Any], evidence_name: str, field: str) -> Any:
+    value = payload.get(evidence_name)
+    if isinstance(value, dict) and field in value:
+        return value.get(field)
+    for key in (f"{evidence_name}_{field}", field):
+        if key in payload:
+            return payload.get(key)
+    return None
+
+
+def require_pass_evidence_field(
+    *,
+    issues: list[str],
+    payload: dict[str, Any],
+    evidence_name: str,
+    field: str,
+    label: str,
+) -> None:
+    value = evidence_field(payload, evidence_name, field)
+    if not is_pass(value):
+        issues.append(f"{label} must be pass")
+
+
+def require_renderer_immutability_fields(
+    *,
+    issues: list[str],
+    payload: dict[str, Any],
+    final_docx: Path | None,
+    record_path: Path,
+) -> None:
+    before_hash = str(
+        payload.get("final_docx_hash_before_render")
+        or payload.get("final_docx_sha256_before_render")
+        or ""
+    ).strip().lower()
+    after_hash = str(
+        payload.get("final_docx_hash_after_render")
+        or payload.get("final_docx_sha256_after_render")
+        or ""
+    ).strip().lower()
+    final_hash = str(payload.get("final_docx_sha256") or "").strip().lower()
+    if not before_hash:
+        issues.append("transaction final_docx_hash_before_render is missing")
+    if not after_hash:
+        issues.append("transaction final_docx_hash_after_render is missing")
+    if before_hash and after_hash and before_hash != after_hash:
+        issues.append("visible final DOCX hash changed during rendered review")
+    if final_hash and before_hash and final_hash != before_hash:
+        issues.append("final_docx_hash_before_render does not match final_docx_sha256")
+    if final_hash and after_hash and final_hash != after_hash:
+        issues.append("final_docx_hash_after_render does not match final_docx_sha256")
+    if final_docx is not None and final_docx.exists():
+        actual_hash = sha256_file(final_docx).lower()
+        if before_hash and before_hash != actual_hash:
+            issues.append("final_docx_hash_before_render does not match the visible final DOCX on disk")
+        if after_hash and after_hash != actual_hash:
+            issues.append("final_docx_hash_after_render does not match the visible final DOCX on disk")
+    if not is_pass(
+        payload.get("visible_final_docx_renderer_mutation_verdict")
+        or payload.get("renderer_visible_final_docx_immutability_verdict")
+    ):
+        issues.append("transaction visible_final_docx_renderer_mutation_verdict must be pass")
+    if not is_pass(payload.get("render_source_docx_disposable_copy_verdict")):
+        issues.append("transaction render_source_docx_disposable_copy_verdict must be pass")
+    render_source = resolve_path(
+        payload.get("render_source_docx_path") or payload.get("renderer_source_docx_path"),
+        record_path,
+    )
+    if render_source is None:
+        issues.append("transaction render_source_docx_path is missing")
+        return
+    if not render_source.exists():
+        issues.append(f"transaction render_source_docx_path does not exist: {render_source}")
+    render_source_sha = str(
+        payload.get("render_source_docx_sha256") or payload.get("renderer_source_docx_sha256") or ""
+    ).strip().lower()
+    if not render_source_sha:
+        issues.append("transaction render_source_docx_sha256 is missing")
+    elif render_source.exists() and sha256_file(render_source).lower() != render_source_sha:
+        issues.append("transaction render_source_docx_sha256 does not match render_source_docx_path")
+    if final_docx is not None:
+        try:
+            if render_source.resolve() == final_docx.resolve():
+                issues.append("render_source_docx_path must be a disposable copy, not the visible final DOCX path")
+        except OSError:
+            issues.append("render_source_docx_path or final_docx_path cannot be resolved")
 
 
 def check_path_sha(
@@ -547,6 +725,142 @@ def require_existing_payload_path(
     return path
 
 
+def is_style_bearing_part(part: str) -> bool:
+    return any(pattern.search(part) for pattern in STYLE_BEARING_PART_PATTERNS)
+
+
+def truthy(value: object) -> bool:
+    text = normalize(value)
+    return text in {"1", "true", "yes", "y", "changed", "detected", "active"}
+
+
+def report_path_matches(report_value: object, expected: Path | None, record_path: Path) -> bool:
+    if expected is None:
+        return False
+    resolved = resolve_path(report_value, record_path)
+    if resolved is None:
+        return False
+    try:
+        return resolved.resolve() == expected.resolve()
+    except OSError:
+        return False
+
+
+def validate_protected_surface_diff_report(
+    *,
+    report_path: Path,
+    payload: dict[str, Any],
+    source_docx: Path | None,
+    final_docx: Path | None,
+    target_surfaces: list[str],
+    protected_sibling_surfaces: list[str],
+    record_path: Path,
+) -> list[str]:
+    issues: list[str] = []
+    try:
+        report = load_json_object(report_path)
+    except Exception as exc:
+        return [f"post_mutation_surface_diff must be canonical protected-surface JSON: {exc}"]
+
+    if str(report.get("schema", "")).strip() != PROTECTED_SURFACE_DIFF_SCHEMA:
+        issues.append(
+            f"post_mutation_surface_diff schema must be {PROTECTED_SURFACE_DIFF_SCHEMA}: "
+            f"{report.get('schema') or 'missing'}"
+        )
+
+    if source_docx is not None:
+        if not report_path_matches(report.get("source_docx_path"), source_docx, record_path):
+            issues.append("protected-surface diff source_docx_path does not match transaction source DOCX")
+        if source_docx.exists() and str(report.get("source_docx_sha256", "")).strip().lower() != sha256_file(source_docx).lower():
+            issues.append("protected-surface diff source_docx_sha256 does not match transaction source DOCX")
+    if final_docx is not None:
+        if not report_path_matches(report.get("final_docx_path"), final_docx, record_path):
+            issues.append("protected-surface diff final_docx_path does not match transaction final DOCX")
+        if final_docx.exists() and str(report.get("final_docx_sha256", "")).strip().lower() != sha256_file(final_docx).lower():
+            issues.append("protected-surface diff final_docx_sha256 does not match transaction final DOCX")
+
+    report_surface_ids = set(as_list(report.get("canonical_surface_ids")))
+    missing_surface_ids = [sid for sid in CANONICAL_PROTECTED_SURFACE_IDS if sid not in report_surface_ids]
+    if missing_surface_ids:
+        issues.append(
+            "protected-surface diff canonical_surface_ids missing: " + ", ".join(missing_surface_ids)
+        )
+
+    surface_diffs = report.get("surface_diffs")
+    if not isinstance(surface_diffs, dict):
+        issues.append("protected-surface diff surface_diffs must be an object keyed by canonical surface id")
+        surface_diffs = {}
+    authorized_surfaces = set(target_surfaces) | set(as_list(report.get("authorized_surface_ids")))
+    unauthorized_non_target = list(as_list(report.get("unauthorized_non_target_changes")))
+    for surface_id in CANONICAL_PROTECTED_SURFACE_IDS:
+        item = surface_diffs.get(surface_id)
+        if not isinstance(item, dict):
+            issues.append(f"protected-surface diff missing surface row: {surface_id}")
+            continue
+        status = normalize(item.get("status"))
+        verdict = item.get("verdict")
+        changed = status in {"changed", "modified", "removed", "added", "text-changed", "format-changed"}
+        if changed and surface_id not in authorized_surfaces:
+            unauthorized_non_target.append(surface_id)
+        if surface_id not in authorized_surfaces and not is_pass(verdict):
+            issues.append(f"protected-surface diff non-target surface verdict is not pass: {surface_id}")
+
+    if unauthorized_non_target:
+        issues.append(
+            "protected-surface diff report contains unauthorized non-target protected surface changes: "
+            + ", ".join(sorted(set(unauthorized_non_target)))
+        )
+
+    if not is_pass(report.get("protected_surface_diff_verdict")):
+        issues.append("protected-surface diff protected_surface_diff_verdict is not pass")
+    if not is_pass(report.get("package_part_diff_verdict")):
+        issues.append("protected-surface diff package_part_diff_verdict is not pass")
+    if not is_pass(report.get("style_bearing_package_part_verdict")):
+        issues.append("protected-surface diff style_bearing_package_part_verdict is not pass")
+    if not is_pass(report.get("evidence_staleness_verdict")):
+        issues.append("protected-surface diff evidence_staleness_verdict is not pass")
+    if not is_pass(report.get("review_artifact_diff_verdict")):
+        issues.append("protected-surface diff review_artifact_diff_verdict is not pass")
+    if not is_pass(report.get("citation_run_diff_verdict")):
+        issues.append("protected-surface diff citation_run_diff_verdict is not pass")
+    if not is_pass(report.get("keyword_run_split_verdict")):
+        issues.append("protected-surface diff keyword_run_split_verdict is not pass")
+
+    changed_parts = set(as_list(report.get("changed_package_parts")))
+    package_part_diffs = report.get("package_part_diffs")
+    if isinstance(package_part_diffs, dict):
+        for key in ("added", "removed", "changed", "changed_package_parts"):
+            changed_parts.update(as_list(package_part_diffs.get(key)))
+    authorized_parts = set(as_list(report.get("authorized_changed_parts")))
+    authorized_parts.update(as_list(payload.get("authorized_changed_parts") or payload.get("authorized_changed_package_parts")))
+    unauthorized_style_parts = {
+        part for part in changed_parts if is_style_bearing_part(part) and part not in authorized_parts
+    }
+    unauthorized_style_parts.update(as_list(report.get("unauthorized_style_bearing_part_changes")))
+    if unauthorized_style_parts:
+        issues.append(
+            "protected-surface diff reports unauthorized style-bearing package part changes: "
+            + ", ".join(sorted(unauthorized_style_parts))
+        )
+
+    if truthy(report.get("compat_or_renderer_mutation_detected")) or truthy(
+        payload.get("compat_or_renderer_mutation_detected")
+    ):
+        if not is_pass(
+            report.get("docx_bound_evidence_regenerated_after_last_mutation_verdict")
+            or payload.get("docx_bound_evidence_regenerated_after_compat_verdict")
+        ):
+            issues.append(
+                "DOCX-bound evidence must be regenerated after OpenXML compatibility repair, renderer mutation, "
+                "field refresh, or Office/WPS/LibreOffice round-trip"
+            )
+
+    freeze_scope = set(protected_sibling_surfaces) | authorized_surfaces
+    if not freeze_scope and target_surfaces:
+        issues.append("transaction must declare protected_sibling_surfaces or bind a full protected-surface diff")
+    return issues
+
+
 def load_figure_manifest_for_transaction(path: Path) -> tuple[dict[str, Any] | None, str | None]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -614,6 +928,30 @@ def validate_manifest_transaction_binding(
                     "original_relationship_id",
                 ),
             )
+    for collection_name in (
+        "media_removal_authorizations",
+        "media_relationship_removal_authorizations",
+        "image_removal_authorizations",
+    ):
+        collection = manifest.get(collection_name)
+        if isinstance(collection, list):
+            for entry in collection:
+                if not isinstance(entry, dict):
+                    continue
+                replacement_signal += " " + payload_text(
+                    entry,
+                    (
+                        "mutation_intent",
+                        "removal_intent",
+                        "media_removal_intent",
+                        "removal_authorization_scope",
+                        "explicit_removal_authorization_scope",
+                        "original_media_sha256",
+                        "original_asset_sha256",
+                        "original_rid",
+                        "original_relationship_id",
+                    ),
+                )
     if has_any_token(replacement_signal, {"replace_existing", "replacement", "replace image", "redraw", "original_media_sha256"}):
         if source_docx is None or not source_docx.exists():
             issues.append("transaction figure replacement manifest requires existing source_docx for source-to-final binding")
@@ -644,7 +982,11 @@ def docx_has_review_artifacts(path: Path | None) -> bool:
             ]
             for name in story_names:
                 text = zf.read(name).decode("utf-8", errors="ignore")
-                if "commentRangeStart" in text or "commentReference" in text or "<w:ins" in text or "<w:del" in text:
+                if (
+                    "commentRangeStart" in text
+                    or "commentReference" in text
+                    or re.search(r"<w:(ins|del)(\s|>)", text)
+                ):
                     return True
     except (OSError, zipfile.BadZipFile, KeyError):
         return False
@@ -695,6 +1037,43 @@ def docx_drawing_manifest_changed(source_docx: Path | None, final_docx: Path | N
     return False
 
 
+def docx_drawing_manifest_changed_outside_header_footer(source_docx: Path | None, final_docx: Path | None) -> bool:
+    if source_docx is None or final_docx is None:
+        return False
+    if not source_docx.exists() or not final_docx.exists():
+        return False
+    source_drawings = docx_drawing_object_manifest(source_docx)
+    final_drawings = docx_drawing_object_manifest(final_docx)
+
+    def outside_header_footer(row: dict[str, Any]) -> bool:
+        story_part = str(row.get("story_part") or "")
+        return not (story_part.startswith("word/footer") or story_part.startswith("word/header"))
+
+    source_filtered = {
+        key: row for key, row in source_drawings.items() if outside_header_footer(row)
+    }
+    final_filtered = {
+        key: row for key, row in final_drawings.items() if outside_header_footer(row)
+    }
+    if Counter(stable_drawing_signature(row) for row in source_filtered.values()) == Counter(
+        stable_drawing_signature(row) for row in final_filtered.values()
+    ):
+        return False
+    if set(source_filtered) != set(final_filtered):
+        return True
+    compared_fields = (
+        "drawing_kind",
+        "extent_signature",
+        "relationship_ids",
+        "media_signature",
+    )
+    for key, source in source_filtered.items():
+        final = final_filtered.get(key, {})
+        if any(str(source.get(field, "")) != str(final.get(field, "")) for field in compared_fields):
+            return True
+    return False
+
+
 def stable_drawing_signature(row: dict[str, Any]) -> tuple[str, ...]:
     fields = (
         "story_part",
@@ -727,6 +1106,7 @@ def validate_transaction_record(record_path: Path, expected_final_docx: Path | N
         issues.append(f"transaction_workflow is not recognized: {transaction_workflow or 'missing'}")
 
     target_surfaces = as_list(payload.get("target_surfaces") or payload.get("target_surface_ids"))
+    protected_sibling_surfaces = as_list(payload.get("protected_sibling_surfaces"))
     if not target_surfaces and transaction_workflow != "audit-only":
         issues.append("transaction target_surfaces must not be empty")
     write_owner = str(payload.get("write_owner") or payload.get("single_write_owner") or "").strip()
@@ -761,6 +1141,9 @@ def validate_transaction_record(record_path: Path, expected_final_docx: Path | N
         target_surfaces,
         operation_text,
     )
+    target_text = normalize(" ".join(target_surfaces))
+    protected_sibling_text = payload_text(payload, ("protected_sibling_surfaces",))
+    surface_scope_text = normalize(f"{operation_text} {protected_sibling_text}")
 
     final_docx = check_path_sha(
         issues=issues,
@@ -790,8 +1173,8 @@ def validate_transaction_record(record_path: Path, expected_final_docx: Path | N
             require_exists=transaction_workflow != "audit-only",
             require_sha=transaction_workflow != "audit-only",
         )
+    source_checked = checked_docx_paths.get("source_docx")
     if transaction_workflow != "audit-only":
-        source_checked = checked_docx_paths.get("source_docx")
         if source_checked is not None and final_docx is not None:
             try:
                 if source_checked.resolve() == final_docx.resolve():
@@ -835,6 +1218,62 @@ def validate_transaction_record(record_path: Path, expected_final_docx: Path | N
             elif final_docx is not None and final_docx.exists():
                 if str(evidence_sha).strip().lower() != sha256_file(final_docx).lower():
                     issues.append(f"{name} final_docx_sha256 does not match transaction final DOCX")
+
+        post_diff_path = resolve_path(evidence_object(payload, "post_mutation_surface_diff").get("path"), record_path)
+        if post_diff_path is not None and post_diff_path.exists():
+            issues.extend(
+                validate_protected_surface_diff_report(
+                    report_path=post_diff_path,
+                    payload=payload,
+                    source_docx=source_checked,
+                    final_docx=final_docx,
+                    target_surfaces=target_surfaces,
+                    protected_sibling_surfaces=protected_sibling_surfaces,
+                    record_path=record_path,
+                )
+            )
+
+        require_renderer_immutability_fields(
+            issues=issues,
+            payload=payload,
+            final_docx=final_docx,
+            record_path=record_path,
+        )
+
+        body_visual_required = chapter_format_required and (
+            touches_body_chapter_surface(target_surfaces, operation_text)
+            or has_any_token(operation_text, BODY_VISUAL_COMPLAINT_TOKENS)
+            or has_any_token(target_text, BODY_CHAPTER_SURFACE_TOKENS)
+        )
+        if body_visual_required:
+            for field in (
+                "effective_font_slot_verdict",
+                "strict_direct_visible_metrics_verdict",
+                "rendered_body_typography_comparison_verdict",
+                "neighbor_body_baseline_comparison_verdict",
+            ):
+                require_pass_evidence_field(
+                    issues=issues,
+                    payload=payload,
+                    evidence_name=CHAPTER_FORMAT_PRESERVATION_EVIDENCE,
+                    field=field,
+                    label=f"{CHAPTER_FORMAT_PRESERVATION_EVIDENCE}.{field}",
+                )
+
+        if has_any_token(surface_scope_text, TOC_SURFACE_TOKENS):
+            toc_required_fields = (
+                ("post_mutation_surface_diff", "toc_field_cache_preservation_verdict"),
+                ("post_mutation_surface_diff", "toc_package_diff_verdict"),
+                ("cross_surface_regression_report", "toc_rendered_sync_verdict"),
+            )
+            for evidence_name, field in toc_required_fields:
+                require_pass_evidence_field(
+                    issues=issues,
+                    payload=payload,
+                    evidence_name=evidence_name,
+                    field=field,
+                    label=f"{evidence_name}.{field}",
+                )
 
     detector_verdicts = payload.get("detector_verdicts")
     if isinstance(detector_verdicts, dict):
@@ -894,32 +1333,86 @@ def validate_transaction_record(record_path: Path, expected_final_docx: Path | N
     surface_scope_text = normalize(f"{operation_text} {protected_sibling_text}")
     source_docx = first_payload_path(payload, ("source_docx_path",), record_path)
     comment_scope = normalize(payload.get("comment_revision_scope") or payload.get("teacher_comment_scope"))
-    comment_driven = has_any_token(operation_text, COMMENT_DRIVEN_TOKENS) or (
-        docx_has_review_artifacts(source_docx)
-        and comment_scope not in {"", "none", "n/a", "not-applicable", "not-applicable-with-reason"}
+    comment_scope_active = comment_scope not in {"", "none", "n/a", "not-applicable", "not-applicable-with-reason"}
+    source_has_review_artifacts = docx_has_review_artifacts(source_docx)
+    final_has_review_artifacts = docx_has_review_artifacts(final_docx)
+    all_comments_claimed = has_all_comments_claim(
+        payload.get("claimed_acceptance_scope"),
+        payload.get("scope_claim"),
+        payload.get("handoff_claim"),
+        payload.get("comment_resolution_scope"),
     )
+    comment_driven = (
+        has_any_token(operation_text, COMMENT_DRIVEN_TOKENS)
+        and (comment_scope_active or source_has_review_artifacts or final_has_review_artifacts or all_comments_claimed)
+    ) or ((source_has_review_artifacts or final_has_review_artifacts) and comment_scope_active)
     if transaction_workflow != "audit-only":
         if has_fixed_locator_signal(operation_text):
             issues.append("DOCX mutation transaction cannot use fixed paragraph indexes or Word COM paragraph numbers")
         if has_whole_rewrite_signal(operation_text) and selected_workflow != "new-thesis-production":
             issues.append("DOCX mutation transaction cannot use whole-document rewrite/rebuild without new-thesis-production routing")
-    if comment_driven and transaction_workflow != "audit-only":
-        require_existing_payload_path(
+
+    if transaction_workflow != "audit-only":
+        source_review_artifact_inventory_path = require_existing_payload_path(
             issues=issues,
             payload=payload,
             keys=("source_review_artifact_inventory_path", "review_artifact_source_inventory_path"),
             label="source review-artifact inventory",
             record_path=record_path,
         )
-        require_existing_payload_path(
+        final_review_artifact_diff_path = require_existing_payload_path(
             issues=issues,
             payload=payload,
             keys=("final_review_artifact_diff_path", "review_artifact_preservation_report"),
             label="final review-artifact diff",
             record_path=record_path,
         )
+        if (
+            source_review_artifact_inventory_path is not None
+            and source_review_artifact_inventory_path.exists()
+            and final_review_artifact_diff_path is not None
+            and final_review_artifact_diff_path.exists()
+        ):
+            issues.extend(
+                validate_review_artifact_reports(
+                    source_review_artifact_inventory_path,
+                    final_review_artifact_diff_path,
+                    expected_final_docx=final_docx,
+                )
+            )
         if not is_pass(payload.get("review_artifact_preservation_verdict")):
-            issues.append("comment-driven transaction review_artifact_preservation_verdict is not pass")
+            issues.append("transaction review_artifact_preservation_verdict is not pass")
+        source_body_citation_run_inventory_path = require_existing_payload_path(
+            issues=issues,
+            payload=payload,
+            keys=("source_body_citation_run_inventory_path", "body_citation_run_source_inventory_path"),
+            label="source body-citation run inventory",
+            record_path=record_path,
+        )
+        final_body_citation_run_diff_path = require_existing_payload_path(
+            issues=issues,
+            payload=payload,
+            keys=("final_body_citation_run_diff_path", "body_citation_run_preservation_report"),
+            label="final body-citation run diff",
+            record_path=record_path,
+        )
+        if (
+            source_body_citation_run_inventory_path is not None
+            and source_body_citation_run_inventory_path.exists()
+            and final_body_citation_run_diff_path is not None
+            and final_body_citation_run_diff_path.exists()
+        ):
+            issues.extend(
+                validate_citation_run_reports(
+                    source_body_citation_run_inventory_path,
+                    final_body_citation_run_diff_path,
+                    expected_final_docx=final_docx,
+                )
+            )
+        if not is_pass(payload.get("body_citation_superscripts_preservation_verdict")):
+            issues.append("transaction body_citation_superscripts_preservation_verdict is not pass")
+
+    if comment_driven and transaction_workflow != "audit-only":
         comment_resolution_ledger_path = require_existing_payload_path(
             issues=issues,
             payload=payload,
@@ -941,18 +1434,21 @@ def validate_transaction_record(record_path: Path, expected_final_docx: Path | N
                     ),
                 )
             )
-        if has_all_comments_claim(
-            payload.get("claimed_acceptance_scope"),
-            payload.get("scope_claim"),
-            payload.get("handoff_claim"),
-            payload.get("comment_resolution_scope"),
-        ) and comment_resolution_ledger_path is None:
+        if all_comments_claimed and comment_resolution_ledger_path is None:
             issues.append("all-comments-resolved transaction claim requires a comment-resolution ledger")
 
     media_diff_mutation = docx_media_manifest_changed(source_docx, final_docx)
     drawing_diff_mutation = docx_drawing_manifest_changed(source_docx, final_docx)
+    drawing_diff_outside_header_footer = docx_drawing_manifest_changed_outside_header_footer(source_docx, final_docx)
+    footer_page_number_surface = any(
+        surface in target_text
+        for surface in ("footer", "page_numbers", "page numbers", "header")
+    )
+    drawing_diff_requires_image_gate = drawing_diff_mutation and not (
+        footer_page_number_surface and not drawing_diff_outside_header_footer
+    )
     image_intent = has_image_mutation_intent(payload)
-    image_mutation = image_intent or media_diff_mutation or drawing_diff_mutation
+    image_mutation = image_intent or media_diff_mutation or drawing_diff_requires_image_gate
     protected_image_target = image_mutation and has_any_token(surface_scope_text, PROTECTED_IMAGE_TARGET_TOKENS)
     protected_surface_image_authorized = is_pass(
         payload.get("official_template_protected_image_authorization_verdict")
@@ -963,7 +1459,7 @@ def validate_transaction_record(record_path: Path, expected_final_docx: Path | N
     if image_mutation and transaction_workflow != "audit-only":
         if media_diff_mutation and not image_intent:
             issues.append("source-to-final DOCX media relationships changed; transaction must route as an image mutation")
-        if drawing_diff_mutation and not image_intent:
+        if drawing_diff_requires_image_gate and not image_intent:
             issues.append("source-to-final DOCX drawing objects changed; transaction must route as an image mutation")
         figure_manifest_path = require_existing_payload_path(
             issues=issues,

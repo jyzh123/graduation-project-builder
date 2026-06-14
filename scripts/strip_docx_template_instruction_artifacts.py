@@ -69,6 +69,18 @@ INSTRUCTION_KEYWORDS = (
     "pt",
 )
 
+PROCESS_NOTE_PHRASES = (
+    "\u672c\u6587\u5728\u5f15\u7528\u65f6\u6309\u6b63\u6587\u9996\u6b21\u51fa\u73b0\u987a\u5e8f\u7f16\u53f7",
+    "\u53c2\u8003\u6587\u732e\u533a\u4e5f\u6309\u540c\u4e00\u987a\u5e8f\u5217\u51fa",
+    "\u907f\u514d\u51fa\u73b0\u56fe\u9898\u3001\u8868\u9898\u548c\u6807\u9898\u4e0a\u6302\u5f15\u7528\u7f16\u53f7\u7684\u95ee\u9898",
+    "\u8865\u5145\u5f15\u7528\u8bf4\u660e",
+    "\u5148\u5b8c\u6210pdf+dwg\u5de5\u7a0b\u56fe\u7eb8\u5305",
+    "\u518d\u6309\u56fe\u7eb8\u53c2\u6570\u53cd\u63a8\u8ba1\u7b97\u4e66\u548c\u8bf4\u660e\u4e66\u5185\u5bb9",
+    "\u4ea4\u4ed8pdf\u4e0edwg\u6e90\u6587\u4ef6",
+    "\u5df2\u4f5c\u4e3a\u72ec\u7acbaa0\u56fe\u7eb8\u4ea4\u4ed8",
+    "\u6e90\u6587\u4ef6\u5305\u542bpdf\u3001dwg\u548cdxf\u683c\u5f0f",
+)
+
 
 def normalize(text: str) -> str:
     return re.sub(r"[\s\u25a1]+", "", text or "").strip().lower()
@@ -213,6 +225,25 @@ def is_instruction_note_text(text: str) -> bool:
             normalize("\u5355\u72ec\u6210\u9875"),
         )
     )
+
+
+def is_process_note_text(text: str) -> bool:
+    """Detect generated process notes that describe citation mechanics, not thesis content."""
+    lowered = normalize(text)
+    if not lowered:
+        return False
+    hits = sum(1 for token in PROCESS_NOTE_PHRASES if normalize(token) in lowered)
+    if hits >= 2:
+        return True
+    if "pdf+dwg" in lowered and "\u53cd\u63a8" in lowered and "\u8bf4\u660e\u4e66" in lowered:
+        return True
+    if "pdf+dwg" in lowered and ("\u5de5\u7a0b\u56fe\u7eb8\u5305" in lowered or "\u56fe\u7eb8\u5305" in lowered):
+        return True
+    if "\u4ea4\u4ed8" in lowered and "pdf" in lowered and "dwg" in lowered:
+        return True
+    if "\u6e90\u6587\u4ef6\u5305\u542bpdf" in lowered and "dwg" in lowered:
+        return True
+    return lowered.startswith(normalize("\u8865\u5145\u5f15\u7528\u8bf4\u660e"))
 
 
 def table_cell_texts(table: ET.Element) -> list[str]:
@@ -395,6 +426,16 @@ def collect_instruction_artifacts_from_root(
                     "artifact_text": direct_text,
                 }
             )
+        elif direct_text and is_process_note_text(direct_text):
+            artifacts.append(
+                {
+                    "paragraph_index": idx,
+                    "part_name": part_name,
+                    "kind": "process-note-paragraph",
+                    "direct_text": direct_text,
+                    "artifact_text": direct_text,
+                }
+            )
         elif direct_text and is_instruction_text(direct_text):
             artifacts.append(
                 {
@@ -521,6 +562,22 @@ def strip_instruction_artifacts_from_root(
                     "paragraph_index": idx,
                     "part_name": part_name,
                     "kind": "note-paragraph",
+                    "direct_text": direct_text,
+                    "artifact_text": direct_text,
+                }
+            )
+            if not has_page_break(paragraph):
+                parent = _parent(container, paragraph) or _parent(root, paragraph)
+                if parent is not None:
+                    parent.remove(paragraph)
+                    removed_notes += 1
+            continue
+        if direct_text and is_process_note_text(direct_text):
+            artifacts_before.append(
+                {
+                    "paragraph_index": idx,
+                    "part_name": part_name,
+                    "kind": "process-note-paragraph",
                     "direct_text": direct_text,
                     "artifact_text": direct_text,
                 }

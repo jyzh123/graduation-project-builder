@@ -91,6 +91,7 @@ Use this file for durable template-following, TOC, heading, front-matter, and la
 - Teacher-provided sample thesis files may carry inherited section headers from unrelated chapters or unrelated sample documents.
 - When reusing a sample DOCX as the build baseline, explicitly break header links to previous sections and clear inherited headers before finalizing the document.
 - Treat this as a standard cleanup step in template-following thesis generation.
+- When the locked template has no visible running headers, the final DOCX must not add institutional or sample running headers on the cover, declaration/front matter, TOC, or body pages. A static-looking school-name header is still a format drift if the template header baseline is empty.
 
 ### FB-LAYOUT-009 (legacy 21). Thesis Finalizer Chains Must Not Abort On Successful `SystemExit` (Mandatory)
 
@@ -162,6 +163,7 @@ Use this file for durable template-following, TOC, heading, front-matter, and la
 - In thesis abstract pages, treat labels such as `摘要：`, `关键词：`, `Abstract:`, and `Key words:` as bold labels by default.
 - Do not let these labels fall back to ordinary body-text weight during abstract assembly or final formatting passes.
 - Bold the label text itself, not the entire keyword string, unless the template explicitly requires full-line bolding.
+- The keyword content after the label must remain in the keyword-content/body-like donor face. It must not inherit abstract-title, heading, caption, TOC-title, or title-like character formatting even when the label/content run split is structurally correct.
 
 ### FB-LAYOUT-017 (legacy 26). Figures Must Stay Visible Without Breaking Paragraph Readability (Mandatory)
 
@@ -306,8 +308,10 @@ Use this file for durable template-following, TOC, heading, front-matter, and la
 - When global body formatting is applied, figure-holder paragraphs and table-cell paragraphs must be excluded from raw body-paragraph inheritance or explicitly reset afterward.
 - Required image-holder paragraph fallback:
   - centered alignment
-  - no first-line indent
-  - single line spacing
+  - no body-text first-line indent residue
+  - template-safe line spacing; if the locked holder donor has no direct spacing,
+    do not synthesize direct `w:spacing` values just to make the holder look
+    normalized
   - keep-with-next enabled when the next paragraph is the caption
 - Required table-cell paragraph fallback:
   - no first-line indent
@@ -322,13 +326,19 @@ Use this file for durable template-following, TOC, heading, front-matter, and la
 - Treat these residues as a dedicated failure class.
 - Required cleanup for every affected figure-holder paragraph:
   - centered alignment
-  - first-line indent explicitly set to zero
-  - character-unit first-line indent explicitly set to zero
-  - no inherited left indent or hanging indent
-  - no inherited `leftChars` / `hangingChars` residue
+  - clear direct first-line, character-unit first-line, left, hanging,
+    `leftChars`, and `hangingChars` residues unless the locked approved holder
+    donor explicitly proves those fields must be written
+  - clear direct paragraph spacing when the approved holder donor inherits
+    spacing from its style rather than writing direct `before`, `after`,
+    `line`, or `lineRule` attributes
   - keep-with-next enabled when the next paragraph is the caption
 - Do not leave a figure-holder paragraph bound to the body-text style family or to a style chain that still inherits the body paragraph's indent grammar.
+- Do not repair a holder drift by writing `0` indents or fixed `120/240`
+  spacing when the self-check/template baseline expects those direct fields to
+  be absent; absence and explicit zero are different DOCX surfaces.
 - If `Normal` or the current body style definition carries first-line indent via `w:ind w:firstLine`, `w:firstLineChars`, or related character-unit indent fields, treat a holder paragraph that still resolves through that chain as failed even when its visible text is empty.
+- For the current IMUST mechanical-design baseline, a figure-holder paragraph must keep the dedicated `ThesisImageHolder` / `Thesis Image Holder` paragraph family rather than being downgraded to `Normal`. The direct holder metrics are centered alignment, `before=120`, `after=0`, `line=360`, `lineRule=auto`, `firstLine=0`, `left=0`, `right=0`, `firstLineChars=0`, `leftChars=0`, `rightChars=0`, no hanging/list/outline residue, and `keepNext` when followed by a caption. Older `line=240` holder evidence is stale for this profile because it can conflict with the non-clipping image-holder safety gate.
 - Required cleanup for every affected figure-caption paragraph:
   - centered alignment
   - first-line indent explicitly set to zero
@@ -572,6 +582,7 @@ Use this file for durable template-following, TOC, heading, front-matter, and la
 - After refresh, restore the refreshed TOC title and TOC level paragraphs to that locked local baseline in the same pass.
 - If the TOC text is correct but the title, indentation, dotted leaders, page-number alignment, or level-by-level font rhythm drift away from the approved sample after refresh, treat the TOC pass as failed.
 - If the approved sample implements part of the TOC look through direct paragraph formatting instead of reusable TOC style definitions, restore those direct paragraph metrics explicitly rather than assuming the style name alone is sufficient.
+- TOC visible-run restoration must preserve the donor's direct-run shape, including inherited/theme-only runs. Do not write builder-chosen `宋体`/`Times New Roman`,字号, or bold flags into TOC entry/page-number runs when the approved donor expects inherited fonts, theme fonts, an explicit `w:b val=0` only, or an empty direct `w:rPr`.
 
 ### Wrong-Draft TOC Baselines Must Be Rejected Explicitly (Mandatory)
 
@@ -593,6 +604,10 @@ Use this file for durable template-following, TOC, heading, front-matter, and la
   - `CharacterUnitFirstLineIndent`
   - `CharacterUnitLeftIndent`
 - A heading task is not complete until all four are verified clear when the template expects flush-left headings.
+- DOCX-level acceptance must inspect both paragraph-level `w:pPr/w:ind` and the effective paragraph-style chain in `word/styles.xml`.
+- The hard-fail residue set includes `w:left`, `w:right`, `w:leftChars`, `w:rightChars`, `w:firstLine`, `w:firstLineChars`, `w:hanging`, `w:hangingChars`, and `w:numPr` on real body headings.
+- A heading style that inherits body `Normal` first-line indentation because it lacks an explicit zero `w:ind` is still a failed heading repair even when the visible paragraph has the correct `pStyle` name.
+- The gate must cover body level 1, level 2, level 3, and level 4 heading instances separately, excluding TOC field results and front-matter titles from the body-heading evidence.
 
 ### FB-LAYOUT-051 (legacy 91). Fourth-Level Heading Paragraph Instances Must Be Repaired Explicitly (Mandatory)
 
@@ -832,11 +847,14 @@ Rendered Header/Footer Acceptance Detail
 
 - Treat cover, declaration/title front matter, Chinese abstract, English abstract, TOC, header, footer, page-number fields, references, and acknowledgement as protected donor families before any body or style normalization pass.
 - Cover repair must clone the accepted local donor structure and replace only variable text. It must not rebuild the cover from generic paragraphs, flatten cover tables, lose title wrapping, remove school text/logo/banner objects, or damage declaration blocks.
+- When the active donor is Attachment 8-style cover material, the Attachment 8 cover skeleton is a protected donor surface: top template header lines, logo paragraph position, degree-title position, `题目：` paragraph position, identity-field row order, date row position, and the cover section boundary before declaration/front-matter page must be checked against the donor. A gate that checks only media presence, placeholder removal, or field text is a false pass.
+- Clean final covers may remove explanatory callout prose only when the remaining skeleton keeps the donor paragraph order and vertical rhythm; removing the callouts must not collapse the logo, title, topic, identity rows, or date upward.
 - Abstract repair must keep the official label/content split. Chinese `摘要`/`关键词` and English `Abstract`/`Key words` surfaces must not inherit body normalization, heading normalization, or bibliography formatting.
 - Header/footer repair must verify section-level bindings, odd/even or first-page differences, link-to-previous state, visible header/footer text, and page-number field behavior across front matter, TOC, body, references, acknowledgement, and appendix when present.
 - Header repair must compare the template's full visible header string, not only the semantic chapter title. If the template's right header displays a chapter-number component plus title, such as `第一章 绪论`, `第二章 照明系统设计`, or an equivalent numbered pattern, a target header that shows only `绪论` or only `照明系统设计` is a hard failure.
 - Header evidence must record the expected display-string source, chapter-number component, chapter-title component, observed rendered string, section/header part source, and verdict for the first page of each chapter plus at least one later body page and every present tail-block family.
 - Cover, header, and front-matter horizontal rules must be template-proven before they are kept. A target-only paragraph border, table border, header bottom border, shape line, or imported donor residue must be removed when the active template or approved donor does not show the same rendered line in the same page region. Header-line evidence must identify the concrete OOXML source, such as `w:pBdr/w:bottom`, and compare template versus target values instead of relying on the line looking formal.
+- A cover repair that only replays visible cover text is incomplete when the cover remains in the same section as abstracts, TOC, or body pages. The canonical cover repair must create a cover-only section boundary from the approved template/page-setup donor and strip cover-section `headerReference`, `footerReference`, and `pgNumType` unless the locked template explicitly proves a visible cover header/footer/page number.
 - Page-number repair must preserve a Word/WPS page-number field when the template uses one. Hand-typed page numbers or page numbers that only look correct before field refresh are failed.
 - Whole-document blank-page review must classify whether a blank or near-empty page is template-owned, odd/even-section-owned, or abnormal. Abnormal blank pages caused by duplicate page-break owners, stale section breaks, empty paragraphs, field refresh, or oversized blocks must be fixed before handoff.
 - A repair that changes body text or body style without freezing and diffing these donor families is a style-blast-radius repair and cannot pass as a local body-font fix.
@@ -847,6 +865,13 @@ Rendered Header/Footer Acceptance Detail
 - This rule applies even when a cleanup is described as text-only and does not lengthen the paragraph. A whole-paragraph text replacement that leaves the paragraph visually different from neighboring body prose is a failed repair.
 - Inserted or replaced body prose must not inherit chapter-title, heading, TOC, caption, cover, abstract-title, reference-title, acknowledgement-title, figure-caption, table-caption, or title-page formatting.
 - Treat these as hard failures: body prose rendered bold/oversized like a heading; body prose centered like a title or caption; body prose assigned an outline level or heading/caption style; body prose appears in the TOC; body prose keeps wrong line spacing, first-line indent, paragraph alignment, font size, or run formatting compared with the local body donor; body prose starts a page as a title-like orphan immediately before a chapter opener; body prose changes the next chapter opener's visual hierarchy.
+- After a formal figure caption, table title, figure holder, or table object, the next explanatory paragraph is body prose unless it is itself a formal caption/title. It must be reset to the body donor family and must not keep `Caption`, table-title, heading/title, `keepNext`, center alignment, caption line spacing, zero first-line indent, or caption/title direct run formatting.
+- Any image, screenshot, chart, or figure replacement that touches a figure holder or caption must reacquire the figure block from the verified caption after insertion, then inspect nearby explanatory body paragraphs. Newly inserted body prose after the caption must be cloned from a local body donor, not from the caption paragraph, image-holder paragraph, table title, or the mutating COM paragraph chain.
+- The first explanatory paragraph after a formal figure/table caption must not begin by repeating a visible figure/table number such as `图5-1...`, `图 5-1 ...`, or `表4-1...`; rewrite it as body prose such as `该图...`, `该表...`, `从图中可以看出...`, or `上述结果...`.
+- Caption detection must treat lead-ins such as `图4-7显示...`, `图4-7所示...`, `图4-7说明...`, `图4-7表明...`, and similar `figure/table number + narrative verb` sentences as explanatory body prose, not as additional formal captions. These paragraphs must be body-aligned and audited for caption-adjacent contamination even when they start with a formal-looking figure/table label.
+- The same prohibition applies to nearby explanatory body prose in the same figure/table block, not only the first paragraph after the caption. If a later nearby paragraph starts with a figure/table-number cluster such as `图3-4和图3-5...` or `该图和图3-5...`, rewrite it to normal body wording such as `该组图...` or `上述结果...` and rebind it to the body donor family.
+- Caption/table sibling body contamination is a named blocker: when a table/figure-adjacent explanatory paragraph keeps caption/table-title formatting, the final record must expose a `caption/table sibling body contamination verdict` backed by the body-style audit and rendered touched-page evidence.
+- If a nearby explanatory paragraph does not start with a figure/table-number cluster but carries caption/title metrics, such as centered alignment, `keepNext`, zero first-line indent, caption line spacing, title-like font size, or a caption/title style id, it is still caption contamination and must be repaired before any figure task can pass.
 - If a rewrite or cleanup touches an existing paragraph, compare the final paragraph against neighboring same-family body paragraphs and repair both paragraph properties and character run properties before handoff. Do not accept a paragraph whose text is correct but whose visible Word/WPS style differs from surrounding body text.
 - Acceptance must compare inserted or replaced body paragraphs against a local body donor using both DOCX paragraph/run metrics and rendered page images. A pass based only on style names, XML counts, package counts, or PDF existence is invalid, and a user screenshot or report of visible body-style mismatch overrides XML-only evidence.
 - If a content expansion, cleanup, or style normalization changes pagination or appears near a figure/table/caption, the format lane must review the touched pages, the previous/next rendered pages, and any chapter opener moved by the change before handoff.
@@ -857,3 +882,11 @@ Rendered Header/Footer Acceptance Detail
 - Do not treat PDF export, reference count, image count, or successful Office validation as proof of font-color correctness. Word built-in styles such as `Heading 1`, `Heading 2`, `Heading 3`, `Title`, `Caption`, and `Hyperlink` can keep blue theme colors in `styles.xml` even when direct body runs look black.
 - Before final thesis handoff after generation, whole-thesis revision, format repair, figure insertion, citation repair, or style normalization, run the canonical font-color audit on the exact final DOCX. The audit must inspect both direct run colors and the colors of styles actually used in the manuscript.
 - If the audit finds a used style or direct run with non-black visible color, repair that style/run to black, clear theme-color attributes, rerender the PDF, and rerun the audit on the exact final DOCX. A handoff with known non-black visible text is a failed format repair unless the active template evidence proves that color is required.
+
+### FB-LAYOUT-074. Protected Thesis Surfaces Must Not Carry Abnormal Bullet Or List State (Mandatory)
+
+- A thesis DOCX/PDF handoff must not leave abnormal project-symbol bullets, Word list bullets, Unicode bullet prefixes, or other visible bullet prefixes on protected surfaces such as cover/front matter, abstract titles and bodies, TOC title and entries, body headings, references title, bibliography entries, appendix, or acknowledgement.
+- Do not treat the absence of a visible bullet character in `word/document.xml` as enough. Inspect both direct paragraph `w:numPr` and style-inherited `w:numPr`, then resolve the referenced `numbering.xml` model to ensure it is not `numFmt=bullet` or a bullet-like `lvlText`.
+- If headings use manually written numbers such as `第1章`, `1.1`, or `1.1.1`, their heading styles must not also carry automatic bullet/list numbering. If bibliography entries use visible manual numbers such as `1.` or `[1]`, the same paragraph must not also carry Word list state unless the active template explicitly proves that exact automatic numbering model.
+- TOC field caches and PDF exports must be checked after repair. A DOCX that looks clean in XML but renders `•`, `U+F0B7`, or similar project-symbol bullets in Word/WPS/PDF is still a failed format repair.
+- Before final thesis handoff after generation, whole-thesis revision, format repair, TOC refresh, citation/reference repair, or style normalization, run `scripts/audit_docx_list_pollution.py` on the exact final DOCX and include its verdict in the whole-format gate evidence. Any failure blocks handoff.

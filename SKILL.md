@@ -42,6 +42,12 @@ Always load `references/user-feedback-persistence.md` for this skill. It is the
 durable feedback router; after reading it, load only the child files that match
 the current task.
 
+When a thesis-scope task includes bibliography repair, visible reference label
+family complaints, repeated cover provenance complaints, or page-flow/page-number complaints, load both
+`references/user-feedback/citations-and-bibliography.md` and
+`references/user-feedback/maintenance-and-structure.md` before acting. Keep the
+router in `SKILL.md`; keep the detailed rule bodies in the child files.
+
 If a root-level `INCIDENT-*-THESIS-LANE-FREEZE.md` is `ACTIVE`, thesis lanes are
 audit-only unless the task is canonical skill maintenance.
 
@@ -54,6 +60,32 @@ audit-only unless the task is canonical skill maintenance.
 - After changing this skill, run a consolidation pass that checks: owner file, router exposure, file-role index, templates, validators/generators, selftests, acceptance handoff text, and project/session state records.
 - Skill audit, read-only review, diagnosis, repair, and maintenance all use
   `skill-maintenance` routing.
+
+## 0D. Process-Chain Closure Gate
+
+- A durable rule is not active enough for handoff merely because it appears in a
+  markdown rule file. It must be chained into the run workflow before mutation
+  or final acceptance.
+- For every user-reported defect class that becomes a durable rule, the active
+  run must record: routed owner file, checklist or task-card row, execution
+  stage owner, evidence path or field, validator/selftest owner when
+  automatable, and final handoff binding on the exact output path.
+- If a rule is intentionally non-automatable, record the manual rendered-review
+  surface, reviewer role, reviewed page/file set, and pass/fail verdict instead
+  of leaving validator fields blank.
+- A final pass is invalid when required checklist rows remain unchecked,
+  manifest fields remain `pending`, stale failure text remains in pass-critical
+  fields, or evidence paths are not bound to the final DOCX/PDF/DWG/package
+  hashes.
+- When a workflow, checklist, manifest, validator, or acceptance template is
+  updated to close a bypass, update the matching source-of-truth chain in the
+  same turn. Do not leave rules in the skill that the workflow cannot actually
+  enforce.
+- Detailed maintenance rules for this gate live in
+  `references/user-feedback/maintenance-and-structure.md`
+  (`EXEC-MAINT-*`). Load that file for skill-maintenance and for thesis/CAD
+  runs responding to repeated process, checklist, stale-evidence, or bypass
+  complaints.
 
 ## 1. Mode Split
 
@@ -162,6 +194,9 @@ Baseline references:
   checklist routing when thesis helper behavior is involved
 - `references/thesis/thesis-figure-generation-rules.md` when figures,
   screenshots, diagrams, or captions are in scope
+- `references/thesis/figure-rules/baseline-and-sourcing.md` for mechanical CAD/DWG/DXF/PDF packages, sheet workload, linework, CAD color-family differentiation, official CAD command route proof, CAD open-view structural coherence, teacher/reference drawing alignment, external CAD case sourcing, CAD appendix binding, frame overflow, text/entity overlap, CAD text mojibake/missing-glyph boxes, upside-down/mirrored CAD text, annotation ownership, orphan/free-floating CAD text, or unbound scattered drawing labels; for CAD-only handoff, also bind `assets/mechanical-cad-acceptance-template.md`, strict package audit, DXF linework audit, DXF color-family audit, and annotation ownership audit when colors or annotation defects are in scope.
+- `references/thesis/figure-rules/workflow-and-checklists.md` and `references/thesis-table-style-memory.md` together when the user reports flowchart, diagram, figure, table, draw.io, generated-image substitution, or table-format rules being bypassed
+- Flowchart/table bypass complaints also load `references/user-feedback/maintenance-and-structure.md`.
 - `references/thesis/thesis-template-learning.md` when template or sample
   behavior is in scope
 - `references/thesis/thesis-troubleshooting-log.md` when recovering from drift,
@@ -182,12 +217,16 @@ Mandatory thesis gate lines:
 - Runtime screenshot slots must show real runtime screenshots. Structural
   diagrams, stale assets, blank captures, or mismatched media in those slots
   block handoff.
+- Formal mechanical/CAD drawing slots must show real engineering drawing sources
+  or CAD-derived sheet renders. Schematic, concept, sketch, mock, placeholder,
+  sample, or "CAD-like" raster assets cannot substitute for required drawings.
 - Visible citation anchor leakage is a hard failure. Rendered body text must not
   expose `cite_ref`, bookmark names, or hyperlink helper text.
 - Live TOC is a hard surface when required. A final manuscript with a
   handwritten/static TOC, mixed static-plus-field TOC, or leaked TOC placeholder
   is not complete.
 - Whole-thesis generation or revision must pass `scripts/audit_docx_whole_format_gate.py` on the exact final DOCX and bind its path, verdict, and SHA256 in final acceptance; narrower font/color/body-style/PDF-export checks cannot clear section, TOC, header/footer, page-number, surface-order, or builder-style failures.
+- When the user supplies an external thesis format-check report, parse it into a normalized issue ledger and run report-equivalent final DOCX verification; whole-format, table, TOC, header/footer, page-number, and structure-order complaints from that report are gate-required user-reported surfaces, not advisory notes.
 - Minimum page-class sample comparison set: cover, Chinese abstract, English
   abstract, TOC, first body chapter page, one figure page, one table page,
   references, and acknowledgement.
@@ -285,96 +324,19 @@ Acceptance-record requirements:
 
 ## 8. Memory Policy
 
-Keep `SKILL.md` as short as the active hard-gate layer allows. Store detailed
-rules in the right focused owner:
-
-- reusable workflow rules: `references/user-feedback-persistence.md`
-- thesis formatting rules: `references/thesis/*.md` and
-  `references/thesis/format-rules/*.md`
-- thesis workflow and transaction rules:
-  `references/thesis/thesis-workflow-map.md` and
-  `references/thesis/thesis-mutation-transaction.md`
-- execution-layer path locks, review-copy naming, renderer handoff, and lock
-  recovery: `references/thesis/thesis-execution-contract.md` and
-  `references/tooling-dependencies.md`
-- agent lane rules: `references/agents/agent-lanes.md`
-- table-specific visual rules: `references/thesis-table-style-memory.md`
-- checklists: `references/review-*.md`
-- templates: `assets/*.md`
-
-Do not turn `SKILL.md` into a topic-detail dump. If a focused rule file becomes
-too heavy, split it into smaller topic-owned files instead of expanding this
-entry file.
+Keep `SKILL.md` as the hard-gate router. Store topic detail in focused owners:
+workflow and persistence in `references/user-feedback-persistence.md`, thesis
+rules in `references/thesis*/`, execution-layer delegation in
+`references/tooling-dependencies.md` and `references/thesis/thesis-execution-contract.md`
+for path locks, review-copy naming, renderer handoff, and lock recovery; agents in
+`references/agents/agent-lanes.md`, checks in `references/review-*.md`, and
+templates in `assets/*.md`. If a focused rule file becomes heavy, split that
+file instead of expanding this entry file.
 
 ## 9. Resource Map
 
-Core:
-
-- `references/user-feedback-persistence.md`
-- `references/tooling-dependencies.md`
-- `references/rule-owner-map.json`
-- `references/agents/agent-lanes.md`
-
-Program:
-
-- `references/program/workflow-standard.md`
-- `references/program/stack-adaptation.md`
-- `references/program/verification-matrix.md`
-- `references/program/executable-automation.md`
-- `references/program/packaging-rules.md`
-
-Thesis:
-
-- `references/thesis/thesis-production-workflow.md`
-- `references/thesis/thesis-workflow-map.md`
-- `references/thesis/thesis-mutation-transaction.md`
-- `references/thesis/thesis-format-rules.md`
-- `references/thesis/format-rules/protected-surface-evidence-contract.md`
-- `references/thesis/thesis-format-sop.md`
-- `references/thesis/thesis-execution-contract.md`
-- `references/thesis/thesis-format-class-review.md`
-- `references/thesis/thesis-figure-generation-rules.md`
-- `references/thesis/thesis-template-learning.md`
-- `references/thesis/thesis-troubleshooting-log.md`
-- `references/thesis/thesis-companion.md`
-- `references/thesis-table-style-memory.md`
-- `references/thesis-formula-style-memory.md`
-
-Review:
-
-- `references/review-program-checklist.md`
-- `references/review-delivery-bundle-checklist.md`
-- `references/review-thesis-format-checklist.md`
-- `references/review-thesis-content-consistency-checklist.md`
-- `references/review-figure-style-checklist.md`
-
-Policy and persistence:
-
-- `references/policy/cnki-citation-policy.md`
-- `references/user-feedback-persistence.md`
-- `references/user-feedback/maintenance-and-structure.md`
-- `references/rule-owner-map.json`
-- `references/agents/agent-lanes.md`
-- `references/tooling-dependencies.md`
-
-Scripts:
-
-- `scripts/build_canonical_thesis.py`
-- `scripts/validate_thesis_local_adapter.py`
-- `scripts/scan_project_local_thesis_helpers.py`
-- `scripts/discover_project_thesis_template.py`
-- `scripts/thesis_template_profile.py`
-- `scripts/sample_self_check.py`
-- `scripts/generate_thesis_acceptance_record.py`
-- `scripts/audit_thesis_citations.py`
-- `scripts/audit_docx_font_encoding.py`
-- `scripts/audit_docx_body_style.py`
-- `scripts/inspect_docx_pagination_structure.py`
-- `scripts/docx_apply_table_family.py`
-- `scripts/docx_formula_number_table.py`
-- `scripts/docx_sync_picture.py`
-- `scripts/normalize_thesis_citation_chain.py`
-- `scripts/repair_thesis_surface_format.py`
-- `scripts/run_integration_gate.py`
-- `scripts/validate_skill_gate.py`
-- `scripts/validate_skill_gate.cmd`
+- Core: `references/user-feedback-persistence.md`; `references/tooling-dependencies.md`; `references/rule-owner-map.json`; `references/agents/agent-lanes.md`
+- Program: `references/program/workflow-standard.md`; `references/program/stack-adaptation.md`; `references/program/verification-matrix.md`; `references/program/executable-automation.md`; `references/program/packaging-rules.md`
+- Thesis: `references/thesis/thesis-production-workflow.md`; `references/thesis/thesis-workflow-map.md`; `references/thesis/thesis-mutation-transaction.md`; `references/thesis/thesis-format-rules.md`; `references/thesis/format-rules/protected-surface-evidence-contract.md`; `references/thesis/thesis-format-sop.md`; `references/thesis/thesis-execution-contract.md`; `references/thesis/thesis-format-class-review.md`; `references/thesis/thesis-figure-generation-rules.md`; `references/thesis/thesis-template-learning.md`; `references/thesis/thesis-troubleshooting-log.md`; `references/thesis/thesis-companion.md`; `references/thesis-table-style-memory.md`; `references/thesis-formula-style-memory.md`
+- Review and policy: `references/review-program-checklist.md`; `references/review-delivery-bundle-checklist.md`; `references/review-thesis-format-checklist.md`; `references/review-thesis-content-consistency-checklist.md`; `references/review-figure-style-checklist.md`; `references/policy/cnki-citation-policy.md`; `references/user-feedback/maintenance-and-structure.md`
+- Scripts: thesis build/discovery, acceptance/gates, citation/reference audits, whole-format audits, surface audits, format-repair helpers, bounded DOCX helpers, and CAD audits live under `scripts/`; prefer those canonical helpers over project-local thick scripts.

@@ -33,6 +33,8 @@ import zipfile
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
+from audit_docx_body_style import body_paragraphs as audited_body_paragraphs
+
 
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
@@ -202,7 +204,7 @@ def first_present_element(*items: ET.Element | None) -> ET.Element | None:
 def apply_latin_font_slots(paragraph: ET.Element, *, east_asia_font: str = "\u5b8b\u4f53") -> int:
     changed = 0
     for run in paragraph.findall(".//w:r", NS):
-        if has_field_or_drawing(run) or is_citation_run(run):
+        if has_field_or_drawing(run) or is_citation_run(run) or run_inside_hyperlink(paragraph, run):
             continue
         text = paragraph_text(run)
         if not re.search(r"[A-Za-z0-9]", text or ""):
@@ -253,6 +255,15 @@ def clone_rpr_with_latin_slots(rpr: ET.Element | None, *, east_asia_font: str = 
     return cloned
 
 
+def clone_rpr_with_cjk_slot(rpr: ET.Element | None, *, east_asia_font: str = "\u5b8b\u4f53") -> ET.Element:
+    cloned = deepcopy(rpr) if rpr is not None else ET.Element(qn("rPr"))
+    remove_annotation_visual_markers(cloned)
+    if east_asia_font:
+        rfonts = ensure_rpr_fonts(cloned)
+        rfonts.set(qn("eastAsia"), east_asia_font)
+    return cloned
+
+
 def split_mixed_script_text(text: str) -> list[str]:
     if not has_mixed_cjk_ascii(text):
         return [text]
@@ -278,12 +289,12 @@ def split_mixed_script_text(text: str) -> list[str]:
     return segments
 
 
-def split_mixed_script_runs(paragraph: ET.Element) -> int:
+def split_mixed_script_runs(paragraph: ET.Element, *, east_asia_font: str = "\u5b8b\u4f53") -> int:
     changed = 0
     children = list(paragraph)
     rebuilt: list[ET.Element] = []
     for child in children:
-        if child.tag != qn("r") or has_field_or_drawing(child) or is_citation_run(child):
+        if child.tag != qn("r") or has_field_or_drawing(child) or is_citation_run(child) or run_inside_hyperlink(paragraph, child):
             rebuilt.append(deepcopy(child))
             continue
         text_nodes = child.findall("./w:t", NS)
@@ -295,9 +306,9 @@ def split_mixed_script_runs(paragraph: ET.Element) -> int:
         for segment in split_mixed_script_text(text):
             run = ET.Element(qn("r"))
             if ASCII_ALNUM_RE.search(segment):
-                run.append(clone_rpr_with_latin_slots(base_rpr))
-            elif base_rpr is not None:
-                run.append(deepcopy(base_rpr))
+                run.append(clone_rpr_with_latin_slots(base_rpr, east_asia_font=east_asia_font))
+            else:
+                run.append(clone_rpr_with_cjk_slot(base_rpr, east_asia_font=east_asia_font))
             t = ET.Element(qn("t"))
             if segment.startswith(" ") or segment.endswith(" "):
                 t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
@@ -311,6 +322,127 @@ def split_mixed_script_runs(paragraph: ET.Element) -> int:
         for child in rebuilt:
             paragraph.append(child)
     return changed
+
+
+def apply_body_mixed_script_font_slot_repairs(
+    input_docx: Path, output_docx: Path, plan: dict[str, object]
+) -> dict[str, object]:
+    allowed_truthy = {"package_preserving_body_mixed_script_font_slots"}
+    allowed_optional = {"east_asia_font", "include_front_matter_abstracts"}
+    for key, value in plan.items():
+        if key in allowed_optional:
+            continue
+        if key in allowed_truthy and bool(value):
+            continue
+        if value not in (False, None, "", [], {}):
+            raise ValueError(
+                "package-preserving body mixed-script font-slot repair may not be combined with other mutation plan fields: "
+                f"{key}"
+            )
+
+    east_asia_font = str(plan.get("east_asia_font") or "\u5b8b\u4f53")
+    with zipfile.ZipFile(input_docx) as zin:
+        document_bytes = zin.read("word/document.xml")
+        root, body, paragraphs = parse_document(document_bytes)
+        toc_index = next((i for i, p in enumerate(paragraphs) if compact_text(paragraph_text(p)) == "\u76ee\u5f55"), -1)
+        body_start, _ = find_first(
+            paragraphs,
+            lambda i, p: i > toc_index
+            and not re.search(r"\d\s*$", paragraph_text(p).strip())
+            and (
+                is_body_heading_paragraph(p)
+                or re.match(r"^\s*1\s+", paragraph_text(p)) is not None
+                or re.match(r"^\s*\u7b2c\s*1\s*\u7ae0\s+\S", paragraph_text(p)) is not None
+            ),
+        )
+        references_index = next(
+            (
+                i
+                for i, p in enumerate(paragraphs)
+                if compact_text(paragraph_text(p)) in {"\u53c2\u8003\u6587\u732e", "鍙傝€冩枃鐚?"}
+            ),
+            len(paragraphs),
+        )
+        acknowledgement_index = next(
+            (
+                i
+                for i, p in enumerate(paragraphs)
+                if compact_text(paragraph_text(p)) in {"\u81f4\u8c22", "\u8c22\u8f9e", "鑷磋阿", "璋㈣緸"}
+            ),
+            references_index,
+        )
+        body_end = min(references_index, acknowledgement_index)
+        audited_targets, _audited_styles, _audited_default = audited_body_paragraphs(input_docx)
+        body_children = list(body)
+        target_paragraphs: list[tuple[int, ET.Element]] = []
+        for record in audited_targets:
+            body_child_index = int(record.get("paragraph_index") or 0) - 1
+            if 0 <= body_child_index < len(body_children) and body_children[body_child_index].tag == qn("p"):
+                target_paragraphs.append((body_child_index, body_children[body_child_index]))
+        using_audited_body_targets = bool(target_paragraphs)
+        if not target_paragraphs:
+            target_paragraphs = [(index, paragraphs[index]) for index in range(body_start, body_end)]
+        if bool(plan.get("include_front_matter_abstracts")):
+            zh_title_index = next(
+                (i for i, p in enumerate(paragraphs) if is_zh_abstract_title_text(paragraph_text(p))),
+                None,
+            )
+            if zh_title_index is not None:
+                zh_keyword_index = next(
+                    (
+                        i
+                        for i, p in enumerate(paragraphs[zh_title_index + 1 : body_start], start=zh_title_index + 1)
+                        if is_safe_zh_keyword_text(paragraph_text(p))
+                    ),
+                    body_start,
+                )
+                target_paragraphs.extend(
+                    (index, paragraphs[index]) for index in range(zh_title_index + 1, zh_keyword_index)
+                )
+
+        changed: list[dict[str, object]] = []
+        seen_target_ids: set[int] = set()
+        for index, paragraph in sorted(target_paragraphs, key=lambda item: item[0]):
+            if id(paragraph) in seen_target_ids:
+                continue
+            seen_target_ids.add(id(paragraph))
+            text = paragraph_text(paragraph).strip()
+            if not text or not has_mixed_cjk_ascii(text):
+                continue
+            if (not using_audited_body_targets) and (
+                is_body_heading_paragraph(paragraph) or is_caption_or_reference(text) or is_code_like_paragraph_text(text)
+            ):
+                continue
+            if paragraph.find(".//w:drawing", NS) is not None or paragraph.find(".//w:pict", NS) is not None:
+                continue
+            latin_slots_changed = apply_latin_font_slots(paragraph, east_asia_font=east_asia_font)
+            runs_split = split_mixed_script_runs(paragraph, east_asia_font=east_asia_font)
+            if latin_slots_changed or runs_split:
+                changed.append(
+                    {
+                        "target_paragraph_index": index,
+                        "text_prefix": text[:120],
+                        "latin_slots_changed": latin_slots_changed,
+                        "mixed_script_runs_split": runs_split,
+                    }
+                )
+
+        with tempfile.TemporaryDirectory() as td:
+            temp_output = Path(td) / "out.docx"
+            with zipfile.ZipFile(temp_output, "w", compression=zipfile.ZIP_DEFLATED) as zout:
+                for item in zin.infolist():
+                    data = zin.read(item.filename)
+                    if item.filename == "word/document.xml":
+                        data = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+                    zout.writestr(item, data)
+            output_docx.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(temp_output, output_docx)
+
+    return {
+        "package_preserving_body_mixed_script_font_slots": changed,
+        "changed_zip_parts": ["word/document.xml"] if changed else [],
+        "paragraphs_changed": len(changed),
+    }
 
 
 def first_run_rpr(paragraph: ET.Element) -> ET.Element | None:
@@ -534,6 +666,69 @@ def normal_style_id(styles_xml: bytes) -> str:
     return "Normal"
 
 
+def ensure_image_holder_style_xml(styles_xml: bytes) -> tuple[bytes, str, bool]:
+    if not styles_xml:
+        return styles_xml, "ThesisImageHolder", False
+    root = ET.fromstring(styles_xml)
+    desired_id = "ThesisImageHolder"
+    existing = None
+    for style in root.findall("./w:style", NS):
+        if style.get(qn("type")) != "paragraph":
+            continue
+        style_id_value = style.get(qn("styleId")) or ""
+        name = style.find("./w:name", NS)
+        style_name = name.get(qn("val")) if name is not None else ""
+        if style_id_value.lower() == desired_id.lower() or style_name.lower() == "thesis image holder":
+            existing = style
+            desired_id = style_id_value or desired_id
+            break
+    changed = False
+    if existing is None:
+        existing = ET.Element(qn("style"), {qn("type"): "paragraph", qn("styleId"): desired_id})
+        ET.SubElement(existing, qn("name"), {qn("val"): "Thesis Image Holder"})
+        ET.SubElement(existing, qn("uiPriority"), {qn("val"): "99"})
+        ET.SubElement(existing, qn("unhideWhenUsed"))
+        root.append(existing)
+        changed = True
+    ppr = existing.find("./w:pPr", NS)
+    if ppr is None:
+        ppr = ET.SubElement(existing, qn("pPr"))
+        changed = True
+    if ppr.find("./w:keepNext", NS) is None:
+        ppr.append(ET.Element(qn("keepNext")))
+        changed = True
+    spacing = ppr.find("./w:spacing", NS)
+    if spacing is None:
+        spacing = ET.SubElement(ppr, qn("spacing"))
+        changed = True
+    for attr, value in {"before": "120", "after": "0", "line": "360", "lineRule": "auto"}.items():
+        if spacing.get(qn(attr)) != value:
+            spacing.set(qn(attr), value)
+            changed = True
+    ind = ppr.find("./w:ind", NS)
+    if ind is None:
+        ind = ET.SubElement(ppr, qn("ind"))
+        changed = True
+    for attr in ("left", "right", "firstLine", "firstLineChars", "leftChars", "rightChars"):
+        if ind.get(qn(attr)) != "0":
+            ind.set(qn(attr), "0")
+            changed = True
+    for attr in ("hanging", "hangingChars"):
+        if qn(attr) in ind.attrib:
+            ind.attrib.pop(qn(attr), None)
+            changed = True
+    jc = ppr.find("./w:jc", NS)
+    if jc is None:
+        jc = ET.SubElement(ppr, qn("jc"))
+        changed = True
+    if jc.get(qn("val")) != "center":
+        jc.set(qn("val"), "center")
+        changed = True
+    if not changed:
+        return styles_xml, desired_id, False
+    return ET.tostring(root, encoding="utf-8", xml_declaration=True), desired_id, True
+
+
 def style_element_by_id(styles_root: ET.Element, style_id: str) -> ET.Element | None:
     for style in styles_root.findall("./w:style", NS):
         if style.get(qn("styleId")) == style_id:
@@ -670,12 +865,18 @@ def is_body_heading_paragraph(paragraph: ET.Element) -> bool:
     text = paragraph_text(paragraph)
     if not text.strip():
         return False
-    return body_heading_level_from_style(paragraph) is not None or is_heading_text(text)
+    style = style_id(paragraph) or ""
+    return body_heading_level_from_style(paragraph) is not None or style.lower().startswith("heading") or is_heading_text(text)
 
 
 def is_caption_or_reference(text: str) -> bool:
     stripped = text.strip()
     compact = compact_text(stripped)
+    figure_or_table_label = re.match(r"^[\u56fe\u8868]\s*\d+(?:[-.]\d+)?", stripped)
+    if figure_or_table_label is not None:
+        after_label = stripped[figure_or_table_label.end():]
+        if after_label and (not after_label[0].isspace()) and after_label[0] not in {"\u3000", ":", "\uff1a", "\u25a1"}:
+            return False
     return (
         re.match(r"^\u56fe\s*\d+(?:[-.]\d+)?(?:\s|[\u3000:：])", stripped) is not None
         or re.match(r"^\u8868\s*\d+(?:[-.]\d+)?(?:\s|[\u3000:：])", stripped) is not None
@@ -727,10 +928,19 @@ def has_field_or_drawing(run: ET.Element) -> bool:
     )
 
 
+def run_inside_hyperlink(paragraph: ET.Element, run: ET.Element) -> bool:
+    for hyperlink in paragraph.findall(".//w:hyperlink", NS):
+        if any(candidate is run for candidate in hyperlink.findall(".//w:r", NS)):
+            return True
+    return False
+
+
 def paragraph_has_field_drawing_or_citation(paragraph: ET.Element) -> bool:
     for run in paragraph.findall(".//w:r", NS):
-        if has_field_or_drawing(run) or is_citation_run(run):
+        if has_field_or_drawing(run) or is_citation_run(run) or run_inside_hyperlink(paragraph, run):
             return True
+    if paragraph.find(".//w:bookmarkStart", NS) is not None or paragraph.find(".//w:bookmarkEnd", NS) is not None:
+        return True
     return False
 
 
@@ -1178,7 +1388,7 @@ def clear_body_run_formatting(paragraph: ET.Element, donor_rpr: ET.Element | Non
     safe_donor_rpr = deepcopy(donor_rpr) if donor_rpr is not None else None
     remove_annotation_visual_markers(safe_donor_rpr)
     for run in paragraph.findall(".//w:r", NS):
-        if has_field_or_drawing(run) or is_citation_run(run):
+        if has_field_or_drawing(run) or is_citation_run(run) or run_inside_hyperlink(paragraph, run):
             continue
         replace_rpr(run, safe_donor_rpr)
         changed += 1
@@ -1279,7 +1489,7 @@ def force_body_heading_format(paragraph: ET.Element, text: str) -> dict[str, obj
     expected_size = {0: 30, 1: 28, 2: 24}[level]
     changed_runs = 0
     for run in paragraph.findall("./w:r", NS):
-        if has_field_or_drawing(run) or is_citation_run(run) or not paragraph_text(run).strip():
+        if has_field_or_drawing(run) or is_citation_run(run) or run_inside_hyperlink(paragraph, run) or not paragraph_text(run).strip():
             continue
         rpr = ensure_run_rpr(run)
         set_font_slots(rpr, east_asia="\u9ed1\u4f53", latin="\u9ed1\u4f53")
@@ -1293,7 +1503,7 @@ def force_body_heading_format(paragraph: ET.Element, text: str) -> dict[str, obj
     }
 
 
-def apply_image_holder_ppr(paragraph: ET.Element, *, style_id: str = "Normal") -> None:
+def apply_image_holder_ppr(paragraph: ET.Element, *, style_id: str = "ThesisImageHolder") -> None:
     ppr = ensure_ppr(paragraph)
     remove_children(
         ppr,
@@ -1313,13 +1523,16 @@ def apply_image_holder_ppr(paragraph: ET.Element, *, style_id: str = "Normal") -
     spacing = ET.Element(qn("spacing"))
     spacing.set(qn("before"), "120")
     spacing.set(qn("after"), "0")
-    spacing.set(qn("line"), "240")
+    spacing.set(qn("line"), "360")
     spacing.set(qn("lineRule"), "auto")
     ppr.append(spacing)
     ind = ET.Element(qn("ind"))
     ind.set(qn("left"), "0")
     ind.set(qn("right"), "0")
     ind.set(qn("firstLine"), "0")
+    ind.set(qn("firstLineChars"), "0")
+    ind.set(qn("leftChars"), "0")
+    ind.set(qn("rightChars"), "0")
     ppr.append(ind)
     if ppr.find("./w:keepNext", NS) is None:
         ppr.append(ET.Element(qn("keepNext")))
@@ -1503,6 +1716,8 @@ def remove_empty_paragraphs_before_headings(
         removed_indices: list[int] = []
         scan = heading_index - 1
         while scan >= 0 and not paragraph_text(paragraphs[scan]).strip():
+            if paragraphs[scan].find(".//w:br", NS) is not None or paragraphs[scan].find("./w:pPr/w:sectPr", NS) is not None:
+                break
             body.remove(paragraphs[scan])
             paragraphs.pop(scan)
             removed_indices.append(scan)
@@ -1513,6 +1728,164 @@ def remove_empty_paragraphs_before_headings(
                 "heading_prefix": prefix,
                 "heading_text_exact": exact_text,
                 "removed_empty_paragraph_indices": list(reversed(removed_indices)),
+            }
+        )
+    return changed
+
+
+def paragraph_has_page_break(paragraph: ET.Element) -> bool:
+    for br in paragraph.findall(".//w:br", NS):
+        if br.get(qn("type")) == "page":
+            return True
+    return False
+
+
+def paragraph_has_page_break_before(paragraph: ET.Element) -> bool:
+    return paragraph.find("./w:pPr/w:pageBreakBefore", NS) is not None
+
+
+def paragraph_has_section_break(paragraph: ET.Element) -> bool:
+    return paragraph.find("./w:pPr/w:sectPr", NS) is not None
+
+
+def remove_redundant_empty_page_breaks_before_headings(
+    body: ET.Element, paragraphs: list[ET.Element], plan: dict[str, object]
+) -> list[dict[str, object]]:
+    targets = plan.get("remove_redundant_empty_page_breaks_before_headings", [])
+    if targets in (None, []):
+        return []
+    if not isinstance(targets, list):
+        raise ValueError("plan.remove_redundant_empty_page_breaks_before_headings must be a list")
+    changed: list[dict[str, object]] = []
+    for raw_target in targets:
+        if not isinstance(raw_target, dict):
+            raise ValueError("each redundant page-break removal target must be an object")
+        prefix = str(raw_target.get("heading_prefix", ""))
+        exact_text = str(raw_target.get("heading_text_exact", ""))
+        min_paragraph_index = int(raw_target.get("min_paragraph_index", 0))
+        if not prefix and not exact_text:
+            raise ValueError("redundant page-break removal target requires heading_prefix or heading_text_exact")
+        if exact_text:
+            matches = [
+                index
+                for index, paragraph in enumerate(paragraphs)
+                if index >= min_paragraph_index and paragraph_text(paragraph) == exact_text
+            ]
+            display = exact_text
+        else:
+            matches = [
+                index
+                for index, paragraph in enumerate(paragraphs)
+                if index >= min_paragraph_index and paragraph_text(paragraph).startswith(prefix)
+            ]
+            display = prefix
+        if len(matches) != 1:
+            raise ValueError(f"redundant page-break target selected {len(matches)} paragraphs: {display[:40]}")
+        heading_index = matches[0]
+        heading = paragraphs[heading_index]
+        if not paragraph_has_page_break_before(heading):
+            raise ValueError(
+                "redundant page-break removal is allowed only when the target heading owns pageBreakBefore"
+            )
+        removed_indices: list[int] = []
+        scan = heading_index - 1
+        while scan >= 0 and not paragraph_text(paragraphs[scan]).strip():
+            candidate = paragraphs[scan]
+            if paragraph_has_section_break(candidate):
+                break
+            if candidate.find(".//w:drawing", NS) is not None or candidate.find(".//w:pict", NS) is not None:
+                raise ValueError(f"redundant page-break candidate {scan} contains a drawing or pict object")
+            if candidate.find(".//w:fldChar", NS) is not None or candidate.find(".//w:instrText", NS) is not None:
+                raise ValueError(f"redundant page-break candidate {scan} contains a field")
+            if not paragraph_has_page_break(candidate):
+                break
+            body.remove(candidate)
+            paragraphs.pop(scan)
+            removed_indices.append(scan)
+            heading_index -= 1
+            scan -= 1
+        changed.append(
+            {
+                "heading_prefix": prefix,
+                "heading_text_exact": exact_text,
+                "removed_empty_page_break_paragraph_indices": list(reversed(removed_indices)),
+            }
+        )
+    return changed
+
+
+def previous_structural_page_owner(
+    paragraphs: list[ET.Element],
+    heading_index: int,
+) -> tuple[int | None, str]:
+    scan = heading_index - 1
+    while scan >= 0:
+        paragraph = paragraphs[scan]
+        if paragraph_has_section_break(paragraph):
+            return scan, "section_break"
+        if paragraph_has_page_break(paragraph):
+            return scan, "manual_page_break"
+        if paragraph_text(paragraph).strip():
+            return scan, "nonempty_text"
+        scan -= 1
+    return None, "none"
+
+
+def remove_redundant_page_break_before_from_headings(
+    paragraphs: list[ET.Element], plan: dict[str, object]
+) -> list[dict[str, object]]:
+    targets = plan.get("remove_redundant_page_break_before_from_headings", [])
+    if targets in (None, []):
+        return []
+    if not isinstance(targets, list):
+        raise ValueError("plan.remove_redundant_page_break_before_from_headings must be a list")
+    changed: list[dict[str, object]] = []
+    for raw_target in targets:
+        if not isinstance(raw_target, dict):
+            raise ValueError("each pageBreakBefore removal target must be an object")
+        prefix = str(raw_target.get("heading_prefix", ""))
+        exact_text = str(raw_target.get("heading_text_exact", ""))
+        min_paragraph_index = int(raw_target.get("min_paragraph_index", 0))
+        if not prefix and not exact_text:
+            raise ValueError("pageBreakBefore removal target requires heading_prefix or heading_text_exact")
+        if exact_text:
+            matches = [
+                index
+                for index, paragraph in enumerate(paragraphs)
+                if index >= min_paragraph_index and paragraph_text(paragraph) == exact_text
+            ]
+            display = exact_text
+        else:
+            matches = [
+                index
+                for index, paragraph in enumerate(paragraphs)
+                if index >= min_paragraph_index and paragraph_text(paragraph).startswith(prefix)
+            ]
+            display = prefix
+        if len(matches) != 1:
+            raise ValueError(f"pageBreakBefore removal target selected {len(matches)} paragraphs: {display[:40]}")
+        heading_index = matches[0]
+        heading = paragraphs[heading_index]
+        ppr = paragraph_property(heading)
+        if ppr is None:
+            raise ValueError("pageBreakBefore removal target has no paragraph properties")
+        page_break_before = ppr.find("./w:pageBreakBefore", NS)
+        if page_break_before is None:
+            raise ValueError("pageBreakBefore removal target does not own pageBreakBefore")
+        owner_index, owner_kind = previous_structural_page_owner(paragraphs, heading_index)
+        if owner_kind not in {"section_break", "manual_page_break"}:
+            raise ValueError(
+                "pageBreakBefore removal requires a preceding section break or manual page break page owner"
+            )
+        ppr.remove(page_break_before)
+        changed.append(
+            {
+                "heading_prefix": prefix,
+                "heading_text_exact": exact_text,
+                "target_paragraph_index": heading_index,
+                "removed": "w:pageBreakBefore",
+                "preceding_page_owner_index": owner_index,
+                "preceding_page_owner_kind": owner_kind,
             }
         )
     return changed
@@ -2040,6 +2413,8 @@ def remove_blank_paragraphs_between_abstract_body_and_keywords(
 def apply_repairs(input_docx: Path, template_docx: Path, output_docx: Path, plan: dict[str, object]) -> dict[str, object]:
     if bool(plan.get("package_preserving_settings_repair", False)):
         return apply_package_preserving_settings_repairs(input_docx, output_docx, plan)
+    if bool(plan.get("package_preserving_body_mixed_script_font_slots", False)):
+        return apply_body_mixed_script_font_slot_repairs(input_docx, output_docx, plan)
     if bool(plan.get("package_preserving_frontmatter_section_types", False)):
         return apply_package_preserving_frontmatter_section_type_repairs(input_docx, output_docx, plan)
     if bool(plan.get("package_preserving_explicit_heading_numbers", False)):
@@ -2116,6 +2491,10 @@ def apply_repairs(input_docx: Path, template_docx: Path, output_docx: Path, plan
             target_styles_xml = b""
             target_style_ids = {}
         target_normal_style_id = target_style_ids.get("normal", template_normal_style_id)
+        target_image_holder_style_id = target_normal_style_id
+        image_holder_style_changed = False
+        if normalize_image_holders and target_styles_xml:
+            target_styles_xml, target_image_holder_style_id, image_holder_style_changed = ensure_image_holder_style_xml(target_styles_xml)
         if body_ppr is not None:
             if body_style_policy == "template-donor":
                 body_ppr = remap_ppr_style_id(body_ppr, template_style_names, target_style_ids)
@@ -2146,6 +2525,8 @@ def apply_repairs(input_docx: Path, template_docx: Path, output_docx: Path, plan
             "body_text_replacements": [],
             "explicit_body_heading_numbers": [],
             "empty_paragraphs_removed_before_headings": [],
+            "redundant_empty_page_breaks_removed_before_headings": [],
+            "redundant_page_break_before_removed_from_headings": [],
             "blank_paragraphs_removed_between_abstract_body_and_keywords": [],
             "image_holders_normalized": [],
             "body_donor_template_index": body_donor_index,
@@ -2160,6 +2541,10 @@ def apply_repairs(input_docx: Path, template_docx: Path, output_docx: Path, plan
             "sync_normal_style_baseline": sync_normal_style_baseline,
             "remove_annotation_run_colors": remove_annotation_colors,
             "annotation_run_visual_markers_removed": 0,
+            "image_holder_style_definition": {
+                "style_id": target_image_holder_style_id,
+                "changed": image_holder_style_changed,
+            },
         }
 
         abstract_text = plan.get("abstract_text", {})
@@ -2355,7 +2740,7 @@ def apply_repairs(input_docx: Path, template_docx: Path, output_docx: Path, plan
                 has_drawing = paragraph.find(".//w:drawing", NS) is not None or paragraph.find(".//w:pict", NS) is not None
                 if has_drawing:
                     if normalize_image_holders:
-                        apply_image_holder_ppr(paragraph, style_id=target_normal_style_id)
+                        apply_image_holder_ppr(paragraph, style_id=target_image_holder_style_id)
                         changed["image_holders_normalized"].append(index)
                     continue
                 if text and is_body_heading_paragraph(paragraph):
@@ -2402,6 +2787,12 @@ def apply_repairs(input_docx: Path, template_docx: Path, output_docx: Path, plan
             remove_blank_paragraphs_between_abstract_body_and_keywords(body, paragraphs, plan)
         )
         changed["empty_paragraphs_removed_before_headings"] = remove_empty_paragraphs_before_headings(body, paragraphs, plan)
+        changed["redundant_empty_page_breaks_removed_before_headings"] = (
+            remove_redundant_empty_page_breaks_before_headings(body, paragraphs, plan)
+        )
+        changed["redundant_page_break_before_removed_from_headings"] = (
+            remove_redundant_page_break_before_from_headings(paragraphs, plan)
+        )
         changed["image_display_resizes"] = apply_image_display_resize(paragraphs, plan.get("image_display_resize"))
         if remove_annotation_colors:
             changed["annotation_run_visual_markers_removed"] = remove_document_annotation_run_colors(paragraphs)

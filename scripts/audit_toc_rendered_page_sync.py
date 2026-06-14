@@ -64,7 +64,7 @@ def expected_logical_pages(rows: list[dict[str, object]]) -> tuple[dict[str, str
         page = _int_or_none(row.get("page"))
         if page is None:
             continue
-        label = _compact(row.get("text"))
+        label = normalized_label(str(row.get("text") or ""))
         if not label:
             continue
         logical_page = page - body_start + 1 if body_start is not None else page
@@ -112,7 +112,7 @@ def audit_toc_rendered_page_sync(docx_path: Path, heading_pages_json: Path) -> t
             )
 
     for tail_label in TAIL_LABELS:
-        label = _compact(tail_label)
+        label = normalized_label(tail_label)
         toc_has_tail = any(
             isinstance(entry, dict) and normalized_label(str(entry.get("text") or "")) == label
             for entry in entries

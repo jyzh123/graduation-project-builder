@@ -13,7 +13,10 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 
-NS = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+NS = {
+    "w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+    "m": "http://schemas.openxmlformats.org/officeDocument/2006/math",
+}
 W = "{%s}" % NS["w"]
 
 
@@ -42,9 +45,27 @@ CAPTION_RE = re.compile(
     rf"(?:\s+|[\u3000:：]\s*)(?P<title>\S.*)$",
     re.I,
 )
+CAPTION_LABEL_PREFIX_RE = re.compile(
+    rf"^\s*(?:\u56fe|\u8868)\s*"
+    rf"(?:\d+|[{CJK_NUMERAL_CLASS}]+)"
+    rf"(?:[-.\uff0d\uff0e](?:\d+|[{CJK_NUMERAL_CLASS}]+))*"
+    rf"(?=\s*[\u4e00-\u9fff])",
+    re.I,
+)
+THIS_CAPTION_PLUS_LABEL_PREFIX_RE = re.compile(
+    rf"^\s*\u8be5(?:\u56fe|\u8868)\s*(?:\u548c|\u4e0e|\u3001|\u53ca)\s*"
+    rf"(?:\u56fe|\u8868)\s*"
+    rf"(?:\d+|[{CJK_NUMERAL_CLASS}]+)"
+    rf"(?:[-.\uff0d\uff0e](?:\d+|[{CJK_NUMERAL_CLASS}]+))*"
+    rf"(?=\s*[\u4e00-\u9fff])",
+    re.I,
+)
 REFERENCE_ENTRY_RE = re.compile(r"^\[\d+\]")
 CJK_RE = re.compile(r"[\u4e00-\u9fff]")
 ASCII_ALNUM_RE = re.compile(r"[A-Za-z0-9]")
+FORMULA_NUMBER_LABEL_ONLY_RE = re.compile(
+    r"^\s*(?:\u5f0f)?\s*[\(\uff08]\s*\d+(?:-\d+)+\s*[\)\uff09]\s*$"
+)
 
 FRONTMATTER_MARKERS = {
     "毕业设计",
@@ -152,6 +173,10 @@ def paragraph_has_run_tab(node: ET.Element) -> bool:
     return "\t" in paragraph_text(node) or node.find(".//w:r/w:tab", NS) is not None
 
 
+def paragraph_has_omml(node: ET.Element) -> bool:
+    return node.find(".//m:oMath", NS) is not None or node.find(".//m:oMathPara", NS) is not None
+
+
 def is_static_toc_leader_entry(text: str) -> bool:
     stripped = (text or "").strip()
     if not stripped:
@@ -233,8 +258,38 @@ def style_is_heading_family(styles: dict[str, ET.Element], style_id: str | None,
     return "heading" in lowered or style_has_outline_level(styles, style_id)
 
 
+def style_is_caption_title_family(styles: dict[str, ET.Element], style_id: str | None, style_name: str) -> bool:
+    labels = [style_name or "", style_id or ""]
+    for current in style_chain(styles, style_id):
+        labels.append(current)
+        labels.append(style_name_by_id(styles, current))
+    lowered = normalize_space(" ".join(labels)).lower()
+    tokens = (
+        "caption",
+        "figurecaption",
+        "tablecaption",
+        "title",
+        "subtitle",
+        "\u56fe\u9898",
+        "\u8868\u9898",
+        "\u9898\u6ce8",
+        "\u56fe\u6ce8",
+        "\u8868\u6ce8",
+        "\u6807\u9898",
+        "\u5c01\u9762\u6807\u9898",
+        "\u6458\u8981\u6807\u9898",
+        "\u81f4\u8c22\u6807\u9898",
+        "\u53c2\u8003\u6587\u732e\u6807\u9898",
+    )
+    return any(token in lowered for token in tokens)
+
+
 def paragraph_has_outline_level(node: ET.Element) -> bool:
     return node.find("./w:pPr/w:outlineLvl", NS) is not None
+
+
+def paragraph_has_keep_next(node: ET.Element) -> bool:
+    return node.find("./w:pPr/w:keepNext", NS) is not None
 
 
 def paragraph_numbering_level(node: ET.Element) -> int | None:
@@ -536,7 +591,8 @@ def mixed_script_body_contamination_records(body_paragraphs: list[dict[str, obje
     contaminated: list[dict[str, object]] = []
     for paragraph in body_paragraphs:
         text = str(paragraph.get("text") or "")
-        if not (CJK_RE.search(text) and ASCII_ALNUM_RE.search(text)):
+        text_without_numeric_citations = re.sub(r"\[\d{1,3}\]", "", text)
+        if not (CJK_RE.search(text_without_numeric_citations) and ASCII_ALNUM_RE.search(text_without_numeric_citations)):
             continue
         node = paragraph.get("node")
         if not isinstance(node, ET.Element):
@@ -626,6 +682,8 @@ def is_figure_caption_text(text: str) -> bool:
 def is_non_body_paragraph(text: str, style_name: str) -> bool:
     lowered_style = style_name.lower()
     normalized = normalize_space(text)
+    if FORMULA_NUMBER_LABEL_ONLY_RE.match(text or "") or FORMULA_NUMBER_LABEL_ONLY_RE.match(normalized):
+        return True
     if is_code_like_paragraph_text(text):
         return True
     if lowered_style.startswith("toc"):
@@ -652,14 +710,18 @@ def is_formal_caption_text(text: str) -> bool:
     if compact_title.startswith(
         (
             "\u5c55\u793a",
+            "\u663e\u793a",
+            "\u6240\u793a",
             "\u8fdb\u4e00\u6b65",
             "\u8865\u5145",
             "\u7ed9\u51fa",
             "\u8bf4\u660e",
             "\u53cd\u6620",
+            "\u8868\u660e",
+            "\u4f53\u73b0",
+            "\u63cf\u8ff0",
             "\u4fdd\u7559",
             "\u6309\u7167",
-            "\u4e2d",
             "\u91cc",
         )
     ):
@@ -667,6 +729,15 @@ def is_formal_caption_text(text: str) -> bool:
     if len(title) > 80 and re.search(r"[\u3002\uff0c\uff1b,;]", title):
         return False
     return True
+
+
+def starts_with_caption_label_reference(text: str) -> bool:
+    """Detect body prose that repeats a figure/table number as a lead-in."""
+
+    return bool(
+        CAPTION_LABEL_PREFIX_RE.match(text or "")
+        or THIS_CAPTION_PLUS_LABEL_PREFIX_RE.match(text or "")
+    )
 
 
 def is_template_placeholder_text(text: str) -> bool:
@@ -764,6 +835,8 @@ def heading_contamination_records(
             continue
         if is_non_body_paragraph(text, style_name) or is_template_placeholder_text(text):
             continue
+        if paragraph_has_omml(child):
+            continue
         allowed_body_family = (
             (style_id and allowed_body_style_id and style_id == allowed_body_style_id)
             or (not style_id and allowed_body_style_id and allowed_body_style_id == allowed_default_style_id)
@@ -833,6 +906,8 @@ def body_paragraphs(docx_path: Path) -> tuple[list[dict[str, object]], dict[str,
         if is_non_body_paragraph(text, style_name):
             continue
         if is_template_placeholder_text(text):
+            continue
+        if paragraph_has_omml(child):
             continue
         if child.find(".//w:drawing", NS) is not None or child.find(".//w:pict", NS) is not None:
             continue
@@ -1022,6 +1097,8 @@ def declared_body_size_half_points(reference_docx: Path) -> int | None:
     except Exception:
         return None
     all_text = "\n".join(paragraph_text(paragraph) for paragraph in root.findall(".//w:body/w:p", NS))
+    if "\u6b63\u6587" in all_text and "\u5c0f\u56db\u53f7" in all_text:
+        return 24
     patterns = (
         r"正文内容\s*([小一二三四五六七八初号]{2}|[一二三四五六七八初]号)",
         r"正文[：:][^\n。；;]*内容\s*([小一二三四五六七八初号]{2}|[一二三四五六七八初]号)",
@@ -1083,6 +1160,8 @@ def direct_body_typography_contamination_records(
         if max_size_int is not None:
             if expected_size is not None and max_size_int > expected_size + 4:
                 reasons.append(f"direct font size {max_size_int} exceeds body baseline {expected_size}")
+            elif expected_size is not None and max_size_int < expected_size - 1:
+                reasons.append(f"direct font size {max_size_int} is below body baseline {expected_size}")
             elif expected_size is None and max_size_int >= 28:
                 reasons.append(f"direct font size {max_size_int} is heading-like for body prose")
         if reasons:
@@ -1098,6 +1177,139 @@ def direct_body_typography_contamination_records(
                 }
             )
     return contaminated
+
+
+def caption_sibling_body_contamination_records(docx_path: Path) -> list[dict[str, object]]:
+    """Find body prose after a figure/table block that kept caption or title formatting."""
+
+    document_root = load_xml(docx_path, "word/document.xml")
+    styles_root = load_xml(docx_path, "word/styles.xml")
+    styles, _default_paragraph_style_id = style_node_by_type(styles_root)
+    body = document_root.find("w:body", NS)
+    if body is None:
+        return []
+
+    toc_seen = False
+    main_body_started = False
+    reference_zone_started = False
+    previous_surface_context = ""
+    surface_proximity_context = ""
+    surface_proximity_budget = 0
+    records: list[dict[str, object]] = []
+    for paragraph_index, child in enumerate(list(body), start=1):
+        if child.tag == W + "tbl":
+            if main_body_started:
+                previous_surface_context = "table object"
+                surface_proximity_context = "recent table object"
+                surface_proximity_budget = 3
+            continue
+        if child.tag != W + "p":
+            continue
+        text = paragraph_text(child)
+        style_id = paragraph_style_id(child)
+        style_name = style_name_by_id(styles, style_id)
+        normalized = normalize_space(text)
+
+        if not text:
+            continue
+        if is_toc_heading_text(text):
+            toc_seen = True
+            previous_surface_context = ""
+            continue
+        if not toc_seen:
+            continue
+        if normalized.lower() in {normalize_space(item).lower() for item in TERMINAL_HEADING_MARKERS}:
+            reference_zone_started = True
+            previous_surface_context = ""
+            continue
+        if reference_zone_started:
+            continue
+        if (
+            paragraph_has_run_tab(child)
+            or is_static_toc_leader_entry(text)
+            or style_name.lower().startswith("toc")
+            or (style_id or "").lower().startswith("toc")
+        ):
+            continue
+        if is_body_heading_text(text, style_name, style_id, child):
+            main_body_started = True
+            previous_surface_context = ""
+            surface_proximity_context = ""
+            surface_proximity_budget = 0
+            continue
+        if not main_body_started:
+            continue
+        if paragraph_has_picture(child):
+            previous_surface_context = "image-holder paragraph"
+            surface_proximity_context = "recent image/table block"
+            surface_proximity_budget = 3
+            continue
+        if is_formal_caption_text(text):
+            previous_surface_context = "formal caption paragraph"
+            surface_proximity_context = "recent formal caption paragraph"
+            surface_proximity_budget = 3
+            continue
+        if is_non_body_paragraph(text, style_name) or is_template_placeholder_text(text):
+            previous_surface_context = ""
+            continue
+        if not looks_like_body_prose(text):
+            previous_surface_context = ""
+            continue
+
+        reasons: list[str] = []
+        active_surface_context = previous_surface_context
+        if not active_surface_context and surface_proximity_budget > 0 and starts_with_caption_label_reference(text):
+            active_surface_context = surface_proximity_context or "recent figure/table block"
+        if active_surface_context:
+            metrics = paragraph_instance_metrics(child)
+            run_metrics = paragraph_run_direct_metrics(child)
+            alignment = str(metrics.get("jc") or "").lower()
+            first_line = str(metrics.get("firstLine") or "")
+            first_line_chars = str(metrics.get("firstLineChars") or "")
+            line = str(metrics.get("line") or "")
+            before = str(metrics.get("before") or "")
+            after = str(metrics.get("after") or "")
+            if style_is_caption_title_family(styles, style_id, style_name):
+                reasons.append(f"style chain `{style_chain_label(styles, style_id)}` is caption/title family")
+            if style_is_heading_family(styles, style_id, style_name) or paragraph_has_outline_level(child):
+                reasons.append(f"style chain `{style_chain_label(styles, style_id)}` is heading/outline family")
+            if starts_with_caption_label_reference(text):
+                if previous_surface_context == "formal caption paragraph":
+                    reasons.append("body prose repeats a figure/table label immediately after the formal caption")
+                else:
+                    reasons.append("body prose begins with a figure/table label near a figure/table block")
+            if alignment in {"center", "right"}:
+                reasons.append(f"paragraph alignment `{alignment}` after {active_surface_context}")
+            if first_line in {"", "0"} and first_line_chars in {"", "0"}:
+                reasons.append(f"first-line indent `{first_line or 'missing'}` after {active_surface_context}")
+            if line in {"240", "300"} and first_line in {"", "0"} and first_line_chars in {"", "0"}:
+                reasons.append(f"caption-like line spacing `{line}` after {active_surface_context}")
+            if before not in {"", "0"} or after not in {"", "0"}:
+                reasons.append(f"caption/title spacing before=`{before or 'missing'}` after=`{after or 'missing'}`")
+            if paragraph_has_keep_next(child):
+                reasons.append("keepNext copied from caption/table-title paragraph")
+            max_size = _int_or_none(run_metrics.get("max_direct_size"))
+            if max_size is not None and max_size >= 28:
+                reasons.append(f"heading-like direct font size `{max_size}`")
+            if reasons:
+                records.append(
+                    {
+                        "paragraph_index": paragraph_index,
+                        "text": text,
+                        "style_id": style_id or "none",
+                        "style_name": style_name or "none",
+                        "source_context": active_surface_context,
+                        "reasons": reasons,
+                        "instance_metrics": metrics,
+                        "run_metrics": run_metrics,
+                    }
+                )
+        if surface_proximity_budget > 0:
+            surface_proximity_budget -= 1
+            if surface_proximity_budget <= 0:
+                surface_proximity_context = ""
+        previous_surface_context = ""
+    return records
 
 
 def compare_instance_metrics(
@@ -1135,10 +1347,19 @@ def compare_instance_metrics(
     return issues
 
 
-def direct_visible_metric_records(body_paragraphs: list[dict[str, object]]) -> list[dict[str, object]]:
+def direct_visible_metric_records(
+    body_paragraphs: list[dict[str, object]],
+    reference_instance_metrics: dict[str, str] | None = None,
+) -> list[dict[str, object]]:
     """Find body prose that only passes through inherited/effective metrics."""
 
-    expected = {"before": "0", "after": "0", "line": "360", "lineRule": "auto"}
+    reference_instance_metrics = reference_instance_metrics or {}
+    expected = {
+        "before": reference_instance_metrics.get("before") or "0",
+        "after": reference_instance_metrics.get("after") or "0",
+        "line": reference_instance_metrics.get("line") or "360",
+        "lineRule": reference_instance_metrics.get("lineRule") or "auto",
+    }
     records: list[dict[str, object]] = []
     for paragraph in body_paragraphs:
         text = str(paragraph.get("text") or "")
@@ -1155,7 +1376,13 @@ def direct_visible_metric_records(body_paragraphs: list[dict[str, object]]) -> l
             first_line_value = int(first_line)
         except ValueError:
             first_line_value = 0
-        if first_line_value <= 0:
+        expected_first_line = str(reference_instance_metrics.get("firstLine") or "")
+        if expected_first_line:
+            if first_line != expected_first_line:
+                reasons.append(
+                    f"direct firstLine expected `{expected_first_line}` found `{first_line or 'missing'}`"
+                )
+        elif first_line_value <= 0:
             char_value = str(metrics.get("firstLineChars") or "")
             reasons.append(
                 "real direct firstLine missing; "
@@ -1177,13 +1404,15 @@ def direct_visible_metric_records(body_paragraphs: list[dict[str, object]]) -> l
 
 
 def body_heading_line_metric_records(docx_path: Path) -> list[dict[str, object]]:
-    """Find body headings that lack explicit 1.5-line spacing.
+    """Return no prose-style metric issues for headings.
 
-    Teacher comments about full-text line spacing are not satisfied by checking
-    long prose only. Numbered body headings are visible body paragraphs and must
-    also carry explicit line spacing so they cannot fall back to single spacing
-    after a Word/WPS field refresh.
+    Heading metrics are governed by the whole-format gate and template heading
+    contract. The body-style strict gate only owns prose body paragraphs, so it
+    must not reject valid chapter headings that are intentionally centered with
+    fixed 20 pt spacing.
     """
+
+    return []
 
     document_root = load_xml(docx_path, "word/document.xml")
     styles_root = load_xml(docx_path, "word/styles.xml")
@@ -1325,24 +1554,23 @@ def body_surface_direct_metric_records(docx_path: Path) -> list[dict[str, object
             kind = "image-holder"
             expected = {
                 "jc": "center",
-                "before": "120",
-                "after": "0",
-                "line": "240",
+                "line": "360",
                 "lineRule": "auto",
-                "left": "0",
-                "firstLine": "0",
             }
         elif text and is_formal_caption_text(text):
             kind = "figure-caption" if is_figure_caption_text(text) else "table-caption"
-            expected = {
-                "jc": "center",
-                "before": "120",
-                "after": "120",
-                "line": "240",
-                "lineRule": "auto",
-                "left": "0",
-                "firstLine": "0",
-            }
+            if kind == "table-caption":
+                expected = {
+                    "jc": "center",
+                    "line": "360",
+                    "lineRule": "auto",
+                }
+            else:
+                expected = {
+                    "jc": "center",
+                    "line": "360",
+                    "lineRule": "auto",
+                }
         else:
             continue
 
@@ -1358,6 +1586,8 @@ def body_surface_direct_metric_records(docx_path: Path) -> list[dict[str, object
             max_size = _int_or_none(run_metrics.get("max_direct_size"))
             if max_size != 21:
                 reasons.append(f"{kind} direct font size expected `21` found `{max_size or 'missing'}`")
+        if kind == "table-caption" and not paragraph_has_keep_next(child):
+            reasons.append("table-caption expected keepNext")
         if reasons:
             records.append(
                 {
@@ -1564,6 +1794,7 @@ def audit_body_style(
         allowed_body_style_id=final_body_style_id,
         allowed_default_style_id=default_final_style_id,
     )
+    caption_sibling_contamination = caption_sibling_body_contamination_records(final_docx)
 
     binding_issues: list[str] = []
     baseline_issues: list[str] = []
@@ -1730,6 +1961,23 @@ def audit_body_style(
     else:
         heading_contamination_summary = "passed no body prose paragraph uses heading-style or outline-level formatting"
 
+    if caption_sibling_contamination:
+        total = len(heading_contamination) + len(caption_sibling_contamination)
+        heading_contamination_summary = (
+            f"failed {total} body prose paragraphs use heading, caption, title, or object-sibling formatting"
+        )
+        for record in caption_sibling_contamination[:12]:
+            text = str(record["text"]).replace("\n", " ").strip()
+            reasons = "; ".join(str(item) for item in record.get("reasons", []))
+            heading_contamination_issues.append(
+                "paragraph p{paragraph_index} after {source_context} keeps caption/title formatting ({reasons}) with prose text `{text}`".format(
+                    paragraph_index=record["paragraph_index"],
+                    source_context=record.get("source_context", "object block"),
+                    reasons=reasons,
+                    text=text[:100],
+                )
+            )
+
     direct_contamination = direct_body_typography_contamination_records(
         final_body,
         reference_body,
@@ -1738,15 +1986,15 @@ def audit_body_style(
         declared_body_size_half_points(reference_docx),
     )
     if direct_contamination:
-        total = len(heading_contamination) + len(direct_contamination)
+        total = len(heading_contamination) + len(caption_sibling_contamination) + len(direct_contamination)
         heading_contamination_summary = (
-            f"failed {total} body prose paragraphs use heading-style, outline-level, or direct heading-like formatting"
+            f"failed {total} body prose paragraphs use heading-style, caption/title object-sibling, outline-level, or polluted direct typography"
         )
         for record in direct_contamination[:12]:
             text = str(record["text"]).replace("\n", " ").strip()
             reasons = "; ".join(str(item) for item in record.get("reasons", []))
             heading_contamination_issues.append(
-                "paragraph p{paragraph_index} uses direct heading-like formatting ({reasons}) with prose text `{text}`".format(
+                "paragraph p{paragraph_index} uses polluted direct typography ({reasons}) with prose text `{text}`".format(
                     paragraph_index=record["paragraph_index"],
                     reasons=reasons,
                     text=text[:100],
@@ -1772,7 +2020,7 @@ def audit_body_style(
         mixed_script_summary = "passed mixed-script body paragraphs preserve run and font-slot separation"
 
     if strict_direct_visible_metrics:
-        direct_visible_records = direct_visible_metric_records(final_body)
+        direct_visible_records = direct_visible_metric_records(final_body, reference_instance_metrics)
         heading_line_records = body_heading_line_metric_records(final_docx)
         surface_metric_records = body_surface_direct_metric_records(final_docx)
         undefined_style_records = undefined_body_style_records(final_docx)

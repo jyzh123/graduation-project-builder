@@ -28,9 +28,11 @@ try:
     )
     from .validate_skill_gate_record_core import (
         check_thesis_citation_audit_report,
+        check_docx_citation_anchor_pollution_audit_report,
         check_docx_body_style_audit_report,
         check_docx_font_audit_report,
         check_docx_font_color_audit_report,
+        check_docx_list_pollution_audit_report,
         check_docx_whole_format_gate_report,
         check_humanizer_evidence_record,
         format_repair_task_touches_surface,
@@ -57,9 +59,13 @@ try:
         validate_transaction_record,
     )
     from .audit_docx_review_artifacts import (
+        APPROVED_NONPRESERVATION_CITATION_SCOPE,
+        STRICT_CITATION_PRESERVATION_SCOPE,
+        WHOLE_REBUILD_CITATION_PRESERVATION_SCOPE,
         validate_citation_run_reports,
         validate_review_artifact_reports,
     )
+    from .audit_docx_cad_appendix_binding import audit_docx_cad_appendix_binding
     from .audit_docx_formula_objects import audit_docx as audit_formula_objects
     from .audit_thesis_citations import audit_docx as audit_body_citations
     from .audit_thesis_comment_resolution import (
@@ -98,9 +104,11 @@ except ImportError:
     )
     from validate_skill_gate_record_core import (
         check_thesis_citation_audit_report,
+        check_docx_citation_anchor_pollution_audit_report,
         check_docx_body_style_audit_report,
         check_docx_font_audit_report,
         check_docx_font_color_audit_report,
+        check_docx_list_pollution_audit_report,
         check_docx_whole_format_gate_report,
         check_humanizer_evidence_record,
         format_repair_task_touches_surface,
@@ -127,9 +135,13 @@ except ImportError:
         validate_transaction_record,
     )
     from audit_docx_review_artifacts import (
+        APPROVED_NONPRESERVATION_CITATION_SCOPE,
+        STRICT_CITATION_PRESERVATION_SCOPE,
+        WHOLE_REBUILD_CITATION_PRESERVATION_SCOPE,
         validate_citation_run_reports,
         validate_review_artifact_reports,
     )
+    from audit_docx_cad_appendix_binding import audit_docx_cad_appendix_binding
     from audit_docx_formula_objects import audit_docx as audit_formula_objects
     from audit_thesis_citations import audit_docx as audit_body_citations
     from audit_thesis_comment_resolution import (
@@ -170,7 +182,14 @@ THESIS_WORKFLOWS = {
     "content-only-paragraph-revision",
     "audit-only",
 }
+WHOLE_REBUILD_CITATION_SCOPE_WORKFLOWS = {"new-thesis-production", "whole-thesis-revision"}
+STRICT_CITATION_SCOPE_WORKFLOWS = {"local-surface-repair", "content-only-paragraph-revision"}
 MECHANICAL_CAD_ACCEPTANCE_SCHEMA_VALUE = "graduation-project-builder.mechanical-cad-acceptance.v2"
+MECHANICAL_CAD_AUDIT_SCHEMA_VALUES = {
+    "graduation-project-builder.mechanical-drawing-package-audit.v4",
+    "graduation-project-builder.mechanical-drawing-package-audit.v5",
+    "graduation-project-builder.mechanical-drawing-package-audit.v6",
+}
 MECHANICAL_CAD_ACCEPTANCE_HEADINGS = (
     "# Mechanical CAD Acceptance Template",
     "## Outputs",
@@ -189,24 +208,210 @@ MECHANICAL_CAD_ACCEPTANCE_PREFIXES = (
     "- exact audited CAD package sha256:",
     "- exact DWG package path:",
     "- exact DWG package sha256:",
+    "- exact DXF package path:",
+    "- exact DXF package sha256:",
     "- exact combined PDF path:",
     "- exact combined PDF sha256:",
+    "- exact PNG render package path:",
+    "- exact PNG render package sha256:",
+    "- drawing regeneration manifest path:",
+    "- drawing regeneration manifest sha256:",
+    "- current package SHA binding verdict:",
     "- mechanical drawing package audit path:",
     "- mechanical drawing package audit verdict:",
+    "- mechanical drawing formal CAD source provenance verdict:",
+    "- mechanical drawing schematic/concept substitute rejection verdict:",
+    "- CAD official command route verdict:",
+    "- CAD official command test log:",
+    "- CAD executable or COM ProgID evidence:",
+    "- non-CAD fallback rejection verdict:",
+    "- external CAD case reference URL:",
+    "- reference-use restriction:",
+    "- no verbatim geometry copying verdict:",
+    "- mechanical drawing reference baseline path:",
+    "- mechanical drawing CAD open-view close-up evidence path:",
+    "- mechanical drawing CAD open-view structural coherence verdict:",
+    "- mechanical drawing complete assembly/object recognizability verdict:",
+    "- mechanical drawing scattered-parts rejection verdict:",
+    "- mechanical drawing reference-view trace alignment verdict:",
+    "- mechanical drawing annotation/leader/title-block completeness verdict:",
+    "- mechanical drawing structure-first redraw workflow verdict:",
+    "- mechanical drawing dimension/leader/title-block second-pass verdict:",
+    "- mechanical drawing loose-part collage rejection verdict:",
+    "- mechanical drawing external-case annotation checklist path:",
+    "- mechanical drawing A0 process flow verdict:",
+    "- mechanical drawing A0 drive chain verdict:",
+    "- mechanical drawing A0 support load path verdict:",
+    "- mechanical drawing A0 internal working element verdict:",
+    "- mechanical drawing A0 design intent readability verdict:",
+    "- mechanical drawing A0 overall assembly layout baseline verdict:",
+    "- mechanical drawing A0 upper full-length view count:",
+    "- mechanical drawing A0 lower full-length view count:",
+    "- mechanical drawing A0 BOM right-zone verdict:",
+    "- mechanical drawing A0 balloon-to-BOM row match verdict:",
+    "- mechanical drawing source linework delta audit path:",
+    "- mechanical drawing source linework delta verdict:",
+    "- mechanical drawing source CAD package sha256:",
+    "- mechanical drawing final CAD package sha256:",
+    "- mechanical drawing changed source sheet count:",
+    "- mechanical drawing identical source sheet count:",
+    "- mechanical drawing changed source entity count:",
+    "- mechanical drawing linework family delta count:",
+    "- mechanical drawing old-like large circle overlay count:",
+    "- mechanical drawing PDF-only change rejection verdict:",
+    "- mechanical drawing minor-entity-move-only rejection verdict:",
+    "- mechanical drawing source-to-PDF derivation verdict:",
     "- mechanical drawing rendered review evidence paths:",
     "- mechanical drawing rendered no-overlap verdict:",
     "- mechanical drawing boundary clearance verdict:",
     "- mechanical drawing detail density verdict:",
     "- mechanical drawing title block/table/notes isolation verdict:",
+    "- mechanical drawing title-block cell containment verdict:",
+    "- mechanical drawing title-block short-line topology audit verdict:",
+    "- mechanical drawing missing short table line count:",
+    "- mechanical drawing broken cell-border count:",
+    "- mechanical drawing table-grid topology mismatch count:",
+    "- mechanical drawing diagnostic-overlay-free title-block crop path:",
     "- mechanical drawing annotation margin clearance verdict:",
     "- mechanical drawing local crowding verdict:",
     "- mechanical drawing text/table/frame overlap verdict:",
+    "- mechanical render readability audit path:",
+    "- mechanical render readability verdict:",
+    "- mechanical render readability source lineweight verdict:",
+    "- mechanical render readability render-only stroke cap:",
+    "- mechanical render readability render-only lineweight scaling:",
+    "- text text overlap count:",
+    "- text graphic cover count:",
+    "- severe line crowding count:",
+    "- mechanical render readability small-tile threshold:",
+    "- mechanical render readability failed sheet list:",
+    "- mechanical render readability requires crop review count:",
+    "- mechanical render readability line bundle blocker count:",
+    "- mechanical render readability diagnostic-overlay-free crop review path:",
+    "- mechanical render readability standard-sheet view occupancy verdict:",
+    "- mechanical render readability final PDF/PNG SHA evidence:",
+    "- mechanical drawing user-reported text-cover crop audit path:",
+    "- mechanical drawing diagnostic-overlay-free after-crop paths:",
+    "- mechanical drawing reported crop blocker count:",
+    "- mechanical drawing text exclusion halo audit path:",
+    "- mechanical drawing text exclusion halo audit verdict:",
+    "- mechanical drawing text exclusion halo violation count:",
+    "- mechanical drawing diagonal hatch/section/flow text-cover count:",
+    "- mechanical drawing machine overlap audit verdict:",
+    "- mechanical drawing content-overlap audit verdict:",
+    "- mechanical drawing content-overlap evidence path:",
+    "- mechanical drawing registered content bbox count:",
+    "- mechanical drawing checked content pair count:",
+    "- mechanical drawing content overlap count:",
+    "- mechanical drawing view-view overlap count:",
+    "- mechanical drawing detail-frame-main-view overlap count:",
+    "- mechanical drawing table text/grid collision count:",
+    "- mechanical drawing table_text_grid_collision_count:",
+    "- mechanical drawing dimension-line view/table crossing count:",
+    "- mechanical drawing leader-line view/table crossing count:",
+    "- mechanical drawing balloon geometry collision count:",
+    "- mechanical drawing bbox helper envelope escape count:",
+    "- mechanical drawing stale rendered preview count:",
+    "- mechanical drawing outside-frame ink audit verdict:",
+    "- mechanical drawing outside-frame ink audit evidence path:",
+    "- mechanical drawing outside-frame independent ink component count:",
+    "- mechanical drawing outside-frame text component count:",
+    "- mechanical drawing outside-frame leader component count:",
+    "- mechanical drawing outside-frame hatch/section component count:",
+    "- mechanical drawing outside-frame table/title-block component count:",
+    "- mechanical drawing inner-frame safe-margin audit verdict:",
+    "- mechanical drawing inner-frame safe-margin evidence path:",
+    "- mechanical drawing right safe-boundary intrusion count:",
+    "- mechanical drawing leader-text inner-frame intrusion count:",
+    "- mechanical drawing view-geometry inner-frame intrusion count:",
+    "- mechanical drawing dimension-text inner-frame intrusion count:",
+    "- mechanical drawing annotation ownership audit verdict:",
+    "- mechanical drawing unowned free text count:",
+    "- mechanical drawing unsupported floating text count:",
+    "- mechanical drawing unbound scattered text count:",
+    "- mechanical drawing dimension-like text without anchor count:",
+    "- mechanical drawing orphan text examples path:",
+    "- mechanical drawing owner-zone coverage verdict:",
+    "- mechanical drawing user-reported crop binding review path:",
+    "- mechanical drawing user-reported crop binding review verdict:",
+    "- mechanical drawing min cell padding mm:",
+    "- mechanical drawing cell padding violation count:",
+    "- CAD text style/font audit path:",
+    "- CAD text style/font audit verdict:",
+    "- normal CAD text entity verdict:",
+    "- unsupported CAD font/style count:",
+    "- artistic/vectorized text count:",
+    "- mechanical drawing reserved-zone intrusion audit verdict:",
+    "- mechanical drawing protected-table-zone intrusion audit verdict:",
+    "- mechanical drawing reserved-zone intrusion count:",
+    "- mechanical drawing protected-table-zone intrusion count:",
+    "- mechanical drawing dimension-line table-zone intrusion count:",
+    "- mechanical drawing dimension-text table-zone intrusion count:",
+    "- mechanical drawing view-geometry table-zone intrusion count:",
+    "- mechanical drawing detail-view table-zone intrusion count:",
+    "- mechanical drawing leader/balloon table-zone intrusion count:",
+    "- mechanical drawing dimension table-zone intrusion count:",
+    "- mechanical drawing title-block/BOM protected-zone intrusion count:",
+    "- mechanical drawing view-geometry reserved-zone intrusion count:",
+    "- mechanical drawing hatch/section fill clipping audit verdict:",
+    "- mechanical drawing hatch/section fill clipping evidence path:",
+    "- mechanical drawing hatch/section fill boundary violation count:",
+    "- mechanical drawing hatch/section fill adjacent-view crossing count:",
+    "- mechanical drawing hatch/section fill dimension-line crossing count:",
+    "- mechanical drawing hatch/section fill title-block/table/BOM/frame crossing count:",
+    "- mechanical drawing hatch/section fill blank-background leak count:",
+    "- mechanical drawing text entity overlap count:",
+    "- mechanical drawing text legibility machine audit verdict:",
+    "- mechanical drawing minimum CAD text height mm:",
+    "- mechanical drawing minimum rendered text height px:",
+    "- mechanical drawing text integrity audit path:",
+    "- mechanical drawing text integrity audit verdict:",
+    "- mechanical drawing mojibake/tofu/missing glyph count:",
+    "- mechanical drawing missing required drawing text count:",
+    "- mechanical drawing text orientation audit path:",
+    "- mechanical drawing text orientation audit verdict:",
+    "- mechanical drawing upside-down text count:",
+    "- mechanical drawing mirrored text count:",
+    "- mechanical drawing lineweight/linetype fidelity audit path:",
+    "- mechanical drawing lineweight/linetype fidelity audit verdict:",
+    "- mechanical drawing lineweight/linetype fidelity package sha256:",
+    "- source thick lineweight required:",
+    "- source thick lineweight observed:",
+    "- source thick lineweight mismatch count:",
+    "- source thin lineweight required:",
+    "- source thin lineweight observed:",
+    "- source thin lineweight mismatch count:",
+    "- mechanical drawing color-family audit path:",
+    "- mechanical drawing color-family audit verdict:",
+    "- mechanical drawing color-family package/path sha256:",
+    "- mechanical drawing thin-solid-white-only verdict:",
+    "- mechanical drawing non-thin white layer/entity count:",
+    "- mechanical drawing expected color family count:",
+    "- mechanical drawing entity color override count:",
+    "- mechanical drawing source line family coverage verdict:",
+    "- mechanical drawing PDF page-box sheet-size audit verdict:",
+    "- mechanical drawing rendered ink contrast audit verdict:",
+    "- mechanical drawing worst readable ink ratio:",
+    "- mechanical drawing minimum readable ink ratio:",
+    "- mechanical drawing effective DWG byte-density ratio:",
+    "- mechanical drawing estimated PDF sheet workload:",
+    "- mechanical drawing A-series page box count:",
+    "- mechanical drawing thick solid family count:",
+    "- mechanical drawing thin solid family count:",
+    "- mechanical drawing center dash-dot family count:",
+    "- mechanical drawing hidden dashed family count:",
+    "- mechanical drawing section hatch family count:",
+    "- mechanical drawing manufacturing complexity audit verdict:",
+    "- mechanical drawing minimum manufacturing detail family count:",
     "- mechanical drawing entity-count-only false-pass verdict:",
     "- thesis DOCX mutation verdict:",
     "- validation command:",
     "- validation result:",
 )
 MECHANICAL_CAD_PASS_VALUES = {"pass", "passed", "yes", "true", "ok"}
+MECHANICAL_CAD_MIN_ACCEPTANCE_CAD_TEXT_MM = 3.8
+MECHANICAL_CAD_MIN_ACCEPTANCE_RENDERED_TEXT_PX = 40.0
+MECHANICAL_CAD_MIN_ACCEPTANCE_DETAIL_FAMILIES = 8
 MECHANICAL_CAD_NO_OVERLAP_VALUES = MECHANICAL_CAD_PASS_VALUES | {
     "no-overlap",
     "no_overlap",
@@ -225,6 +430,47 @@ MECHANICAL_CAD_ENTITY_ONLY_REJECT_VALUES = {
     "visual_reviewed",
     "blocked",
 }
+MECHANICAL_FORMULA_MIN_COUNT = 200
+MECHANICAL_FORMULA_CONTEXT_TOKENS = {
+    "mechanical",
+    "mechanism",
+    "structural design",
+    "crane",
+    "gantry",
+    "cantilever",
+    "reducer",
+    "conveyor",
+    "cad",
+    "drawing package",
+    "mechanical drawing",
+    "机械",
+    "机构",
+    "结构设计",
+    "起重机",
+    "门式",
+    "悬臂",
+    "减速器",
+    "输送机",
+    "图纸",
+    "装配图",
+}
+MECHANICAL_FORMULA_EXCLUSION_TOKENS = {
+    "formula explicitly excluded",
+    "formula not in scope",
+    "calculation depth explicitly excluded",
+    "no formula work requested",
+    "明确排除公式",
+    "不处理公式",
+    "不要求公式",
+}
+CAD_APPENDIX_FIELD_PREFIXES = (
+    "- CAD appendix binding audit path:",
+    "- CAD appendix binding audit verdict:",
+    "- CAD appendix matched sheet count:",
+    "- CAD appendix missing sheet count:",
+    "- CAD appendix final DOCX SHA256:",
+    "- CAD appendix final package path:",
+)
 FULL_SCOPE_TOKENS = (
     "whole thesis",
     "whole-thesis",
@@ -291,6 +537,14 @@ SKILL_INVOCATION_LOCK_REQUIRED_PREFIXES = (
     "- blocked evidence disposition:",
 )
 
+
+def _contains_blocking_status_token(value: str) -> bool:
+    lowered = (value or "").lower()
+    for phrase in ("not checked", "not-applicable", "not applicable"):
+        if phrase in lowered:
+            return True
+    return re.search(r"\b(fail|failed|missing|pending|blocked|stale)\b", lowered) is not None
+
 FULL_SCOPE_CLAIMS = {
     "full-thesis-template-alignment",
     "full-paper-template-alignment",
@@ -339,6 +593,7 @@ REQUIRED_SAMPLE_SELF_CHECK_DETECTORS = (
     "tail-block.pagination-contract",
     "chapter.format-preservation-contract",
     "common.pre-submission-checklist",
+    "toc.page-number-column-right-edge",
 )
 PAGE_CLASS_ALIASES = {
     "cover": ("cover", "front cover"),
@@ -425,16 +680,47 @@ TABLE_CONTINUATION_EVIDENCE_FIELDS = (
 )
 
 
-def count_live_toc_fields(docx_path: Path) -> int:
+def inspect_live_toc_fields(docx_path: Path) -> dict[str, int]:
     try:
         with zipfile.ZipFile(docx_path) as zf:
             root = ET.fromstring(zf.read("word/document.xml"))
     except Exception:
-        return 0
-    field_texts: list[str] = []
-    field_texts.extend((node.text or "") for node in root.iter(f"{W}instrText"))
-    field_texts.extend(node.attrib.get(f"{W}instr", "") for node in root.iter(f"{W}fldSimple"))
-    return sum(1 for text in field_texts if re.search(r"(^|\s)TOC(\s|$)", text, re.IGNORECASE))
+        return {"count": 0, "locked_count": 0}
+    count = 0
+    locked_count = 0
+    field_stack: list[dict[str, object]] = []
+    for node in root.iter():
+        if node.tag == f"{W}fldSimple":
+            instr = node.attrib.get(f"{W}instr", "")
+            if re.search(r"(^|\s)TOC(\s|$)", instr, re.IGNORECASE):
+                count += 1
+                if node.attrib.get(f"{W}fldLock", "").lower() == "true":
+                    locked_count += 1
+            continue
+        if node.tag == f"{W}fldChar":
+            field_type = node.attrib.get(f"{W}fldCharType", "")
+            if field_type == "begin":
+                field_stack.append(
+                    {
+                        "instr": "",
+                        "locked": node.attrib.get(f"{W}fldLock", "").lower() == "true",
+                    }
+                )
+            elif field_type == "end" and field_stack:
+                field = field_stack.pop()
+                instr = str(field.get("instr", ""))
+                if re.search(r"(^|\s)TOC(\s|$)", instr, re.IGNORECASE):
+                    count += 1
+                    if bool(field.get("locked")):
+                        locked_count += 1
+            continue
+        if node.tag == f"{W}instrText" and field_stack:
+            field_stack[-1]["instr"] = str(field_stack[-1].get("instr", "")) + (node.text or "")
+    return {"count": count, "locked_count": locked_count}
+
+
+def count_live_toc_fields(docx_path: Path) -> int:
+    return inspect_live_toc_fields(docx_path)["count"]
 ABSTRACT_REPORT_TOKENS = ("abstract", "keyword", "\u6458\u8981", "\u5173\u952e\u8bcd")
 ABSTRACT_INDENT_REPORT_TOKENS = (
     "english abstract indent",
@@ -617,6 +903,13 @@ CONTENT_MUTATION_VISUAL_TRIGGER_TOKENS = (
     "inserted body paragraph",
     "inserted paragraph",
     "body paragraph rewrite",
+    "caption pollution",
+    "figure caption",
+    "figure replacement",
+    "image replacement",
+    "screenshot paragraph",
+    "caption-adjacent body",
+    "caption sibling body",
     "content-only-paragraph-revision",
     "visible chinese characters",
     "word count",
@@ -628,12 +921,22 @@ CONTENT_MUTATION_VISUAL_TRIGGER_TOKENS = (
     "\u6b63\u6587\u6bb5\u843d",
     "\u63d2\u5165\u6bb5\u843d",
     "\u6dfb\u52a0\u6bb5\u843d",
+    "\u56fe\u9898",
+    "\u56fe\u540d",
+    "\u56fe\u7247",
+    "\u622a\u56fe",
+    "\u65b0\u63d2\u5165\u6b63\u6587",
+    "\u56fe\u9898\u6c61\u67d3",
+    "\u56fe\u540d\u6c61\u67d3",
+    "\u66ff\u6362\u56fe\u7247",
+    "\u63d2\u5165\u56fe\u7247",
     "\u6539\u5199",
 )
 CONTENT_MUTATION_VISUAL_REQUIRED_FIELDS = (
     "- content mutation rendered-page review path:",
     "- content mutation machine-vision verdict:",
     "- inserted body heading-contamination verdict:",
+    "- caption/table sibling body contamination verdict:",
     "- touched-page/blast-radius machine-vision evidence paths:",
     "- format lane post-mutation rendered audit verdict:",
 )
@@ -1236,6 +1539,7 @@ AGENT_RUN_MANIFEST_REQUIRED_PREFIXES = (
     "- content_mutation_rendered_review_path:",
     "- content_mutation_machine_vision_verdict:",
     "- inserted_body_heading_contamination_verdict:",
+    "- caption_table_sibling_body_contamination_verdict:",
     "- touched_page_blast_radius_machine_vision_evidence_paths:",
     "- format_lane_post_mutation_rendered_audit_verdict:",
     "- protected_surface_reviewed_output_sha256:",
@@ -1362,6 +1666,7 @@ AGENT_PROTECTED_FIELD_TO_GATE_PREFIX = {
     "- content_mutation_rendered_review_path:": "- content mutation rendered-page review path:",
     "- content_mutation_machine_vision_verdict:": "- content mutation machine-vision verdict:",
     "- inserted_body_heading_contamination_verdict:": "- inserted body heading-contamination verdict:",
+    "- caption_table_sibling_body_contamination_verdict:": "- caption/table sibling body contamination verdict:",
     "- touched_page_blast_radius_machine_vision_evidence_paths:": "- touched-page/blast-radius machine-vision evidence paths:",
     "- format_lane_post_mutation_rendered_audit_verdict:": "- format lane post-mutation rendered audit verdict:",
     "- protected_surface_reviewed_output_sha256:": "- protected-surface reviewed output sha256:",
@@ -1478,6 +1783,65 @@ def skill_lock_blocked_evidence_ok(value: str) -> bool:
     return skill_lock_passish(normalized) or normalized.startswith("escalated") or normalized.startswith("blocked handoff")
 
 
+def _is_mechanical_cad_final_acceptance_prefix(prefix: str) -> bool:
+    lowered = prefix.lower()
+    return (
+        "mechanical drawing" in lowered
+        or "mechanical render readability" in lowered
+        or "cad appendix" in lowered
+        or "cad official command" in lowered
+        or "cad executable or com progid" in lowered
+        or "external cad case" in lowered
+        or "non-cad fallback" in lowered
+        or "no verbatim geometry" in lowered
+        or "reference-use restriction" in lowered
+        or "exact final cad" in lowered
+        or "exact dwg package" in lowered
+        or "exact combined drawing pdf" in lowered
+        or lowered in {"- text text overlap count:", "- text graphic cover count:", "- severe line crowding count:"}
+    )
+
+
+def _mechanical_cad_final_acceptance_scope(record_text_lower: str) -> bool:
+    return contains_any(
+        record_text_lower,
+        {
+            "mechanical cad",
+            "cad package",
+            "dwg package",
+            "drawing package",
+            "mechanical drawing package audit",
+            "cad appendix binding",
+            "exact final cad delivery package",
+            "刮板输送机图纸",
+            "机械图纸",
+            "图纸包",
+        },
+    )
+
+
+def _mechanical_cad_final_acceptance_scope_from_record(record_lines: list[str]) -> bool:
+    context_parts: list[str] = []
+    for prefix in (
+        "- subtask:",
+        "- thesis lane lock:",
+        "- explicit user overrides:",
+        "- exact final CAD delivery package path:",
+        "- exact DWG package path:",
+        "- exact combined drawing PDF path:",
+        "- mechanical drawing package audit path:",
+        "- mechanical drawing package exact package path:",
+        "- CAD appendix binding audit path:",
+    ):
+        lines = find_lines_with_prefix(record_lines, prefix)
+        if not lines:
+            continue
+        value = parse_line_value(lines[0])
+        if is_explicit(value) and not is_explicit_none(value):
+            context_parts.append(raw_line_value(lines[0]))
+    return _mechanical_cad_final_acceptance_scope("\n".join(context_parts).lower())
+
+
 def _mechanical_cad_field_maps(record_lines: list[str]) -> tuple[dict[str, str], dict[str, str], list[str]]:
     values: dict[str, str] = {}
     raw_values: dict[str, str] = {}
@@ -1493,7 +1857,26 @@ def _mechanical_cad_field_maps(record_lines: list[str]) -> tuple[dict[str, str],
 
 
 def _mechanical_cad_passish(value: str) -> bool:
-    return normalize(value).lower() in MECHANICAL_CAD_PASS_VALUES
+    text = normalize(value).lower()
+    return text in MECHANICAL_CAD_PASS_VALUES or text.startswith(("pass;", "pass ", "passed;", "passed "))
+
+
+def _mechanical_cad_float(value: object) -> float | None:
+    text = normalize(str(value)).lower()
+    for token in ("mm", "px", "毫米", "像素", ">= ", ">=", "约", "：", ":"):
+        text = text.replace(token, "")
+    text = text.strip()
+    try:
+        return float(text)
+    except (TypeError, ValueError):
+        return None
+
+
+def _mechanical_cad_int(value: object) -> int | None:
+    parsed = _mechanical_cad_float(value)
+    if parsed is None:
+        return None
+    return int(parsed)
 
 
 def _mechanical_cad_resolve_file(
@@ -1572,11 +1955,868 @@ def _mechanical_cad_acceptance_to_report_field(prefix: str) -> str:
         "- mechanical drawing boundary clearance verdict:": "boundary_clearance_verdict",
         "- mechanical drawing detail density verdict:": "detail_density_verdict",
         "- mechanical drawing title block/table/notes isolation verdict:": "title_block_table_notes_isolation_verdict",
+        "- mechanical drawing title-block cell containment verdict:": "title_block_cell_containment_verdict",
+        "- mechanical drawing title-block short-line topology audit verdict:": "title_block_short_line_topology_verdict",
         "- mechanical drawing annotation margin clearance verdict:": "annotation_margin_clearance_verdict",
         "- mechanical drawing local crowding verdict:": "local_crowding_verdict",
         "- mechanical drawing text/table/frame overlap verdict:": "no_overlap_verdict",
+        "- mechanical drawing text integrity audit verdict:": "text_integrity_verdict",
+        "- mechanical drawing text orientation audit verdict:": "text_orientation_verdict",
+        "- mechanical drawing content-overlap audit verdict:": "content_overlap_verdict",
+        "- mechanical drawing outside-frame ink audit verdict:": "outside_frame_ink_verdict",
+        "- mechanical drawing inner-frame safe-margin audit verdict:": "inner_frame_safe_margin_verdict",
+        "- mechanical drawing hatch/section fill clipping audit verdict:": "hatch_section_fill_clipping_verdict",
     }
     return mapping.get(prefix, "")
+
+
+def _mechanical_cad_list_empty(value: str) -> bool:
+    text = normalize(str(value)).lower()
+    return text in {"[]", "none", "no failed sheets", "no-failed-sheets", "0", ""}
+
+
+def _mechanical_cad_final_sha_evidence_present(value: str) -> bool:
+    text = normalize(str(value))
+    if not text or "not-applicable" in text.lower():
+        return False
+    return bool(re.search(r"[0-9a-fA-F]{64}", text))
+
+
+def _mechanical_cad_resolved_json(
+    *,
+    record_path: Path,
+    raw_values: dict[str, str],
+    prefix: str,
+    label: str,
+) -> tuple[Path | None, dict[str, object], list[str]]:
+    issues: list[str] = []
+    raw_value = raw_values.get(prefix, "")
+    raw_paths = split_path_values(raw_value)
+    if not raw_paths:
+        return None, {}, [f"{label} must name a JSON evidence path"]
+    resolved = resolve_record_path(raw_paths[0], record_path)
+    issues.extend(validate_existing_path(resolved, require_nonempty_file=True))
+    if resolved.suffix.lower() != ".json":
+        issues.append(f"{label} must be JSON: {resolved}")
+    if issues:
+        return resolved, {}, issues
+    try:
+        payload = json.loads(resolved.read_text(encoding="utf-8-sig"))
+    except Exception as exc:
+        return resolved, {}, [f"{label} must be readable UTF-8 JSON: {resolved} ({exc})"]
+    if not isinstance(payload, dict):
+        return resolved, {}, [f"{label} must contain a JSON object: {resolved}"]
+    return resolved, payload, []
+
+
+def _mechanical_cad_validate_render_readability_fields(
+    *,
+    record_path: Path,
+    values: dict[str, str],
+    raw_values: dict[str, str],
+) -> list[str]:
+    issues: list[str] = []
+    for prefix in (
+        "- mechanical render readability audit path:",
+        "- mechanical render readability verdict:",
+        "- text text overlap count:",
+        "- text graphic cover count:",
+        "- severe line crowding count:",
+        "- mechanical render readability small-tile threshold:",
+        "- mechanical render readability failed sheet list:",
+        "- mechanical render readability requires crop review count:",
+        "- mechanical render readability line bundle blocker count:",
+        "- mechanical render readability diagnostic-overlay-free crop review path:",
+        "- mechanical render readability standard-sheet view occupancy verdict:",
+        "- mechanical render readability final PDF/PNG SHA evidence:",
+        "- mechanical drawing user-reported text-cover crop audit path:",
+        "- mechanical drawing diagnostic-overlay-free after-crop paths:",
+        "- mechanical drawing reported crop blocker count:",
+        "- mechanical drawing text exclusion halo audit path:",
+        "- mechanical drawing text exclusion halo audit verdict:",
+        "- mechanical drawing text exclusion halo violation count:",
+        "- mechanical drawing diagonal hatch/section/flow text-cover count:",
+    ):
+        value = values.get(prefix, "")
+        if not is_explicit(value) or is_explicit_none(value):
+            issues.append(f"mechanical CAD render readability evidence must bind {prefix[2:-1]}")
+    if issues:
+        return issues
+    if not _mechanical_cad_passish(values["- mechanical render readability verdict:"]):
+        issues.append("mechanical CAD render readability verdict must be pass-shaped")
+    for prefix in (
+        "- text text overlap count:",
+        "- text graphic cover count:",
+        "- severe line crowding count:",
+        "- mechanical render readability requires crop review count:",
+        "- mechanical render readability line bundle blocker count:",
+    ):
+        count = _mechanical_cad_int(values[prefix])
+        if count is None or count != 0:
+            issues.append(f"mechanical CAD render readability {prefix[2:]} must be numeric 0")
+    if not _mechanical_cad_list_empty(values["- mechanical render readability failed sheet list:"]):
+        issues.append("mechanical CAD render readability failed sheet list must be empty")
+    if not _mechanical_cad_passish(values["- mechanical render readability standard-sheet view occupancy verdict:"]):
+        issues.append("mechanical CAD render readability standard-sheet view occupancy verdict must be pass-shaped")
+    if not _mechanical_cad_final_sha_evidence_present(values["- mechanical render readability final PDF/PNG SHA evidence:"]):
+        issues.append("mechanical CAD render readability final PDF/PNG SHA evidence must include SHA256 rows")
+    if not _mechanical_cad_passish(values["- mechanical drawing text exclusion halo audit verdict:"]):
+        issues.append("mechanical CAD text exclusion halo audit verdict must be pass-shaped")
+    for prefix in (
+        "- mechanical drawing reported crop blocker count:",
+        "- mechanical drawing text exclusion halo violation count:",
+        "- mechanical drawing diagonal hatch/section/flow text-cover count:",
+    ):
+        count = _mechanical_cad_int(values[prefix])
+        if count is None or count != 0:
+            issues.append(f"mechanical CAD text-cover crop/halo evidence {prefix[2:]} must be numeric 0")
+    for raw_path in split_path_values(
+        raw_values["- mechanical render readability diagnostic-overlay-free crop review path:"]
+    ):
+        crop_path = resolve_record_path(raw_path, record_path)
+        issues.extend(validate_existing_path(crop_path, require_nonempty_file=True))
+        if crop_path.suffix.lower() not in IMAGE_EXTENSIONS | PDF_EXTENSIONS:
+            issues.append(f"mechanical CAD render readability crop review path must be image/PDF: {crop_path}")
+    for prefix in (
+        "- mechanical drawing user-reported text-cover crop audit path:",
+        "- mechanical drawing text exclusion halo audit path:",
+    ):
+        for raw_path in split_path_values(raw_values[prefix]):
+            audit_path = resolve_record_path(raw_path, record_path)
+            issues.extend(validate_existing_path(audit_path, require_nonempty_file=True))
+    for raw_path in split_path_values(raw_values["- mechanical drawing diagnostic-overlay-free after-crop paths:"]):
+        crop_path = resolve_record_path(raw_path, record_path)
+        issues.extend(validate_existing_path(crop_path, require_nonempty_file=True))
+        if crop_path.suffix.lower() not in IMAGE_EXTENSIONS | PDF_EXTENSIONS:
+            issues.append(f"mechanical CAD diagnostic-overlay-free after-crop path must be image/PDF: {crop_path}")
+
+    _, report, path_issues = _mechanical_cad_resolved_json(
+        record_path=record_path,
+        raw_values=raw_values,
+        prefix="- mechanical render readability audit path:",
+        label="mechanical CAD render readability report",
+    )
+    issues.extend(path_issues)
+    if path_issues:
+        return issues
+    if report.get("schema") != "graduation-project-builder.mechanical-render-readability.v1":
+        issues.append("mechanical CAD render readability report must use mechanical-render-readability schema v1")
+    if report.get("passed") is not True:
+        issues.append("mechanical CAD render readability report must have passed=true")
+    for prefix, report_key in (
+        ("- text text overlap count:", "text_text_overlap_count"),
+        ("- text graphic cover count:", "text_graphic_cover_count"),
+        ("- severe line crowding count:", "severe_line_crowding_count"),
+    ):
+        report_count = _mechanical_cad_int(report.get(report_key))
+        record_count = _mechanical_cad_int(values[prefix])
+        if report_count is None:
+            issues.append(f"mechanical CAD render readability report missing integer {report_key}")
+        elif report_count != 0:
+            issues.append(f"mechanical CAD render readability report {report_key} must be 0")
+        if report_count is not None and record_count is not None and report_count != record_count:
+            issues.append(f"mechanical CAD render readability record {prefix[2:]} differs from report {report_key}")
+    pdf_rows = report.get("pdf_rows")
+    png_rows = report.get("png_rows")
+    if not isinstance(pdf_rows, list) or not isinstance(png_rows, list) or not pdf_rows or not png_rows:
+        issues.append("mechanical CAD render readability report must include nonempty pdf_rows and png_rows")
+    for row_family, rows in (("pdf_rows", pdf_rows), ("png_rows", png_rows)):
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            if not isinstance(row, dict):
+                issues.append(f"mechanical CAD render readability {row_family} rows must be objects")
+                continue
+            if row.get("passed") is not True:
+                issues.append(f"mechanical CAD render readability {row_family} row must pass")
+            if not re.fullmatch(r"[0-9a-fA-F]{64}", str(row.get("sha256") or "")):
+                issues.append(f"mechanical CAD render readability {row_family} row must include sha256")
+    return issues
+
+
+def _mechanical_cad_validate_linework_and_color_fields(
+    *,
+    record_path: Path,
+    values: dict[str, str],
+    raw_values: dict[str, str],
+    expected_package_sha: str,
+) -> list[str]:
+    issues: list[str] = []
+    for prefix in (
+        "- mechanical drawing lineweight/linetype fidelity audit verdict:",
+        "- mechanical drawing lineweight/linetype fidelity audit path:",
+        "- mechanical drawing lineweight/linetype fidelity package sha256:",
+        "- mechanical drawing source line family coverage verdict:",
+        "- mechanical drawing color-family audit path:",
+        "- mechanical drawing color-family audit verdict:",
+        "- mechanical drawing color-family package/path sha256:",
+        "- mechanical drawing thin-solid-white-only verdict:",
+        "- mechanical drawing non-thin white layer/entity count:",
+        "- mechanical drawing expected color family count:",
+        "- mechanical drawing entity color override count:",
+        "- mechanical drawing thick solid family count:",
+        "- mechanical drawing thin solid family count:",
+        "- mechanical drawing center dash-dot family count:",
+        "- mechanical drawing hidden dashed family count:",
+        "- mechanical drawing section hatch family count:",
+    ):
+        value = values.get(prefix, "")
+        if not is_explicit(value) or is_explicit_none(value):
+            issues.append(f"mechanical CAD linework/color evidence must bind {prefix[2:-1]}")
+    if issues:
+        return issues
+
+    if not _mechanical_cad_passish(values["- mechanical drawing lineweight/linetype fidelity audit verdict:"]):
+        issues.append("mechanical CAD lineweight/linetype fidelity verdict must be pass-shaped")
+    if not _mechanical_cad_passish(values["- mechanical drawing source line family coverage verdict:"]):
+        issues.append("mechanical CAD source line family coverage verdict must be pass-shaped")
+    linework_sha = normalize(values["- mechanical drawing lineweight/linetype fidelity package sha256:"]).upper()
+    if not re.fullmatch(r"[0-9A-F]{64}", linework_sha):
+        issues.append("mechanical CAD lineweight/linetype fidelity package sha256 must be 64-hex")
+    elif expected_package_sha and linework_sha != expected_package_sha.upper():
+        issues.append("mechanical CAD lineweight/linetype fidelity package sha256 must match final CAD package")
+    for prefix in (
+        "- mechanical drawing thick solid family count:",
+        "- mechanical drawing thin solid family count:",
+        "- mechanical drawing center dash-dot family count:",
+        "- mechanical drawing hidden dashed family count:",
+        "- mechanical drawing section hatch family count:",
+    ):
+        count = _mechanical_cad_int(values[prefix])
+        if count is None or count <= 0:
+            issues.append(f"mechanical CAD {prefix[2:]} must be numeric > 0")
+
+    _, linework_report, linework_path_issues = _mechanical_cad_resolved_json(
+        record_path=record_path,
+        raw_values=raw_values,
+        prefix="- mechanical drawing lineweight/linetype fidelity audit path:",
+        label="mechanical CAD lineweight/linetype fidelity report",
+    )
+    issues.extend(linework_path_issues)
+    if linework_path_issues:
+        return issues
+    if linework_report.get("schema") != "graduation-project-builder.cad-dxf-linework-fidelity-audit.v1":
+        issues.append("mechanical CAD lineweight/linetype fidelity report must use cad-dxf-linework-fidelity schema v1")
+    if linework_report.get("passed") is not True:
+        issues.append("mechanical CAD lineweight/linetype fidelity report must have passed=true")
+    if linework_report.get("issues") not in ([], None):
+        issues.append("mechanical CAD lineweight/linetype fidelity report must not carry unresolved issues")
+    report_linework_sha = normalize(
+        str(linework_report.get("package_sha256") or linework_report.get("path_sha256") or "")
+    ).upper()
+    if report_linework_sha and report_linework_sha != linework_sha:
+        issues.append("mechanical CAD lineweight/linetype package sha256 differs from linework fidelity report")
+    if expected_package_sha and report_linework_sha and report_linework_sha != expected_package_sha.upper():
+        issues.append("mechanical CAD linework fidelity report package sha256 must match final CAD package")
+    package_family_counts = linework_report.get("package_source_line_family_counts")
+    if not isinstance(package_family_counts, dict):
+        package_family_counts = {}
+        per_file_counts = linework_report.get("per_file")
+        if isinstance(per_file_counts, list):
+            for row in per_file_counts:
+                if not isinstance(row, dict):
+                    continue
+                counts = row.get("source_line_family_counts")
+                if not isinstance(counts, dict):
+                    continue
+                for family, value in counts.items():
+                    package_family_counts[str(family)] = (
+                        (_mechanical_cad_int(package_family_counts.get(str(family))) or 0)
+                        + (_mechanical_cad_int(value) or 0)
+                    )
+    linework_family_field_map = {
+        "- mechanical drawing thick solid family count:": "thick_solid",
+        "- mechanical drawing thin solid family count:": "thin_solid",
+        "- mechanical drawing center dash-dot family count:": "center_dash_dot",
+        "- mechanical drawing hidden dashed family count:": "hidden_dashed",
+        "- mechanical drawing section hatch family count:": "section_hatch",
+    }
+    for prefix, family in linework_family_field_map.items():
+        report_count = _mechanical_cad_int(package_family_counts.get(family))
+        record_count = _mechanical_cad_int(values[prefix])
+        if report_count is None or report_count <= 0:
+            issues.append(f"mechanical CAD linework fidelity report must include positive {family} count")
+        if report_count is not None and record_count is not None and report_count != record_count:
+            issues.append(f"mechanical CAD acceptance {prefix[2:]} differs from linework fidelity report {family}")
+    for family in ("dimension", "leader_or_annotation"):
+        report_count = _mechanical_cad_int(package_family_counts.get(family))
+        if report_count is None or report_count <= 0:
+            issues.append(f"mechanical CAD linework fidelity report must include positive {family} count")
+    linework_per_file = linework_report.get("per_file")
+    if not isinstance(linework_per_file, list) or not linework_per_file:
+        issues.append("mechanical CAD linework fidelity report must include per_file rows")
+    else:
+        for row in linework_per_file:
+            if not isinstance(row, dict):
+                issues.append("mechanical CAD linework fidelity per_file rows must be objects")
+                continue
+            if row.get("passed") is not True:
+                issues.append("mechanical CAD linework fidelity per_file row must pass")
+            headers = row.get("headers")
+            if not isinstance(headers, dict) or "$LTSCALE" not in headers or "$PSLTSCALE" not in headers:
+                issues.append("mechanical CAD linework fidelity per_file row must bind $LTSCALE and $PSLTSCALE headers")
+            if (_mechanical_cad_int(row.get("missing_lineweight_count")) or 0) != 0:
+                issues.append("mechanical CAD linework fidelity per_file row must have missing_lineweight_count=0")
+            if (_mechanical_cad_int(row.get("center_hidden_linetype_issue_count")) or 0) != 0:
+                issues.append("mechanical CAD linework fidelity per_file row must have center_hidden_linetype_issue_count=0")
+
+    _, color_report, path_issues = _mechanical_cad_resolved_json(
+        record_path=record_path,
+        raw_values=raw_values,
+        prefix="- mechanical drawing color-family audit path:",
+        label="mechanical CAD color-family audit report",
+    )
+    issues.extend(path_issues)
+    if path_issues:
+        return issues
+    if color_report.get("schema") != "graduation-project-builder.cad-dxf-color-family-standard.v1":
+        issues.append("mechanical CAD color-family audit report must use cad-dxf-color-family-standard schema v1")
+    if color_report.get("passed") is not True:
+        issues.append("mechanical CAD color-family audit report must have passed=true")
+    if color_report.get("issues") not in ([], None):
+        issues.append("mechanical CAD color-family audit report must not carry unresolved issues")
+    color_sha = normalize(
+        str(color_report.get("package_sha256") or color_report.get("path_sha256") or "")
+    ).upper()
+    record_color_sha = normalize(values["- mechanical drawing color-family package/path sha256:"]).upper()
+    if not re.fullmatch(r"[0-9A-F]{64}", record_color_sha):
+        issues.append("mechanical CAD color-family package/path sha256 must be 64-hex")
+    elif color_sha and record_color_sha != color_sha:
+        issues.append("mechanical CAD color-family package/path sha256 differs from color audit report")
+    if expected_package_sha and record_color_sha != expected_package_sha.upper():
+        issues.append("mechanical CAD color-family package/path sha256 must match final CAD package")
+    if not _mechanical_cad_passish(values["- mechanical drawing color-family audit verdict:"]):
+        issues.append("mechanical CAD color-family audit verdict must be pass-shaped")
+    if not _mechanical_cad_passish(values["- mechanical drawing thin-solid-white-only verdict:"]):
+        issues.append("mechanical CAD thin-solid-white-only verdict must be pass-shaped")
+    non_thin_white_count = _mechanical_cad_int(values["- mechanical drawing non-thin white layer/entity count:"])
+    if non_thin_white_count is None or non_thin_white_count != 0:
+        issues.append("mechanical CAD non-thin white layer/entity count must be numeric 0")
+    override_count = _mechanical_cad_int(values["- mechanical drawing entity color override count:"])
+    if override_count is None or override_count != 0:
+        issues.append("mechanical CAD entity color override count must be numeric 0")
+    expected_family_count = _mechanical_cad_int(values["- mechanical drawing expected color family count:"])
+    palette = color_report.get("family_palette")
+    if not isinstance(palette, dict) or len(palette) < 6:
+        issues.append("mechanical CAD color-family audit report must include at least six family_palette entries")
+    elif expected_family_count != len(palette):
+        issues.append("mechanical CAD expected color family count field must match color audit family_palette")
+    rule_summary = normalize(str(color_report.get("rule_summary") or "")).lower()
+    if "thin_solid_white_only" not in rule_summary or "non-white" not in rule_summary:
+        issues.append("mechanical CAD color-family audit rule_summary must lock thin-solid white and non-thin non-white")
+    per_file = color_report.get("per_file")
+    if not isinstance(per_file, list) or not per_file:
+        issues.append("mechanical CAD color-family audit report must include per_file rows")
+        return issues
+    aggregate_non_thin_white = 0
+    aggregate_override = 0
+    non_thin_white_layers = 0
+    for row in per_file:
+        if not isinstance(row, dict):
+            issues.append("mechanical CAD color-family audit per_file rows must be objects")
+            continue
+        if row.get("passed") is not True:
+            issues.append("mechanical CAD color-family audit per_file row must pass")
+        aggregate_non_thin_white += _mechanical_cad_int(row.get("non_thin_white_entity_override_count")) or 0
+        aggregate_override += _mechanical_cad_int(row.get("non_bylayer_entity_color_override_count")) or 0
+        for layer in row.get("layers") or []:
+            if not isinstance(layer, dict):
+                continue
+            rgb = layer.get("rgb")
+            is_white = layer.get("aci") == 7
+            if isinstance(rgb, list) and len(rgb) >= 3:
+                try:
+                    is_white = is_white or sum((float(rgb[index]) - 255.0) ** 2 for index in range(3)) ** 0.5 <= 15.0
+                except (TypeError, ValueError):
+                    pass
+            if is_white and str(layer.get("family") or "") != "thin_solid" and str(layer.get("name") or "") != "Defpoints":
+                non_thin_white_layers += 1
+    if aggregate_non_thin_white != 0 or non_thin_white_layers != 0:
+        issues.append("mechanical CAD color-family audit must have zero non-thin white entities/layers")
+    if aggregate_override != 0:
+        issues.append("mechanical CAD color-family audit must have zero entity color overrides")
+    if non_thin_white_count == 0 and (aggregate_non_thin_white + non_thin_white_layers) != non_thin_white_count:
+        issues.append("mechanical CAD non-thin white layer/entity field differs from color audit report")
+    if override_count == 0 and aggregate_override != override_count:
+        issues.append("mechanical CAD entity color override count field differs from color audit report")
+    return issues
+
+
+MECHANICAL_CAD_FINAL_PACKAGE_SURFACE_PREFIXES = (
+    "- mechanical drawing rendered no-overlap verdict:",
+    "- mechanical drawing boundary clearance verdict:",
+    "- mechanical drawing detail density verdict:",
+    "- mechanical drawing title block/table/notes isolation verdict:",
+    "- mechanical drawing title-block cell containment verdict:",
+    "- mechanical drawing title-block short-line topology audit verdict:",
+    "- mechanical drawing missing short table line count:",
+    "- mechanical drawing broken cell-border count:",
+    "- mechanical drawing table-grid topology mismatch count:",
+    "- mechanical drawing diagnostic-overlay-free title-block crop path:",
+    "- mechanical drawing annotation margin clearance verdict:",
+    "- mechanical drawing local crowding verdict:",
+    "- mechanical drawing text/table/frame overlap verdict:",
+    "- mechanical drawing machine overlap audit verdict:",
+    "- mechanical drawing content-overlap audit verdict:",
+    "- mechanical drawing content-overlap evidence path:",
+    "- mechanical drawing registered content bbox count:",
+    "- mechanical drawing checked content pair count:",
+    "- mechanical drawing content overlap count:",
+    "- mechanical drawing view-view overlap count:",
+    "- mechanical drawing detail-frame-main-view overlap count:",
+    "- mechanical drawing table text/grid collision count:",
+    "- mechanical drawing table_text_grid_collision_count:",
+    "- mechanical drawing dimension-line view/table crossing count:",
+    "- mechanical drawing leader-line view/table crossing count:",
+    "- mechanical drawing balloon geometry collision count:",
+    "- mechanical drawing bbox helper envelope escape count:",
+    "- mechanical drawing stale rendered preview count:",
+    "- mechanical drawing outside-frame ink audit verdict:",
+    "- mechanical drawing outside-frame ink audit evidence path:",
+    "- mechanical drawing outside-frame independent ink component count:",
+    "- mechanical drawing outside-frame text component count:",
+    "- mechanical drawing outside-frame leader component count:",
+    "- mechanical drawing outside-frame hatch/section component count:",
+    "- mechanical drawing outside-frame table/title-block component count:",
+    "- mechanical drawing annotation ownership audit verdict:",
+    "- mechanical drawing unowned free text count:",
+    "- mechanical drawing unsupported floating text count:",
+    "- mechanical drawing reserved-zone intrusion audit verdict:",
+    "- mechanical drawing protected-table-zone intrusion audit verdict:",
+    "- mechanical drawing reserved-zone intrusion count:",
+    "- mechanical drawing protected-table-zone intrusion count:",
+    "- mechanical drawing dimension-line table-zone intrusion count:",
+    "- mechanical drawing dimension-text table-zone intrusion count:",
+    "- mechanical drawing view-geometry table-zone intrusion count:",
+    "- mechanical drawing detail-view table-zone intrusion count:",
+    "- mechanical drawing leader/balloon table-zone intrusion count:",
+    "- mechanical drawing dimension table-zone intrusion count:",
+    "- mechanical drawing title-block/BOM protected-zone intrusion count:",
+    "- mechanical drawing view-geometry reserved-zone intrusion count:",
+    "- mechanical drawing hatch/section fill clipping audit verdict:",
+    "- mechanical drawing hatch/section fill clipping evidence path:",
+    "- mechanical drawing hatch/section fill boundary violation count:",
+    "- mechanical drawing hatch/section fill adjacent-view crossing count:",
+    "- mechanical drawing hatch/section fill dimension-line crossing count:",
+    "- mechanical drawing hatch/section fill title-block/table/BOM/frame crossing count:",
+    "- mechanical drawing hatch/section fill blank-background leak count:",
+    "- mechanical drawing text entity overlap count:",
+    "- mechanical drawing text legibility machine audit verdict:",
+    "- mechanical drawing minimum CAD text height mm:",
+    "- mechanical drawing minimum rendered text height px:",
+    "- mechanical drawing text integrity audit path:",
+    "- mechanical drawing text integrity audit verdict:",
+    "- mechanical drawing mojibake/tofu/missing glyph count:",
+    "- mechanical drawing missing required drawing text count:",
+    "- mechanical drawing text orientation audit path:",
+    "- mechanical drawing text orientation audit verdict:",
+    "- mechanical drawing upside-down text count:",
+    "- mechanical drawing mirrored text count:",
+    "- mechanical drawing manufacturing complexity audit verdict:",
+    "- mechanical drawing minimum manufacturing detail family count:",
+    "- mechanical drawing entity-count-only false-pass verdict:",
+)
+
+
+def _mechanical_cad_require_final_surface_fields(values: dict[str, str]) -> list[str]:
+    issues: list[str] = []
+    for prefix in MECHANICAL_CAD_FINAL_PACKAGE_SURFACE_PREFIXES:
+        value = values.get(prefix, "")
+        if not is_explicit(value) or is_explicit_none(value):
+            issues.append(f"mechanical CAD final acceptance must bind {prefix[2:-1]}")
+    return issues
+
+
+def _mechanical_cad_record_count(values: dict[str, str], prefix: str) -> int | None:
+    value = values.get(prefix, "")
+    if not is_explicit(value) or is_explicit_none(value):
+        return None
+    return _mechanical_cad_int(value)
+
+
+def _mechanical_cad_check_section(
+    *,
+    report: dict[str, object],
+    key: str,
+    label: str,
+    issues: list[str],
+) -> dict[str, object]:
+    section = report.get(key)
+    if not isinstance(section, dict) or section.get("passed") is not True:
+        issues.append(f"mechanical CAD package audit must include passing {label}")
+        return {}
+    return section
+
+
+def _mechanical_cad_check_zero_counts(
+    *,
+    section: dict[str, object],
+    label: str,
+    report_fields: tuple[str, ...],
+    issues: list[str],
+    values: dict[str, str] | None = None,
+    field_prefix_map: dict[str, str] | None = None,
+) -> None:
+    for report_field in report_fields:
+        report_count = _mechanical_cad_int(section.get(report_field))
+        if report_count is None or report_count != 0:
+            issues.append(f"mechanical CAD package audit {label}.{report_field} must be 0")
+        if values is not None and field_prefix_map is not None:
+            prefix = field_prefix_map.get(report_field)
+            if prefix:
+                record_count = _mechanical_cad_record_count(values, prefix)
+                if record_count is not None and report_count is not None and record_count != report_count:
+                    issues.append(f"mechanical CAD final acceptance {prefix[2:]} differs from {label}.{report_field}")
+
+
+def _mechanical_cad_validate_rendered_review_payload(
+    *,
+    review: dict[str, object],
+    label: str,
+    values: dict[str, str],
+) -> list[str]:
+    issues: list[str] = []
+    if not isinstance(review, dict) or review.get("passed") is not True:
+        return [f"mechanical CAD package audit must include passing {label}"]
+
+    machine_overlap = _mechanical_cad_check_section(
+        report=review,
+        key="machine_overlap_audit",
+        label=f"{label}.machine_overlap_audit",
+        issues=issues,
+    )
+    if machine_overlap:
+        _mechanical_cad_check_zero_counts(
+            section=machine_overlap,
+            label=f"{label}.machine_overlap_audit",
+            report_fields=(
+                "overlap_count",
+                "text_entity_overlap_count",
+                "reserved_zone_collision_count",
+                "title_block_table_note_collision_count",
+                "annotation_collision_count",
+                "frame_clearance_violation_count",
+            ),
+            issues=issues,
+            values=values,
+            field_prefix_map={
+                "text_entity_overlap_count": "- mechanical drawing text entity overlap count:",
+            },
+        )
+
+    content_overlap = _mechanical_cad_check_section(
+        report=review,
+        key="content_overlap_audit",
+        label=f"{label}.content_overlap_audit",
+        issues=issues,
+    )
+    if content_overlap:
+        for report_field, prefix in (
+            ("registered_bbox_count", "- mechanical drawing registered content bbox count:"),
+            ("checked_pair_count", "- mechanical drawing checked content pair count:"),
+        ):
+            report_count = _mechanical_cad_int(content_overlap.get(report_field))
+            record_count = _mechanical_cad_record_count(values, prefix)
+            if report_count is None or report_count <= 0:
+                issues.append(f"mechanical CAD package audit {label}.content_overlap_audit.{report_field} must be > 0")
+            if record_count is not None and report_count is not None and record_count != report_count:
+                issues.append(f"mechanical CAD final acceptance {prefix[2:]} differs from {label}.content_overlap_audit.{report_field}")
+        _mechanical_cad_check_zero_counts(
+            section=content_overlap,
+            label=f"{label}.content_overlap_audit",
+            report_fields=(
+                "content_overlap_count",
+                "view_view_overlap_count",
+                "detail_frame_main_view_overlap_count",
+                "table_text_grid_collision_count",
+                "dimension_line_view_table_crossing_count",
+                "leader_line_view_table_crossing_count",
+                "balloon_geometry_collision_count",
+                "bbox_helper_envelope_escape_count",
+                "stale_rendered_preview_count",
+            ),
+            issues=issues,
+            values=values,
+            field_prefix_map={
+                "content_overlap_count": "- mechanical drawing content overlap count:",
+                "view_view_overlap_count": "- mechanical drawing view-view overlap count:",
+                "detail_frame_main_view_overlap_count": "- mechanical drawing detail-frame-main-view overlap count:",
+                "table_text_grid_collision_count": "- mechanical drawing table text/grid collision count:",
+                "dimension_line_view_table_crossing_count": "- mechanical drawing dimension-line view/table crossing count:",
+                "leader_line_view_table_crossing_count": "- mechanical drawing leader-line view/table crossing count:",
+                "balloon_geometry_collision_count": "- mechanical drawing balloon geometry collision count:",
+                "bbox_helper_envelope_escape_count": "- mechanical drawing bbox helper envelope escape count:",
+                "stale_rendered_preview_count": "- mechanical drawing stale rendered preview count:",
+            },
+        )
+
+    title_topology = _mechanical_cad_check_section(
+        report=review,
+        key="title_block_short_line_topology_audit",
+        label=f"{label}.title_block_short_line_topology_audit",
+        issues=issues,
+    )
+    if title_topology:
+        _mechanical_cad_check_zero_counts(
+            section=title_topology,
+            label=f"{label}.title_block_short_line_topology_audit",
+            report_fields=(
+                "missing_short_table_line_count",
+                "broken_cell_border_count",
+                "table_grid_topology_mismatch_count",
+            ),
+            issues=issues,
+            values=values,
+            field_prefix_map={
+                "missing_short_table_line_count": "- mechanical drawing missing short table line count:",
+                "broken_cell_border_count": "- mechanical drawing broken cell-border count:",
+                "table_grid_topology_mismatch_count": "- mechanical drawing table-grid topology mismatch count:",
+            },
+        )
+
+    outside_frame = _mechanical_cad_check_section(
+        report=review,
+        key="outside_frame_ink_audit",
+        label=f"{label}.outside_frame_ink_audit",
+        issues=issues,
+    )
+    if outside_frame:
+        _mechanical_cad_check_zero_counts(
+            section=outside_frame,
+            label=f"{label}.outside_frame_ink_audit",
+            report_fields=(
+                "outside_frame_independent_ink_component_count",
+                "outside_frame_text_component_count",
+                "outside_frame_leader_component_count",
+                "outside_frame_hatch_section_component_count",
+                "outside_frame_table_title_block_component_count",
+                "max_outside_component_area_px",
+            ),
+            issues=issues,
+            values=values,
+            field_prefix_map={
+                "outside_frame_independent_ink_component_count": "- mechanical drawing outside-frame independent ink component count:",
+                "outside_frame_text_component_count": "- mechanical drawing outside-frame text component count:",
+                "outside_frame_leader_component_count": "- mechanical drawing outside-frame leader component count:",
+                "outside_frame_hatch_section_component_count": "- mechanical drawing outside-frame hatch/section component count:",
+                "outside_frame_table_title_block_component_count": "- mechanical drawing outside-frame table/title-block component count:",
+            },
+        )
+
+    cell_containment = _mechanical_cad_check_section(
+        report=review,
+        key="cell_containment_audit",
+        label=f"{label}.cell_containment_audit",
+        issues=issues,
+    )
+    if cell_containment:
+        _mechanical_cad_check_zero_counts(
+            section=cell_containment,
+            label=f"{label}.cell_containment_audit",
+            report_fields=("outside_cell_count", "border_touch_count", "unowned_table_text_count", "clipped_overflow_count"),
+            issues=issues,
+        )
+
+    annotation_ownership = _mechanical_cad_check_section(
+        report=review,
+        key="annotation_ownership_audit",
+        label=f"{label}.annotation_ownership_audit",
+        issues=issues,
+    )
+    if annotation_ownership:
+        _mechanical_cad_check_zero_counts(
+            section=annotation_ownership,
+            label=f"{label}.annotation_ownership_audit",
+            report_fields=("unowned_free_text_count", "unsupported_floating_text_count"),
+            issues=issues,
+            values=values,
+            field_prefix_map={
+                "unowned_free_text_count": "- mechanical drawing unowned free text count:",
+                "unsupported_floating_text_count": "- mechanical drawing unsupported floating text count:",
+            },
+        )
+
+    reserved_zone = _mechanical_cad_check_section(
+        report=review,
+        key="reserved_zone_intrusion_audit",
+        label=f"{label}.reserved_zone_intrusion_audit",
+        issues=issues,
+    )
+    if reserved_zone:
+        _mechanical_cad_check_zero_counts(
+            section=reserved_zone,
+            label=f"{label}.reserved_zone_intrusion_audit",
+            report_fields=(
+                "intrusion_count",
+                "geometry_title_block_intrusion_count",
+                "dimension_line_table_zone_intrusion_count",
+                "dimension_text_table_zone_intrusion_count",
+                "leader_table_zone_intrusion_count",
+                "view_geometry_reserved_zone_intrusion_count",
+                "bom_table_intrusion_count",
+                "technical_requirement_intrusion_count",
+            ),
+            issues=issues,
+            values=values,
+            field_prefix_map={
+                "intrusion_count": "- mechanical drawing reserved-zone intrusion count:",
+                "dimension_line_table_zone_intrusion_count": "- mechanical drawing dimension-line table-zone intrusion count:",
+                "dimension_text_table_zone_intrusion_count": "- mechanical drawing dimension-text table-zone intrusion count:",
+                "view_geometry_reserved_zone_intrusion_count": "- mechanical drawing view-geometry reserved-zone intrusion count:",
+            },
+        )
+
+    hatch_clip = _mechanical_cad_check_section(
+        report=review,
+        key="hatch_clip_audit",
+        label=f"{label}.hatch_clip_audit",
+        issues=issues,
+    )
+    if hatch_clip:
+        _mechanical_cad_check_zero_counts(
+            section=hatch_clip,
+            label=f"{label}.hatch_clip_audit",
+            report_fields=(
+                "hatch_clip_violation_count",
+                "entity_boundary_escape_count",
+                "adjacent_view_crossing_count",
+                "dimension_line_crossing_count",
+                "title_block_table_bom_frame_crossing_count",
+                "blank_background_leak_count",
+            ),
+            issues=issues,
+            values=values,
+            field_prefix_map={
+                "hatch_clip_violation_count": "- mechanical drawing hatch/section fill boundary violation count:",
+                "adjacent_view_crossing_count": "- mechanical drawing hatch/section fill adjacent-view crossing count:",
+                "dimension_line_crossing_count": "- mechanical drawing hatch/section fill dimension-line crossing count:",
+                "title_block_table_bom_frame_crossing_count": "- mechanical drawing hatch/section fill title-block/table/BOM/frame crossing count:",
+                "blank_background_leak_count": "- mechanical drawing hatch/section fill blank-background leak count:",
+            },
+        )
+
+    text_legibility = _mechanical_cad_check_section(
+        report=review,
+        key="text_legibility_audit",
+        label=f"{label}.text_legibility_audit",
+        issues=issues,
+    )
+    if text_legibility and (
+        (_mechanical_cad_float(text_legibility.get("min_cad_text_height_mm")) or 0.0)
+        < MECHANICAL_CAD_MIN_ACCEPTANCE_CAD_TEXT_MM
+        or (_mechanical_cad_float(text_legibility.get("min_rendered_text_height_px")) or 0.0)
+        < MECHANICAL_CAD_MIN_ACCEPTANCE_RENDERED_TEXT_PX
+    ):
+        issues.append(f"mechanical CAD package audit {label}.text_legibility_audit is below required thresholds")
+
+    manufacturing_complexity = _mechanical_cad_check_section(
+        report=review,
+        key="manufacturing_complexity_audit",
+        label=f"{label}.manufacturing_complexity_audit",
+        issues=issues,
+    )
+    if manufacturing_complexity and (
+        (_mechanical_cad_int(manufacturing_complexity.get("min_feature_family_count")) or 0)
+        < MECHANICAL_CAD_MIN_ACCEPTANCE_DETAIL_FAMILIES
+    ):
+        issues.append(f"mechanical CAD package audit {label}.manufacturing_complexity_audit is below required family count")
+
+    verdict_map = {
+        "- mechanical drawing rendered no-overlap verdict:": "no_overlap_verdict",
+        "- mechanical drawing boundary clearance verdict:": "boundary_clearance_verdict",
+        "- mechanical drawing detail density verdict:": "detail_density_verdict",
+        "- mechanical drawing title block/table/notes isolation verdict:": "title_block_table_notes_isolation_verdict",
+        "- mechanical drawing title-block cell containment verdict:": "title_block_cell_containment_verdict",
+        "- mechanical drawing title-block short-line topology audit verdict:": "title_block_short_line_topology_verdict",
+        "- mechanical drawing annotation margin clearance verdict:": "annotation_margin_clearance_verdict",
+        "- mechanical drawing local crowding verdict:": "local_crowding_verdict",
+        "- mechanical drawing text/table/frame overlap verdict:": "no_overlap_verdict",
+        "- mechanical drawing content-overlap audit verdict:": "content_overlap_verdict",
+        "- mechanical drawing outside-frame ink audit verdict:": "outside_frame_ink_verdict",
+        "- mechanical drawing hatch/section fill clipping audit verdict:": "hatch_section_fill_clipping_verdict",
+    }
+    for prefix, report_field in verdict_map.items():
+        record_value = normalize(values.get(prefix, "")).lower()
+        report_value = normalize(str(review.get(report_field, ""))).lower()
+        if prefix in {
+            "- mechanical drawing rendered no-overlap verdict:",
+            "- mechanical drawing text/table/frame overlap verdict:",
+        }:
+            if report_value and report_value not in MECHANICAL_CAD_NO_OVERLAP_VALUES:
+                issues.append(f"mechanical CAD package audit {label}.{report_field} must be pass/no-overlap")
+        elif report_value and report_value not in MECHANICAL_CAD_PASS_VALUES:
+            issues.append(f"mechanical CAD package audit {label}.{report_field} must be pass-shaped")
+        if record_value and report_value and record_value != report_value:
+            issues.append(f"mechanical CAD final acceptance {prefix[2:]} differs from {label}.{report_field}")
+
+    return issues
+
+
+def _mechanical_cad_validate_final_package_audit_report(
+    *,
+    package_report: dict[str, object],
+    values: dict[str, str],
+    expected_package_sha: str,
+) -> list[str]:
+    issues: list[str] = []
+    if package_report.get("schema") not in MECHANICAL_CAD_AUDIT_SCHEMA_VALUES:
+        issues.append("mechanical CAD package audit must use v4-or-stricter schema")
+    if package_report.get("passed") is not True:
+        issues.append("mechanical CAD package audit must have passed=true")
+    if package_report.get("issues") not in ([], None):
+        issues.append("mechanical CAD package audit must not carry unresolved issues")
+    package_sha = normalize(str(package_report.get("package_sha256") or package_report.get("sha256") or "")).upper()
+    expected_sha = normalize(expected_package_sha).upper()
+    if expected_sha and re.fullmatch(r"[0-9A-F]{64}", expected_sha) and package_sha and package_sha != expected_sha:
+        issues.append("mechanical CAD package audit SHA256 must match exact final CAD package SHA256")
+
+    frame_overflow = package_report.get("rendered_frame_overflow_verdict")
+    if not isinstance(frame_overflow, dict) or frame_overflow.get("passed") is not True:
+        issues.append("mechanical CAD package audit must include passing rendered_frame_overflow_verdict")
+    else:
+        _mechanical_cad_check_zero_counts(
+            section=frame_overflow,
+            label="rendered_frame_overflow_verdict",
+            report_fields=("outside_frame_component_count", "outside_frame_pixel_count", "max_outside_component_area_px"),
+            issues=issues,
+        )
+
+    rendered_review = package_report.get("rendered_review_verdict")
+    issues.extend(
+        _mechanical_cad_validate_rendered_review_payload(
+            review=rendered_review if isinstance(rendered_review, dict) else {},
+            label="rendered_review_verdict",
+            values=values,
+        )
+    )
+
+    candidate = package_report.get("candidate")
+    candidate_review = candidate.get("rendered_review") if isinstance(candidate, dict) else None
+    issues.extend(
+        _mechanical_cad_validate_rendered_review_payload(
+            review=candidate_review if isinstance(candidate_review, dict) else {},
+            label="candidate.rendered_review",
+            values=values,
+        )
+    )
+    candidate_frame = candidate.get("rendered_frame_overflow") if isinstance(candidate, dict) else None
+    if isinstance(candidate_frame, dict):
+        if candidate_frame.get("passed") is not True:
+            issues.append("mechanical CAD package audit candidate.rendered_frame_overflow must pass")
+        else:
+            _mechanical_cad_check_zero_counts(
+                section=candidate_frame,
+                label="candidate.rendered_frame_overflow",
+                report_fields=("outside_frame_component_count", "outside_frame_pixel_count", "max_outside_component_area_px"),
+                issues=issues,
+            )
+    else:
+        issues.append("mechanical CAD package audit must include candidate.rendered_frame_overflow")
+
+    entity_only_value = normalize(values.get("- mechanical drawing entity-count-only false-pass verdict:", "")).lower()
+    if entity_only_value and entity_only_value not in MECHANICAL_CAD_ENTITY_ONLY_REJECT_VALUES:
+        issues.append("mechanical CAD final acceptance must reject entity-count-only false-pass")
+    return issues
 
 
 def check_mechanical_cad_acceptance_record(record_path: Path, record_lines: list[str]) -> list[str]:
@@ -1619,11 +2859,29 @@ def check_mechanical_cad_acceptance_record(record_path: Path, record_lines: list
         label="DWG package",
         required_suffixes={".zip"},
     )
+    dxf_zip, dxf_zip_issues = _mechanical_cad_resolve_file(
+        record_path=record_path,
+        raw_value=raw_values["- exact DXF package path:"],
+        label="DXF package",
+        required_suffixes={".zip"},
+    )
     combined_pdf, combined_pdf_issues = _mechanical_cad_resolve_file(
         record_path=record_path,
         raw_value=raw_values["- exact combined PDF path:"],
         label="combined PDF",
         required_suffixes={".pdf"},
+    )
+    png_zip, png_zip_issues = _mechanical_cad_resolve_file(
+        record_path=record_path,
+        raw_value=raw_values["- exact PNG render package path:"],
+        label="PNG render package",
+        required_suffixes={".zip"},
+    )
+    regeneration_manifest, regeneration_manifest_issues = _mechanical_cad_resolve_file(
+        record_path=record_path,
+        raw_value=raw_values["- drawing regeneration manifest path:"],
+        label="drawing regeneration manifest",
+        required_suffixes={".json", ".md"},
     )
     audit_report_path, audit_report_issues = _mechanical_cad_resolve_file(
         record_path=record_path,
@@ -1631,11 +2889,42 @@ def check_mechanical_cad_acceptance_record(record_path: Path, record_lines: list
         label="audit report",
         required_suffixes={".json"},
     )
+    source_delta_report_path, source_delta_report_issues = _mechanical_cad_resolve_file(
+        record_path=record_path,
+        raw_value=raw_values["- mechanical drawing source linework delta audit path:"],
+        label="source linework delta audit report",
+        required_suffixes={".json"},
+    )
+    render_readability_report_path, render_readability_report_issues = _mechanical_cad_resolve_file(
+        record_path=record_path,
+        raw_value=raw_values["- mechanical render readability audit path:"],
+        label="render readability audit report",
+        required_suffixes={".json"},
+    )
+    title_block_crop_path, title_block_crop_issues = _mechanical_cad_resolve_file(
+        record_path=record_path,
+        raw_value=raw_values["- mechanical drawing diagnostic-overlay-free title-block crop path:"],
+        label="diagnostic-overlay-free title-block crop",
+        required_suffixes=IMAGE_EXTENSIONS | PDF_EXTENSIONS,
+    )
+    font_audit_path, font_audit_issues = _mechanical_cad_resolve_file(
+        record_path=record_path,
+        raw_value=raw_values["- CAD text style/font audit path:"],
+        label="CAD text style/font audit report",
+        required_suffixes={".json"},
+    )
     issues.extend(final_zip_issues)
     issues.extend(audited_package_issues)
     issues.extend(dwg_zip_issues)
+    issues.extend(dxf_zip_issues)
     issues.extend(combined_pdf_issues)
+    issues.extend(png_zip_issues)
+    issues.extend(regeneration_manifest_issues)
     issues.extend(audit_report_issues)
+    issues.extend(source_delta_report_issues)
+    issues.extend(render_readability_report_issues)
+    issues.extend(title_block_crop_issues)
+    issues.extend(font_audit_issues)
     issues.extend(
         _mechanical_cad_validate_sha(
             final_zip,
@@ -1650,6 +2939,14 @@ def check_mechanical_cad_acceptance_record(record_path: Path, record_lines: list
             "audited CAD package",
         )
     )
+    final_source_sha = normalize(values["- mechanical drawing final CAD package sha256:"]).upper()
+    source_baseline_sha = normalize(values["- mechanical drawing source CAD package sha256:"]).upper()
+    if not re.fullmatch(r"[0-9A-F]{64}", final_source_sha):
+        issues.append("mechanical CAD acceptance final CAD package SHA256 must be a 64-hex value")
+    elif final_source_sha != values["- exact audited CAD package sha256:"].upper():
+        issues.append("mechanical CAD acceptance final CAD package SHA256 must match exact audited CAD package SHA256")
+    if not re.fullmatch(r"[0-9A-F]{64}", source_baseline_sha):
+        issues.append("mechanical CAD acceptance source CAD package SHA256 must be a 64-hex value")
     issues.extend(
         _mechanical_cad_validate_sha(
             dwg_zip,
@@ -1659,20 +2956,156 @@ def check_mechanical_cad_acceptance_record(record_path: Path, record_lines: list
     )
     issues.extend(
         _mechanical_cad_validate_sha(
+            dxf_zip,
+            values["- exact DXF package sha256:"],
+            "DXF package",
+        )
+    )
+    issues.extend(
+        _mechanical_cad_validate_sha(
             combined_pdf,
             values["- exact combined PDF sha256:"],
             "combined PDF",
         )
     )
+    issues.extend(
+        _mechanical_cad_validate_sha(
+            png_zip,
+            values["- exact PNG render package sha256:"],
+            "PNG render package",
+        )
+    )
+    issues.extend(
+        _mechanical_cad_validate_sha(
+            regeneration_manifest,
+            values["- drawing regeneration manifest sha256:"],
+            "drawing regeneration manifest",
+        )
+    )
+    issues.extend(
+        _mechanical_cad_validate_render_readability_fields(
+            record_path=record_path,
+            values=values,
+            raw_values=raw_values,
+        )
+    )
+    issues.extend(
+        _mechanical_cad_validate_linework_and_color_fields(
+            record_path=record_path,
+            values=values,
+            raw_values=raw_values,
+            expected_package_sha=values["- exact audited CAD package sha256:"],
+        )
+    )
 
     if not _mechanical_cad_passish(values["- mechanical drawing package audit verdict:"]):
         issues.append("mechanical CAD acceptance audit verdict must be pass-shaped")
+    if not _mechanical_cad_passish(values["- mechanical drawing formal CAD source provenance verdict:"]):
+        issues.append("mechanical CAD acceptance formal CAD source provenance verdict must be pass-shaped")
+    if not _mechanical_cad_passish(values["- mechanical drawing schematic/concept substitute rejection verdict:"]):
+        issues.append("mechanical CAD acceptance schematic/concept substitute rejection verdict must be pass-shaped")
+    if not _mechanical_cad_passish(values["- CAD official command route verdict:"]):
+        issues.append("mechanical CAD acceptance CAD official command route verdict must be pass-shaped")
+    if not _mechanical_cad_passish(values["- non-CAD fallback rejection verdict:"]):
+        issues.append("mechanical CAD acceptance non-CAD fallback rejection verdict must be pass-shaped")
+    if not _mechanical_cad_passish(values["- no verbatim geometry copying verdict:"]):
+        issues.append("mechanical CAD acceptance no verbatim geometry copying verdict must be pass-shaped")
+    reference_baseline_paths = split_path_values(raw_values["- mechanical drawing reference baseline path:"])
+    if not reference_baseline_paths:
+        issues.append("mechanical CAD acceptance must bind at least one teacher/user reference baseline path")
+    for raw_path in reference_baseline_paths:
+        baseline_path = resolve_record_path(raw_path, record_path)
+        if baseline_path.exists() and baseline_path.is_dir():
+            issues.extend(validate_existing_path(baseline_path, require_nonempty_file=False))
+            continue
+        issues.extend(validate_existing_path(baseline_path, require_nonempty_file=True))
+        if baseline_path.suffix.lower() not in IMAGE_EXTENSIONS | PDF_EXTENSIONS | {".dwg", ".dxf", ".zip", ".json"}:
+            issues.append(
+                "mechanical CAD reference baseline must be a CAD/PDF/image/ZIP/JSON file or directory: "
+                f"{baseline_path}"
+            )
+    closeup_evidence_paths = split_path_values(
+        raw_values["- mechanical drawing CAD open-view close-up evidence path:"]
+    )
+    if not closeup_evidence_paths:
+        issues.append("mechanical CAD acceptance must bind at least one CAD-open close-up evidence path")
+    for raw_path in closeup_evidence_paths:
+        closeup_path = resolve_record_path(raw_path, record_path)
+        issues.extend(validate_existing_path(closeup_path, require_nonempty_file=True))
+        if closeup_path.suffix.lower() not in IMAGE_EXTENSIONS | PDF_EXTENSIONS | {".json"}:
+            issues.append(f"mechanical CAD open-view close-up evidence must be image/PDF/JSON: {closeup_path}")
+    for key in (
+        "- mechanical drawing CAD open-view structural coherence verdict:",
+        "- mechanical drawing complete assembly/object recognizability verdict:",
+        "- mechanical drawing scattered-parts rejection verdict:",
+        "- mechanical drawing reference-view trace alignment verdict:",
+        "- mechanical drawing annotation/leader/title-block completeness verdict:",
+    ):
+        if not _mechanical_cad_passish(values[key]):
+            issues.append(f"mechanical CAD acceptance {key[2:]} must be pass-shaped")
+    annotation_checklist_paths = split_path_values(
+        raw_values["- mechanical drawing external-case annotation checklist path:"]
+    )
+    if not annotation_checklist_paths:
+        issues.append("mechanical CAD acceptance must bind external/reference annotation checklist path")
+    for raw_path in annotation_checklist_paths:
+        checklist_path = resolve_record_path(raw_path, record_path)
+        issues.extend(validate_existing_path(checklist_path, require_nonempty_file=True))
+        if checklist_path.suffix.lower() not in {".json", ".md", ".txt", ".csv", ".xlsx", ".pdf"}:
+            issues.append(
+                "mechanical CAD external/reference annotation checklist must be JSON/MD/TXT/CSV/XLSX/PDF: "
+                f"{checklist_path}"
+            )
+    if not is_explicit(values["- CAD executable or COM ProgID evidence:"]) or is_explicit_none(
+        values["- CAD executable or COM ProgID evidence:"]
+    ):
+        issues.append("mechanical CAD acceptance must name the CAD executable path or COM ProgID evidence")
+    cad_command_log_paths = split_path_values(raw_values["- CAD official command test log:"])
+    if not cad_command_log_paths:
+        issues.append("mechanical CAD acceptance must bind at least one CAD official command test log path")
+    for raw_path in cad_command_log_paths:
+        log_path = resolve_record_path(raw_path, record_path)
+        issues.extend(validate_existing_path(log_path, require_nonempty_file=True))
+        if log_path.suffix.lower() not in {".log", ".txt", ".json"}:
+            issues.append(f"mechanical CAD official command test log must be a log/txt/json file: {log_path}")
+    external_ref_value = values["- external CAD case reference URL:"]
+    if is_explicit(external_ref_value) and not is_explicit_none(external_ref_value):
+        if not is_explicit(values["- reference-use restriction:"]) or is_explicit_none(
+            values["- reference-use restriction:"]
+        ):
+            issues.append("mechanical CAD acceptance must record reference-use restriction for external CAD case references")
+    if not _mechanical_cad_passish(values["- mechanical drawing source linework delta verdict:"]):
+        issues.append("mechanical CAD acceptance source linework delta verdict must be pass-shaped")
+    for key in (
+        "- mechanical drawing changed source sheet count:",
+        "- mechanical drawing changed source entity count:",
+        "- mechanical drawing linework family delta count:",
+    ):
+        count = _mechanical_cad_int(values[key])
+        if count is None or count <= 0:
+            issues.append(f"mechanical CAD acceptance {key[2:]} must be numeric > 0")
+    for key in (
+        "- mechanical drawing identical source sheet count:",
+        "- mechanical drawing old-like large circle overlay count:",
+    ):
+        count = _mechanical_cad_int(values[key])
+        if count is None or count != 0:
+            issues.append(f"mechanical CAD acceptance {key[2:]} must be numeric 0")
+    for key in (
+        "- mechanical drawing PDF-only change rejection verdict:",
+        "- mechanical drawing minor-entity-move-only rejection verdict:",
+        "- mechanical drawing source-to-PDF derivation verdict:",
+    ):
+        if not _mechanical_cad_passish(values[key]):
+            issues.append(f"mechanical CAD acceptance {key[2:]} must be pass-shaped")
     if normalize(values["- mechanical drawing rendered no-overlap verdict:"]).lower() not in MECHANICAL_CAD_NO_OVERLAP_VALUES:
         issues.append("mechanical CAD acceptance rendered no-overlap verdict must be pass/no-overlap")
     for key in (
         "- mechanical drawing boundary clearance verdict:",
         "- mechanical drawing detail density verdict:",
         "- mechanical drawing title block/table/notes isolation verdict:",
+        "- mechanical drawing title-block cell containment verdict:",
+        "- mechanical drawing title-block short-line topology audit verdict:",
         "- mechanical drawing annotation margin clearance verdict:",
         "- mechanical drawing local crowding verdict:",
     ):
@@ -1680,6 +3113,161 @@ def check_mechanical_cad_acceptance_record(record_path: Path, record_lines: list
             issues.append(f"mechanical CAD acceptance {key[2:]} must be pass-shaped")
     if normalize(values["- mechanical drawing text/table/frame overlap verdict:"]).lower() not in MECHANICAL_CAD_NO_OVERLAP_VALUES:
         issues.append("mechanical CAD acceptance text/table/frame overlap verdict must be pass/no-overlap")
+    if not _mechanical_cad_passish(values["- mechanical render readability verdict:"]):
+        issues.append("mechanical CAD acceptance render readability verdict must be pass-shaped")
+    if not _mechanical_cad_passish(values["- mechanical render readability source lineweight verdict:"]):
+        issues.append("mechanical CAD acceptance render readability source lineweight verdict must be pass-shaped")
+    if not _mechanical_cad_passish(values["- mechanical render readability render-only stroke cap:"]):
+        issues.append("mechanical CAD acceptance render-only stroke cap field must be pass-shaped")
+    if not _mechanical_cad_passish(values["- mechanical render readability render-only lineweight scaling:"]):
+        issues.append("mechanical CAD acceptance render-only lineweight scaling field must be pass-shaped")
+    for key in (
+        "- text text overlap count:",
+        "- text graphic cover count:",
+        "- severe line crowding count:",
+    ):
+        count = _mechanical_cad_int(values[key])
+        if count is None or count != 0:
+            issues.append(f"mechanical CAD acceptance {key[2:]} must be numeric 0")
+    if not _mechanical_cad_passish(values["- mechanical drawing machine overlap audit verdict:"]):
+        issues.append("mechanical CAD acceptance machine overlap audit verdict must be pass-shaped")
+    if not _mechanical_cad_passish(values["- mechanical drawing content-overlap audit verdict:"]):
+        issues.append("mechanical CAD acceptance content-overlap audit verdict must be pass-shaped")
+    for key in (
+        "- mechanical drawing registered content bbox count:",
+        "- mechanical drawing checked content pair count:",
+    ):
+        count = _mechanical_cad_int(values[key])
+        if count is None or count <= 0:
+            issues.append(f"mechanical CAD acceptance {key[2:]} must be numeric > 0")
+    for key in (
+        "- mechanical drawing content overlap count:",
+        "- mechanical drawing view-view overlap count:",
+        "- mechanical drawing detail-frame-main-view overlap count:",
+        "- mechanical drawing table text/grid collision count:",
+        "- mechanical drawing table_text_grid_collision_count:",
+        "- mechanical drawing dimension-line view/table crossing count:",
+        "- mechanical drawing leader-line view/table crossing count:",
+        "- mechanical drawing balloon geometry collision count:",
+        "- mechanical drawing bbox helper envelope escape count:",
+        "- mechanical drawing stale rendered preview count:",
+    ):
+        count = _mechanical_cad_int(values[key])
+        if count is None or count != 0:
+            issues.append(f"mechanical CAD acceptance {key[2:]} must be numeric 0")
+    if not _mechanical_cad_passish(values["- mechanical drawing outside-frame ink audit verdict:"]):
+        issues.append("mechanical CAD acceptance outside-frame ink audit verdict must be pass-shaped")
+    if not _mechanical_cad_passish(values["- mechanical drawing inner-frame safe-margin audit verdict:"]):
+        issues.append("mechanical CAD acceptance inner-frame safe-margin audit verdict must be pass-shaped")
+    if not _mechanical_cad_passish(values["- mechanical drawing annotation ownership audit verdict:"]):
+        issues.append("mechanical CAD acceptance annotation ownership audit verdict must be pass-shaped")
+    if not _mechanical_cad_passish(values["- mechanical drawing owner-zone coverage verdict:"]):
+        issues.append("mechanical CAD acceptance owner-zone coverage verdict must be pass-shaped")
+    if not _mechanical_cad_passish(values["- mechanical drawing user-reported crop binding review verdict:"]):
+        issues.append("mechanical CAD acceptance user-reported crop binding review verdict must be pass-shaped")
+    if not _mechanical_cad_passish(values["- mechanical drawing text exclusion halo audit verdict:"]):
+        issues.append("mechanical CAD acceptance text exclusion halo audit verdict must be pass-shaped")
+    for key in (
+        "- mechanical drawing reported crop blocker count:",
+        "- mechanical drawing text exclusion halo violation count:",
+        "- mechanical drawing diagonal hatch/section/flow text-cover count:",
+    ):
+        count = _mechanical_cad_int(values[key])
+        if count is None or count != 0:
+            issues.append(f"mechanical CAD acceptance {key[2:]} must be numeric 0")
+    if not _mechanical_cad_passish(values["- CAD text style/font audit verdict:"]):
+        issues.append("mechanical CAD acceptance text style/font audit verdict must be pass-shaped")
+    if not _mechanical_cad_passish(values["- normal CAD text entity verdict:"]):
+        issues.append("mechanical CAD acceptance normal CAD text entity verdict must be pass-shaped")
+    if not _mechanical_cad_passish(values["- current package SHA binding verdict:"]):
+        issues.append("mechanical CAD acceptance current package SHA binding verdict must be pass-shaped")
+    if not _mechanical_cad_passish(values["- mechanical drawing reserved-zone intrusion audit verdict:"]):
+        issues.append("mechanical CAD acceptance reserved-zone intrusion audit verdict must be pass-shaped")
+    if not _mechanical_cad_passish(values["- mechanical drawing hatch/section fill clipping audit verdict:"]):
+        issues.append("mechanical CAD acceptance hatch/section fill clipping audit verdict must be pass-shaped")
+    for key in (
+        "- mechanical drawing reserved-zone intrusion count:",
+        "- mechanical drawing dimension-line table-zone intrusion count:",
+        "- mechanical drawing dimension-text table-zone intrusion count:",
+        "- mechanical drawing view-geometry reserved-zone intrusion count:",
+        "- mechanical drawing unowned free text count:",
+        "- mechanical drawing unsupported floating text count:",
+        "- mechanical drawing unbound scattered text count:",
+        "- mechanical drawing dimension-like text without anchor count:",
+        "- mechanical drawing cell padding violation count:",
+        "- unsupported CAD font/style count:",
+        "- artistic/vectorized text count:",
+        "- source thick lineweight mismatch count:",
+        "- source thin lineweight mismatch count:",
+        "- mechanical drawing hatch/section fill boundary violation count:",
+        "- mechanical drawing hatch/section fill adjacent-view crossing count:",
+        "- mechanical drawing hatch/section fill dimension-line crossing count:",
+        "- mechanical drawing hatch/section fill title-block/table/BOM/frame crossing count:",
+        "- mechanical drawing hatch/section fill blank-background leak count:",
+        "- mechanical drawing text entity overlap count:",
+        "- mechanical drawing outside-frame independent ink component count:",
+        "- mechanical drawing outside-frame text component count:",
+        "- mechanical drawing outside-frame leader component count:",
+        "- mechanical drawing outside-frame hatch/section component count:",
+        "- mechanical drawing outside-frame table/title-block component count:",
+        "- mechanical drawing right safe-boundary intrusion count:",
+        "- mechanical drawing leader-text inner-frame intrusion count:",
+        "- mechanical drawing view-geometry inner-frame intrusion count:",
+        "- mechanical drawing dimension-text inner-frame intrusion count:",
+        "- mechanical drawing missing short table line count:",
+        "- mechanical drawing broken cell-border count:",
+        "- mechanical drawing table-grid topology mismatch count:",
+    ):
+        count = _mechanical_cad_int(values[key])
+        if count is None or count != 0:
+            issues.append(f"mechanical CAD acceptance {key[2:]} must be numeric 0")
+    min_padding = _mechanical_cad_float(values["- mechanical drawing min cell padding mm:"])
+    if min_padding is None or min_padding < 1.0:
+        issues.append("mechanical CAD acceptance min cell padding mm must be numeric and >= 1.0")
+    for key, expected in (
+        ("- source thick lineweight required:", "50"),
+        ("- source thick lineweight observed:", "50"),
+        ("- source thin lineweight required:", "25"),
+        ("- source thin lineweight observed:", "25"),
+    ):
+        value = normalize(values[key])
+        if expected not in value and f"0.{expected}" not in value:
+            issues.append(f"mechanical CAD acceptance {key[2:]} must include {expected} or 0.{expected}")
+    if not _mechanical_cad_passish(values["- mechanical drawing text legibility machine audit verdict:"]):
+        issues.append("mechanical CAD acceptance text legibility machine audit verdict must be pass-shaped")
+    cad_text_height = _mechanical_cad_float(values["- mechanical drawing minimum CAD text height mm:"])
+    if cad_text_height is None or cad_text_height < MECHANICAL_CAD_MIN_ACCEPTANCE_CAD_TEXT_MM:
+        issues.append(
+            "mechanical CAD acceptance minimum CAD text height must be "
+            f">= {MECHANICAL_CAD_MIN_ACCEPTANCE_CAD_TEXT_MM:g} mm"
+        )
+    rendered_text_height = _mechanical_cad_float(values["- mechanical drawing minimum rendered text height px:"])
+    if rendered_text_height is None or rendered_text_height < MECHANICAL_CAD_MIN_ACCEPTANCE_RENDERED_TEXT_PX:
+        issues.append(
+            "mechanical CAD acceptance minimum rendered text height must be "
+            f">= {MECHANICAL_CAD_MIN_ACCEPTANCE_RENDERED_TEXT_PX:g} px"
+        )
+    if not _mechanical_cad_passish(values["- mechanical drawing text integrity audit verdict:"]):
+        issues.append("mechanical CAD acceptance text integrity audit verdict must be pass-shaped")
+    if not _mechanical_cad_passish(values["- mechanical drawing text orientation audit verdict:"]):
+        issues.append("mechanical CAD acceptance text orientation audit verdict must be pass-shaped")
+    for key in (
+        "- mechanical drawing mojibake/tofu/missing glyph count:",
+        "- mechanical drawing missing required drawing text count:",
+        "- mechanical drawing upside-down text count:",
+        "- mechanical drawing mirrored text count:",
+    ):
+        count = _mechanical_cad_int(values[key])
+        if count is None or count != 0:
+            issues.append(f"mechanical CAD acceptance {key[2:]} must be numeric 0")
+    if not _mechanical_cad_passish(values["- mechanical drawing manufacturing complexity audit verdict:"]):
+        issues.append("mechanical CAD acceptance manufacturing complexity audit verdict must be pass-shaped")
+    detail_family_count = _mechanical_cad_int(values["- mechanical drawing minimum manufacturing detail family count:"])
+    if detail_family_count is None or detail_family_count < MECHANICAL_CAD_MIN_ACCEPTANCE_DETAIL_FAMILIES:
+        issues.append(
+            "mechanical CAD acceptance manufacturing detail family count must be "
+            f">= {MECHANICAL_CAD_MIN_ACCEPTANCE_DETAIL_FAMILIES}"
+        )
     if (
         normalize(values["- mechanical drawing entity-count-only false-pass verdict:"]).lower()
         not in MECHANICAL_CAD_ENTITY_ONLY_REJECT_VALUES
@@ -1688,6 +3276,74 @@ def check_mechanical_cad_acceptance_record(record_path: Path, record_lines: list
     thesis_docx_value = normalize(values["- thesis DOCX mutation verdict:"]).lower()
     if thesis_docx_value not in {"not-touched", "none", "not-applicable", "paused"}:
         issues.append("mechanical CAD acceptance must not imply thesis DOCX mutation in the CAD-only lane")
+
+    if source_delta_report_path is not None and not source_delta_report_issues:
+        try:
+            source_delta_report = json.loads(source_delta_report_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            issues.append(
+                f"mechanical CAD source linework delta report is not valid UTF-8 JSON: {source_delta_report_path} ({exc})"
+            )
+        else:
+            if source_delta_report.get("schema") != "graduation-project-builder.cad-source-differentiation-audit.v1":
+                issues.append("mechanical CAD source linework delta report must use cad-source-differentiation schema v1")
+            if source_delta_report.get("passed") is not True:
+                issues.append("mechanical CAD source linework delta report must have passed=true")
+            if source_delta_report.get("issues") not in ([], None):
+                issues.append("mechanical CAD source linework delta report must not carry unresolved issues")
+            changed_sheet_count = _mechanical_cad_int(source_delta_report.get("changed_dxf_count"))
+            identical_sheet_count = _mechanical_cad_int(source_delta_report.get("identical_dxf_count"))
+            old_overlay_count = _mechanical_cad_int(source_delta_report.get("old_like_large_circle_overlay_count"))
+            if changed_sheet_count is not None and changed_sheet_count != _mechanical_cad_int(values["- mechanical drawing changed source sheet count:"]):
+                issues.append("mechanical CAD acceptance changed source sheet count differs from source linework delta report")
+            if identical_sheet_count is not None and identical_sheet_count != _mechanical_cad_int(values["- mechanical drawing identical source sheet count:"]):
+                issues.append("mechanical CAD acceptance identical source sheet count differs from source linework delta report")
+            if old_overlay_count is not None and old_overlay_count != _mechanical_cad_int(values["- mechanical drawing old-like large circle overlay count:"]):
+                issues.append("mechanical CAD acceptance old-like large circle overlay count differs from source linework delta report")
+            per_file = source_delta_report.get("per_file")
+            if isinstance(per_file, list):
+                report_entity_delta = sum(
+                    (_mechanical_cad_int(row.get("added_signature_count")) or 0)
+                    + (_mechanical_cad_int(row.get("removed_signature_count")) or 0)
+                    for row in per_file
+                    if isinstance(row, dict)
+                )
+                if report_entity_delta and report_entity_delta != _mechanical_cad_int(values["- mechanical drawing changed source entity count:"]):
+                    issues.append("mechanical CAD acceptance changed source entity count differs from source linework delta report")
+            report_current_sha = normalize(str(source_delta_report.get("current_sha256") or "")).upper()
+            report_baseline_sha = normalize(str(source_delta_report.get("baseline_sha256") or "")).upper()
+            if report_current_sha and report_current_sha != final_source_sha:
+                issues.append("mechanical CAD acceptance final CAD package SHA256 differs from source linework delta report")
+            if report_baseline_sha and report_baseline_sha != source_baseline_sha:
+                issues.append("mechanical CAD acceptance source CAD package SHA256 differs from source linework delta report")
+
+    if render_readability_report_path is not None and not render_readability_report_issues:
+        try:
+            render_readability_report = json.loads(render_readability_report_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            issues.append(
+                f"mechanical CAD render readability report is not valid UTF-8 JSON: {render_readability_report_path} ({exc})"
+            )
+        else:
+            if render_readability_report.get("schema") != "graduation-project-builder.mechanical-render-readability.v1":
+                issues.append("mechanical CAD render readability report must use mechanical-render-readability schema v1")
+            if render_readability_report.get("passed") is not True:
+                issues.append("mechanical CAD render readability report must have passed=true")
+            for prefix, report_key in (
+                ("- text text overlap count:", "text_text_overlap_count"),
+                ("- text graphic cover count:", "text_graphic_cover_count"),
+                ("- severe line crowding count:", "severe_line_crowding_count"),
+            ):
+                report_count = _mechanical_cad_int(render_readability_report.get(report_key))
+                record_count = _mechanical_cad_int(values[prefix])
+                if report_count is None:
+                    issues.append(f"mechanical CAD render readability report missing integer {report_key}")
+                elif report_count != 0:
+                    issues.append(f"mechanical CAD render readability report {report_key} must be 0")
+                if report_count is not None and record_count is not None and report_count != record_count:
+                    issues.append(
+                        f"mechanical CAD acceptance {prefix[2:]} differs from render readability report {report_key}"
+                    )
 
     rendered_paths = split_path_values(raw_values["- mechanical drawing rendered review evidence paths:"])
     if not rendered_paths:
@@ -1698,14 +3354,68 @@ def check_mechanical_cad_acceptance_record(record_path: Path, record_lines: list
         if rendered_path.suffix.lower() not in IMAGE_EXTENSIONS | PDF_EXTENSIONS:
             issues.append(f"mechanical CAD rendered review evidence must be image/PDF: {rendered_path}")
 
+    content_overlap_evidence_paths = split_path_values(raw_values["- mechanical drawing content-overlap evidence path:"])
+    if not content_overlap_evidence_paths:
+        issues.append("mechanical CAD acceptance must bind content-overlap audit evidence path")
+    for raw_path in content_overlap_evidence_paths:
+        content_overlap_path = resolve_record_path(raw_path, record_path)
+        issues.extend(validate_existing_path(content_overlap_path, require_nonempty_file=True))
+        if content_overlap_path.suffix.lower() not in {".json"}:
+            issues.append(f"mechanical CAD content-overlap audit evidence must be JSON: {content_overlap_path}")
+
+    hatch_evidence_paths = split_path_values(raw_values["- mechanical drawing hatch/section fill clipping evidence path:"])
+    if not hatch_evidence_paths:
+        issues.append("mechanical CAD acceptance must bind hatch/section fill clipping evidence path")
+    for raw_path in hatch_evidence_paths:
+        hatch_path = resolve_record_path(raw_path, record_path)
+        issues.extend(validate_existing_path(hatch_path, require_nonempty_file=True))
+        if hatch_path.suffix.lower() not in {".json"}:
+            issues.append(f"mechanical CAD hatch/section fill clipping evidence must be JSON: {hatch_path}")
+
+    outside_frame_evidence_paths = split_path_values(raw_values["- mechanical drawing outside-frame ink audit evidence path:"])
+    if not outside_frame_evidence_paths:
+        issues.append("mechanical CAD acceptance must bind outside-frame ink audit evidence path")
+    for raw_path in outside_frame_evidence_paths:
+        outside_frame_path = resolve_record_path(raw_path, record_path)
+        issues.extend(validate_existing_path(outside_frame_path, require_nonempty_file=True))
+        if outside_frame_path.suffix.lower() not in {".json"}:
+            issues.append(f"mechanical CAD outside-frame ink audit evidence must be JSON: {outside_frame_path}")
+
+    inner_frame_evidence_paths = split_path_values(raw_values["- mechanical drawing inner-frame safe-margin evidence path:"])
+    if not inner_frame_evidence_paths:
+        issues.append("mechanical CAD acceptance must bind inner-frame safe-margin evidence path")
+    for raw_path in inner_frame_evidence_paths:
+        inner_frame_path = resolve_record_path(raw_path, record_path)
+        issues.extend(validate_existing_path(inner_frame_path, require_nonempty_file=True))
+        if inner_frame_path.suffix.lower() != ".json":
+            issues.append(f"mechanical CAD inner-frame safe-margin evidence must be JSON: {inner_frame_path}")
+
+    text_integrity_paths = split_path_values(raw_values["- mechanical drawing text integrity audit path:"])
+    if not text_integrity_paths:
+        issues.append("mechanical CAD acceptance must bind text integrity audit path")
+    for raw_path in text_integrity_paths:
+        text_integrity_path = resolve_record_path(raw_path, record_path)
+        issues.extend(validate_existing_path(text_integrity_path, require_nonempty_file=True))
+        if text_integrity_path.suffix.lower() != ".json":
+            issues.append(f"mechanical CAD text integrity audit evidence must be JSON: {text_integrity_path}")
+
+    text_orientation_paths = split_path_values(raw_values["- mechanical drawing text orientation audit path:"])
+    if not text_orientation_paths:
+        issues.append("mechanical CAD acceptance must bind text orientation audit path")
+    for raw_path in text_orientation_paths:
+        text_orientation_path = resolve_record_path(raw_path, record_path)
+        issues.extend(validate_existing_path(text_orientation_path, require_nonempty_file=True))
+        if text_orientation_path.suffix.lower() != ".json":
+            issues.append(f"mechanical CAD text orientation audit evidence must be JSON: {text_orientation_path}")
+
     if audit_report_path is not None and not audit_report_issues:
         try:
             report = json.loads(audit_report_path.read_text(encoding="utf-8"))
         except Exception as exc:
             issues.append(f"mechanical CAD audit report is not valid UTF-8 JSON: {audit_report_path} ({exc})")
         else:
-            if report.get("schema") != "graduation-project-builder.mechanical-drawing-package-audit.v4":
-                issues.append("mechanical CAD audit report must use v4 mechanical drawing package schema")
+            if report.get("schema") not in MECHANICAL_CAD_AUDIT_SCHEMA_VALUES:
+                issues.append("mechanical CAD audit report must use v4-or-stricter mechanical drawing package schema")
             if report.get("passed") is not True:
                 issues.append("mechanical CAD audit report must have passed=true")
             if report.get("issues") not in ([], None):
@@ -1724,6 +3434,30 @@ def check_mechanical_cad_acceptance_record(record_path: Path, record_lines: list
                 section = report.get(key)
                 if not isinstance(section, dict) or section.get("passed") is not True:
                     issues.append(f"mechanical CAD audit report {key}.passed must be true")
+            formal_source = report.get("formal_cad_source_verdict")
+            if not isinstance(formal_source, dict) or formal_source.get("passed") is not True:
+                issues.append("mechanical CAD audit report formal_cad_source_verdict.passed must be true")
+            else:
+                if (_mechanical_cad_int(formal_source.get("editable_cad_source_count")) or 0) <= 0:
+                    issues.append("mechanical CAD audit report must prove at least one real DWG/DXF source file")
+                if formal_source.get("schematic_substitute_hits"):
+                    issues.append("mechanical CAD audit report must have zero schematic/concept substitute hits")
+                source_verdict = normalize(values["- mechanical drawing formal CAD source provenance verdict:"]).lower()
+                substitute_verdict = normalize(
+                    values["- mechanical drawing schematic/concept substitute rejection verdict:"]
+                ).lower()
+                if source_verdict not in MECHANICAL_CAD_PASS_VALUES:
+                    issues.append("mechanical CAD acceptance formal CAD source provenance field must be pass-shaped")
+                if substitute_verdict not in MECHANICAL_CAD_PASS_VALUES:
+                    issues.append("mechanical CAD acceptance schematic/concept substitute field must be pass-shaped")
+                report_substitute_verdict = normalize(
+                    str(formal_source.get("schematic_substitute_rejection_verdict", ""))
+                ).lower()
+                if report_substitute_verdict not in MECHANICAL_CAD_PASS_VALUES:
+                    issues.append(
+                        "mechanical CAD audit report formal_cad_source_verdict "
+                        "schematic_substitute_rejection_verdict must be pass-shaped"
+                    )
             candidate = report.get("candidate")
             extension_counts = candidate.get("extension_counts") if isinstance(candidate, dict) else {}
             if isinstance(extension_counts, dict):
@@ -1731,21 +3465,457 @@ def check_mechanical_cad_acceptance_record(record_path: Path, record_lines: list
                     issues.append("mechanical CAD audit report must count real DWG files")
                 if int(extension_counts.get(".pdf", 0)) <= 0:
                     issues.append("mechanical CAD audit report must count PDF drawings")
+            cad_text_quality = report.get("cad_text_quality_verdict")
+            if not isinstance(cad_text_quality, dict) or cad_text_quality.get("passed") is not True:
+                issues.append("mechanical CAD audit report must include passing cad_text_quality_verdict")
+            else:
+                text_quality_field_map = {
+                    "- mechanical drawing mojibake/tofu/missing glyph count:": "mojibake_or_missing_glyph_count",
+                    "- mechanical drawing missing required drawing text count:": "missing_required_drawing_text_count",
+                    "- mechanical drawing upside-down text count:": "upside_down_text_count",
+                    "- mechanical drawing mirrored text count:": "mirrored_text_count",
+                }
+                for prefix, report_field in text_quality_field_map.items():
+                    report_count = _mechanical_cad_int(cad_text_quality.get(report_field))
+                    expected_count = _mechanical_cad_int(values[prefix])
+                    if report_count is None or report_count != 0:
+                        issues.append(f"mechanical CAD audit report cad_text_quality_verdict.{report_field} must be 0")
+                    if expected_count != report_count:
+                        issues.append(
+                            f"mechanical CAD acceptance {prefix[2:]} differs from audit report "
+                            f"cad_text_quality_verdict.{report_field}"
+                        )
             rendered_verdict = report.get("rendered_review_verdict")
             if isinstance(rendered_verdict, dict) and int(rendered_verdict.get("accepted_review_count", 0)) <= 0:
                 issues.append("mechanical CAD audit report must bind at least one accepted rendered review")
+            frame_overflow_verdict = report.get("rendered_frame_overflow_verdict")
+            if not isinstance(frame_overflow_verdict, dict) or frame_overflow_verdict.get("passed") is not True:
+                issues.append("mechanical CAD audit report must include passing rendered_frame_overflow_verdict")
+            else:
+                frame_overflow_component_count = _mechanical_cad_int(
+                    frame_overflow_verdict.get("outside_frame_component_count")
+                )
+                frame_overflow_pixel_count = _mechanical_cad_int(frame_overflow_verdict.get("outside_frame_pixel_count"))
+                frame_overflow_max_area = _mechanical_cad_int(frame_overflow_verdict.get("max_outside_component_area_px"))
+                expected_outside_components = _mechanical_cad_int(
+                    values["- mechanical drawing outside-frame independent ink component count:"]
+                )
+                if frame_overflow_component_count is None or frame_overflow_component_count != 0:
+                    issues.append("mechanical CAD audit report rendered_frame_overflow_verdict.outside_frame_component_count must be 0")
+                if frame_overflow_pixel_count is None or frame_overflow_pixel_count != 0:
+                    issues.append("mechanical CAD audit report rendered_frame_overflow_verdict.outside_frame_pixel_count must be 0")
+                if frame_overflow_max_area is None or frame_overflow_max_area != 0:
+                    issues.append("mechanical CAD audit report rendered_frame_overflow_verdict.max_outside_component_area_px must be 0")
+                if expected_outside_components != frame_overflow_component_count:
+                    issues.append(
+                        "mechanical CAD acceptance outside-frame independent ink component count differs from "
+                        "audit report rendered_frame_overflow_verdict.outside_frame_component_count"
+                    )
+            machine_overlap = rendered_verdict.get("machine_overlap_audit") if isinstance(rendered_verdict, dict) else None
+            if not isinstance(machine_overlap, dict) or machine_overlap.get("passed") is not True:
+                issues.append("mechanical CAD audit report must include passing rendered_review_verdict.machine_overlap_audit")
+            else:
+                report_text_overlap = _mechanical_cad_int(machine_overlap.get("text_entity_overlap_count"))
+                expected_text_overlap = _mechanical_cad_int(values["- mechanical drawing text entity overlap count:"])
+                if report_text_overlap is None or report_text_overlap != 0:
+                    issues.append("mechanical CAD audit report machine_overlap_audit.text_entity_overlap_count must be 0")
+                if expected_text_overlap != report_text_overlap:
+                    issues.append(
+                        "mechanical CAD acceptance text entity overlap count differs from audit report "
+                        "machine_overlap_audit.text_entity_overlap_count"
+                    )
+            content_overlap = rendered_verdict.get("content_overlap_audit") if isinstance(rendered_verdict, dict) else None
+            if not isinstance(content_overlap, dict) or content_overlap.get("passed") is not True:
+                issues.append("mechanical CAD audit report must include passing rendered_review_verdict.content_overlap_audit")
+            else:
+                content_positive_field_map = {
+                    "- mechanical drawing registered content bbox count:": "registered_bbox_count",
+                    "- mechanical drawing checked content pair count:": "checked_pair_count",
+                }
+                for prefix, report_field in content_positive_field_map.items():
+                    report_count = _mechanical_cad_int(content_overlap.get(report_field))
+                    expected_count = _mechanical_cad_int(values[prefix])
+                    if report_count is None or report_count <= 0:
+                        issues.append(f"mechanical CAD audit report content_overlap_audit.{report_field} must be > 0")
+                    if expected_count != report_count:
+                        issues.append(
+                            f"mechanical CAD acceptance {prefix[2:]} differs from audit report "
+                            f"content_overlap_audit.{report_field}"
+                        )
+                content_zero_field_map = {
+                    "- mechanical drawing content overlap count:": "content_overlap_count",
+                    "- mechanical drawing view-view overlap count:": "view_view_overlap_count",
+                    "- mechanical drawing detail-frame-main-view overlap count:": "detail_frame_main_view_overlap_count",
+                    "- mechanical drawing table text/grid collision count:": "table_text_grid_collision_count",
+                    "- mechanical drawing dimension-line view/table crossing count:": "dimension_line_view_table_crossing_count",
+                    "- mechanical drawing leader-line view/table crossing count:": "leader_line_view_table_crossing_count",
+                    "- mechanical drawing balloon geometry collision count:": "balloon_geometry_collision_count",
+                    "- mechanical drawing bbox helper envelope escape count:": "bbox_helper_envelope_escape_count",
+                    "- mechanical drawing stale rendered preview count:": "stale_rendered_preview_count",
+                }
+                for prefix, report_field in content_zero_field_map.items():
+                    report_count = _mechanical_cad_int(content_overlap.get(report_field))
+                    expected_count = _mechanical_cad_int(values[prefix])
+                    if report_count is None or report_count != 0:
+                        issues.append(f"mechanical CAD audit report content_overlap_audit.{report_field} must be 0")
+                    if expected_count != report_count:
+                        issues.append(
+                            f"mechanical CAD acceptance {prefix[2:]} differs from audit report "
+                            f"content_overlap_audit.{report_field}"
+                        )
+            outside_frame_ink = rendered_verdict.get("outside_frame_ink_audit") if isinstance(rendered_verdict, dict) else None
+            if not isinstance(outside_frame_ink, dict) or outside_frame_ink.get("passed") is not True:
+                issues.append("mechanical CAD audit report must include passing rendered_review_verdict.outside_frame_ink_audit")
+            else:
+                outside_frame_field_map = {
+                    "- mechanical drawing outside-frame independent ink component count:": "outside_frame_independent_ink_component_count",
+                    "- mechanical drawing outside-frame text component count:": "outside_frame_text_component_count",
+                    "- mechanical drawing outside-frame leader component count:": "outside_frame_leader_component_count",
+                    "- mechanical drawing outside-frame hatch/section component count:": "outside_frame_hatch_section_component_count",
+                    "- mechanical drawing outside-frame table/title-block component count:": "outside_frame_table_title_block_component_count",
+                }
+                for prefix, report_field in outside_frame_field_map.items():
+                    report_count = _mechanical_cad_int(outside_frame_ink.get(report_field))
+                    expected_count = _mechanical_cad_int(values[prefix])
+                    if report_count is None or report_count != 0:
+                        issues.append(f"mechanical CAD audit report outside_frame_ink_audit.{report_field} must be 0")
+                    if expected_count != report_count:
+                        issues.append(
+                            f"mechanical CAD acceptance {prefix[2:]} differs from audit report "
+                            f"outside_frame_ink_audit.{report_field}"
+                        )
+            inner_frame_safe_margin = (
+                rendered_verdict.get("inner_frame_safe_margin_audit") if isinstance(rendered_verdict, dict) else None
+            )
+            if not isinstance(inner_frame_safe_margin, dict) or inner_frame_safe_margin.get("passed") is not True:
+                issues.append("mechanical CAD audit report must include passing rendered_review_verdict.inner_frame_safe_margin_audit")
+            else:
+                inner_frame_field_map = {
+                    "- mechanical drawing right safe-boundary intrusion count:": "right_safe_boundary_intrusion_count",
+                    "- mechanical drawing leader-text inner-frame intrusion count:": "leader_text_inner_frame_intrusion_count",
+                    "- mechanical drawing view-geometry inner-frame intrusion count:": "view_geometry_inner_frame_intrusion_count",
+                    "- mechanical drawing dimension-text inner-frame intrusion count:": "dimension_text_inner_frame_intrusion_count",
+                }
+                source_sections = inner_frame_safe_margin.get("source_sections")
+                if not isinstance(source_sections, list) or not {
+                    "machine_overlap_audit",
+                    "content_overlap_audit",
+                    "reserved_zone_intrusion_audit",
+                    "outside_frame_ink_audit",
+                }.issubset({str(item) for item in source_sections}):
+                    issues.append("mechanical CAD audit report inner_frame_safe_margin_audit must cite source machine sections")
+                if (_mechanical_cad_float(inner_frame_safe_margin.get("min_safe_margin_mm")) or 0.0) < 2.0:
+                    issues.append("mechanical CAD audit report inner_frame_safe_margin_audit.min_safe_margin_mm must be >= 2.0")
+                for prefix, report_field in inner_frame_field_map.items():
+                    report_count = _mechanical_cad_int(inner_frame_safe_margin.get(report_field))
+                    expected_count = _mechanical_cad_int(values[prefix])
+                    if report_count is None or report_count != 0:
+                        issues.append(f"mechanical CAD audit report inner_frame_safe_margin_audit.{report_field} must be 0")
+                    if expected_count != report_count:
+                        issues.append(
+                            f"mechanical CAD acceptance {prefix[2:]} differs from audit report "
+                            f"inner_frame_safe_margin_audit.{report_field}"
+                        )
+            cell_containment = rendered_verdict.get("cell_containment_audit") if isinstance(rendered_verdict, dict) else None
+            if not isinstance(cell_containment, dict) or cell_containment.get("passed") is not True:
+                issues.append("mechanical CAD audit report must include passing rendered_review_verdict.cell_containment_audit")
+            else:
+                for field in (
+                    "outside_cell_count",
+                    "border_touch_count",
+                    "unowned_table_text_count",
+                    "clipped_overflow_count",
+                ):
+                    report_count = _mechanical_cad_int(cell_containment.get(field))
+                    if report_count is None or report_count != 0:
+                        issues.append(f"mechanical CAD audit report cell_containment_audit.{field} must be 0")
+            annotation_ownership = (
+                rendered_verdict.get("annotation_ownership_audit") if isinstance(rendered_verdict, dict) else None
+            )
+            if not isinstance(annotation_ownership, dict) or annotation_ownership.get("passed") is not True:
+                issues.append("mechanical CAD audit report must include passing rendered_review_verdict.annotation_ownership_audit")
+            else:
+                annotation_field_map = {
+                    "- mechanical drawing unowned free text count:": "unowned_free_text_count",
+                    "- mechanical drawing unsupported floating text count:": "unsupported_floating_text_count",
+                }
+                for prefix, report_field in annotation_field_map.items():
+                    report_count = _mechanical_cad_int(annotation_ownership.get(report_field))
+                    expected_count = _mechanical_cad_int(values[prefix])
+                    if report_count is None or report_count != 0:
+                        issues.append(f"mechanical CAD audit report annotation_ownership_audit.{report_field} must be 0")
+                    if expected_count != report_count:
+                        issues.append(
+                            f"mechanical CAD acceptance {prefix[2:]} differs from audit report "
+                            f"annotation_ownership_audit.{report_field}"
+                        )
+            reserved_zone_intrusion = (
+                rendered_verdict.get("reserved_zone_intrusion_audit") if isinstance(rendered_verdict, dict) else None
+            )
+            if not isinstance(reserved_zone_intrusion, dict) or reserved_zone_intrusion.get("passed") is not True:
+                issues.append("mechanical CAD audit report must include passing rendered_review_verdict.reserved_zone_intrusion_audit")
+            else:
+                reserved_field_map = {
+                    "- mechanical drawing reserved-zone intrusion count:": "intrusion_count",
+                    "- mechanical drawing protected-table-zone intrusion count:": "protected_table_zone_intrusion_count",
+                    "- mechanical drawing dimension-line table-zone intrusion count:": "dimension_line_table_zone_intrusion_count",
+                    "- mechanical drawing dimension-text table-zone intrusion count:": "dimension_text_table_zone_intrusion_count",
+                    "- mechanical drawing view-geometry table-zone intrusion count:": "view_geometry_table_zone_intrusion_count",
+                    "- mechanical drawing detail-view table-zone intrusion count:": "detail_view_table_zone_intrusion_count",
+                    "- mechanical drawing leader/balloon table-zone intrusion count:": "leader_balloon_table_zone_intrusion_count",
+                    "- mechanical drawing dimension table-zone intrusion count:": "dimension_table_zone_intrusion_count",
+                    "- mechanical drawing title-block/BOM protected-zone intrusion count:": "title_block_bom_protected_zone_intrusion_count",
+                    "- mechanical drawing view-geometry reserved-zone intrusion count:": "view_geometry_reserved_zone_intrusion_count",
+                }
+                for prefix, report_field in reserved_field_map.items():
+                    report_count = _mechanical_cad_int(reserved_zone_intrusion.get(report_field))
+                    expected_count = _mechanical_cad_int(values[prefix])
+                    if report_count is None or report_count != 0:
+                        issues.append(f"mechanical CAD audit report reserved_zone_intrusion_audit.{report_field} must be 0")
+                    if expected_count != report_count:
+                        issues.append(
+                            f"mechanical CAD acceptance {prefix[2:]} differs from audit report "
+                            f"reserved_zone_intrusion_audit.{report_field}"
+                        )
+            hatch_clip = rendered_verdict.get("hatch_clip_audit") if isinstance(rendered_verdict, dict) else None
+            if not isinstance(hatch_clip, dict) or hatch_clip.get("passed") is not True:
+                issues.append("mechanical CAD audit report must include passing rendered_review_verdict.hatch_clip_audit")
+            else:
+                hatch_field_map = {
+                    "- mechanical drawing hatch/section fill boundary violation count:": "hatch_clip_violation_count",
+                    "- mechanical drawing hatch/section fill adjacent-view crossing count:": "adjacent_view_crossing_count",
+                    "- mechanical drawing hatch/section fill dimension-line crossing count:": "dimension_line_crossing_count",
+                    "- mechanical drawing hatch/section fill title-block/table/BOM/frame crossing count:": "title_block_table_bom_frame_crossing_count",
+                    "- mechanical drawing hatch/section fill blank-background leak count:": "blank_background_leak_count",
+                }
+                for prefix, report_field in hatch_field_map.items():
+                    report_count = _mechanical_cad_int(hatch_clip.get(report_field))
+                    expected_count = _mechanical_cad_int(values[prefix])
+                    if report_count is None or report_count != 0:
+                        issues.append(f"mechanical CAD audit report hatch_clip_audit.{report_field} must be 0")
+                    if expected_count != report_count:
+                        issues.append(f"mechanical CAD acceptance {prefix[2:]} differs from audit report hatch_clip_audit.{report_field}")
+            text_legibility = rendered_verdict.get("text_legibility_audit") if isinstance(rendered_verdict, dict) else None
+            if not isinstance(text_legibility, dict) or text_legibility.get("passed") is not True:
+                issues.append("mechanical CAD audit report must include passing rendered_review_verdict.text_legibility_audit")
+            elif (
+                (_mechanical_cad_float(text_legibility.get("min_cad_text_height_mm")) or 0.0)
+                < MECHANICAL_CAD_MIN_ACCEPTANCE_CAD_TEXT_MM
+                or (_mechanical_cad_float(text_legibility.get("min_rendered_text_height_px")) or 0.0)
+                < MECHANICAL_CAD_MIN_ACCEPTANCE_RENDERED_TEXT_PX
+            ):
+                issues.append("mechanical CAD audit report text_legibility_audit is below required legibility thresholds")
+            text_integrity = rendered_verdict.get("text_integrity_audit") if isinstance(rendered_verdict, dict) else None
+            if not isinstance(text_integrity, dict) or text_integrity.get("passed") is not True:
+                issues.append("mechanical CAD audit report must include passing rendered_review_verdict.text_integrity_audit")
+            else:
+                for field in ("mojibake_or_missing_glyph_count", "missing_required_drawing_text_count"):
+                    count = _mechanical_cad_int(text_integrity.get(field))
+                    if count is None or count != 0:
+                        issues.append(f"mechanical CAD audit report text_integrity_audit.{field} must be 0")
+            text_orientation = rendered_verdict.get("text_orientation_audit") if isinstance(rendered_verdict, dict) else None
+            if not isinstance(text_orientation, dict) or text_orientation.get("passed") is not True:
+                issues.append("mechanical CAD audit report must include passing rendered_review_verdict.text_orientation_audit")
+            else:
+                for field in ("upside_down_text_count", "mirrored_text_count"):
+                    count = _mechanical_cad_int(text_orientation.get(field))
+                    if count is None or count != 0:
+                        issues.append(f"mechanical CAD audit report text_orientation_audit.{field} must be 0")
+            manufacturing_complexity = (
+                rendered_verdict.get("manufacturing_complexity_audit") if isinstance(rendered_verdict, dict) else None
+            )
+            if not isinstance(manufacturing_complexity, dict) or manufacturing_complexity.get("passed") is not True:
+                issues.append("mechanical CAD audit report must include passing rendered_review_verdict.manufacturing_complexity_audit")
+            elif (
+                (_mechanical_cad_int(manufacturing_complexity.get("min_feature_family_count")) or 0)
+                < MECHANICAL_CAD_MIN_ACCEPTANCE_DETAIL_FAMILIES
+            ):
+                issues.append("mechanical CAD audit report manufacturing_complexity_audit is below required family count")
             rendered_candidate = candidate.get("rendered_review") if isinstance(candidate, dict) else None
             if not isinstance(rendered_candidate, dict):
                 issues.append("mechanical CAD audit report candidate.rendered_review must exist")
             else:
+                candidate_machine_overlap = rendered_candidate.get("machine_overlap_audit")
+                if not isinstance(candidate_machine_overlap, dict) or candidate_machine_overlap.get("passed") is not True:
+                    issues.append("mechanical CAD audit report candidate.rendered_review.machine_overlap_audit must pass")
+                elif (_mechanical_cad_int(candidate_machine_overlap.get("text_entity_overlap_count")) or 0) != 0:
+                    issues.append(
+                        "mechanical CAD audit report candidate.rendered_review.machine_overlap_audit.text_entity_overlap_count must be 0"
+                    )
+                candidate_content_overlap = rendered_candidate.get("content_overlap_audit")
+                if not isinstance(candidate_content_overlap, dict) or candidate_content_overlap.get("passed") is not True:
+                    issues.append("mechanical CAD audit report candidate.rendered_review.content_overlap_audit must pass")
+                elif (
+                    (_mechanical_cad_int(candidate_content_overlap.get("registered_bbox_count")) or 0) <= 0
+                    or (_mechanical_cad_int(candidate_content_overlap.get("checked_pair_count")) or 0) <= 0
+                    or any(
+                        (_mechanical_cad_int(candidate_content_overlap.get(field)) or 0) != 0
+                        for field in (
+                            "content_overlap_count",
+                            "view_view_overlap_count",
+                            "detail_frame_main_view_overlap_count",
+                            "table_text_grid_collision_count",
+                            "dimension_line_view_table_crossing_count",
+                            "leader_line_view_table_crossing_count",
+                            "balloon_geometry_collision_count",
+                            "bbox_helper_envelope_escape_count",
+                            "stale_rendered_preview_count",
+                        )
+                    )
+                ):
+                    issues.append("mechanical CAD audit report candidate.rendered_review.content_overlap_audit counts are invalid")
+                candidate_outside_frame = rendered_candidate.get("outside_frame_ink_audit")
+                if not isinstance(candidate_outside_frame, dict) or candidate_outside_frame.get("passed") is not True:
+                    issues.append("mechanical CAD audit report candidate.rendered_review.outside_frame_ink_audit must pass")
+                elif any(
+                    (_mechanical_cad_int(candidate_outside_frame.get(field)) or 0) != 0
+                    for field in (
+                        "outside_frame_independent_ink_component_count",
+                        "outside_frame_text_component_count",
+                        "outside_frame_leader_component_count",
+                        "outside_frame_hatch_section_component_count",
+                        "outside_frame_table_title_block_component_count",
+                    )
+                ):
+                    issues.append("mechanical CAD audit report candidate.rendered_review.outside_frame_ink_audit counts must all be 0")
+                candidate_inner_frame = rendered_candidate.get("inner_frame_safe_margin_audit")
+                if not isinstance(candidate_inner_frame, dict) or candidate_inner_frame.get("passed") is not True:
+                    issues.append("mechanical CAD audit report candidate.rendered_review.inner_frame_safe_margin_audit must pass")
+                elif any(
+                    (_mechanical_cad_int(candidate_inner_frame.get(field)) or 0) != 0
+                    for field in (
+                        "right_safe_boundary_intrusion_count",
+                        "leader_text_inner_frame_intrusion_count",
+                        "view_geometry_inner_frame_intrusion_count",
+                        "dimension_text_inner_frame_intrusion_count",
+                    )
+                ):
+                    issues.append("mechanical CAD audit report candidate.rendered_review.inner_frame_safe_margin_audit counts must all be 0")
+                candidate_cell_containment = rendered_candidate.get("cell_containment_audit")
+                if not isinstance(candidate_cell_containment, dict) or candidate_cell_containment.get("passed") is not True:
+                    issues.append("mechanical CAD audit report candidate.rendered_review.cell_containment_audit must pass")
+                elif any(
+                    (_mechanical_cad_int(candidate_cell_containment.get(field)) or 0) != 0
+                    for field in (
+                        "outside_cell_count",
+                        "border_touch_count",
+                        "unowned_table_text_count",
+                        "clipped_overflow_count",
+                    )
+                ):
+                    issues.append("mechanical CAD audit report candidate.rendered_review.cell_containment_audit counts must all be 0")
+                candidate_annotation_ownership = rendered_candidate.get("annotation_ownership_audit")
+                if (
+                    not isinstance(candidate_annotation_ownership, dict)
+                    or candidate_annotation_ownership.get("passed") is not True
+                ):
+                    issues.append("mechanical CAD audit report candidate.rendered_review.annotation_ownership_audit must pass")
+                elif any(
+                    (_mechanical_cad_int(candidate_annotation_ownership.get(field)) or 0) != 0
+                    for field in (
+                        "unowned_free_text_count",
+                        "unsupported_floating_text_count",
+                    )
+                ):
+                    issues.append("mechanical CAD audit report candidate.rendered_review.annotation_ownership_audit counts must all be 0")
+                candidate_reserved_zone = rendered_candidate.get("reserved_zone_intrusion_audit")
+                if not isinstance(candidate_reserved_zone, dict) or candidate_reserved_zone.get("passed") is not True:
+                    issues.append("mechanical CAD audit report candidate.rendered_review.reserved_zone_intrusion_audit must pass")
+                elif any(
+                    (_mechanical_cad_int(candidate_reserved_zone.get(field)) or 0) != 0
+                    for field in (
+                        "intrusion_count",
+                        "geometry_title_block_intrusion_count",
+                        "dimension_line_table_zone_intrusion_count",
+                        "dimension_text_table_zone_intrusion_count",
+                        "leader_table_zone_intrusion_count",
+                        "view_geometry_reserved_zone_intrusion_count",
+                        "bom_table_intrusion_count",
+                        "technical_requirement_intrusion_count",
+                        "protected_table_zone_intrusion_count",
+                        "view_geometry_table_zone_intrusion_count",
+                        "detail_view_table_zone_intrusion_count",
+                        "leader_balloon_table_zone_intrusion_count",
+                        "dimension_table_zone_intrusion_count",
+                        "title_block_bom_protected_zone_intrusion_count",
+                    )
+                ):
+                    issues.append("mechanical CAD audit report candidate.rendered_review.reserved_zone_intrusion_audit counts must all be 0")
+                candidate_hatch_clip = rendered_candidate.get("hatch_clip_audit")
+                if not isinstance(candidate_hatch_clip, dict) or candidate_hatch_clip.get("passed") is not True:
+                    issues.append("mechanical CAD audit report candidate.rendered_review.hatch_clip_audit must pass")
+                elif any(
+                    (_mechanical_cad_int(candidate_hatch_clip.get(field)) or 0) != 0
+                    for field in (
+                        "hatch_clip_violation_count",
+                        "entity_boundary_escape_count",
+                        "adjacent_view_crossing_count",
+                        "dimension_line_crossing_count",
+                        "title_block_table_bom_frame_crossing_count",
+                        "blank_background_leak_count",
+                    )
+                ):
+                    issues.append("mechanical CAD audit report candidate.rendered_review.hatch_clip_audit counts must all be 0")
+                candidate_text_legibility = rendered_candidate.get("text_legibility_audit")
+                if not isinstance(candidate_text_legibility, dict) or candidate_text_legibility.get("passed") is not True:
+                    issues.append("mechanical CAD audit report candidate.rendered_review.text_legibility_audit must pass")
+                elif (
+                    (_mechanical_cad_float(candidate_text_legibility.get("min_cad_text_height_mm")) or 0.0)
+                    < MECHANICAL_CAD_MIN_ACCEPTANCE_CAD_TEXT_MM
+                    or (_mechanical_cad_float(candidate_text_legibility.get("min_rendered_text_height_px")) or 0.0)
+                    < MECHANICAL_CAD_MIN_ACCEPTANCE_RENDERED_TEXT_PX
+                ):
+                    issues.append("mechanical CAD audit report candidate.rendered_review.text_legibility_audit is below thresholds")
+                candidate_text_integrity = rendered_candidate.get("text_integrity_audit")
+                if not isinstance(candidate_text_integrity, dict) or candidate_text_integrity.get("passed") is not True:
+                    issues.append("mechanical CAD audit report candidate.rendered_review.text_integrity_audit must pass")
+                elif any(
+                    (_mechanical_cad_int(candidate_text_integrity.get(field)) or 0) != 0
+                    for field in (
+                        "mojibake_or_missing_glyph_count",
+                        "missing_required_drawing_text_count",
+                    )
+                ):
+                    issues.append("mechanical CAD audit report candidate.rendered_review.text_integrity_audit counts must all be 0")
+                candidate_text_orientation = rendered_candidate.get("text_orientation_audit")
+                if not isinstance(candidate_text_orientation, dict) or candidate_text_orientation.get("passed") is not True:
+                    issues.append("mechanical CAD audit report candidate.rendered_review.text_orientation_audit must pass")
+                elif any(
+                    (_mechanical_cad_int(candidate_text_orientation.get(field)) or 0) != 0
+                    for field in (
+                        "upside_down_text_count",
+                        "mirrored_text_count",
+                    )
+                ):
+                    issues.append("mechanical CAD audit report candidate.rendered_review.text_orientation_audit counts must all be 0")
+                candidate_manufacturing_complexity = rendered_candidate.get("manufacturing_complexity_audit")
+                if (
+                    not isinstance(candidate_manufacturing_complexity, dict)
+                    or candidate_manufacturing_complexity.get("passed") is not True
+                ):
+                    issues.append("mechanical CAD audit report candidate.rendered_review.manufacturing_complexity_audit must pass")
+                elif (
+                    (_mechanical_cad_int(candidate_manufacturing_complexity.get("min_feature_family_count")) or 0)
+                    < MECHANICAL_CAD_MIN_ACCEPTANCE_DETAIL_FAMILIES
+                ):
+                    issues.append(
+                        "mechanical CAD audit report candidate.rendered_review.manufacturing_complexity_audit is below required family count"
+                    )
                 for prefix in (
                     "- mechanical drawing rendered no-overlap verdict:",
                     "- mechanical drawing boundary clearance verdict:",
                     "- mechanical drawing detail density verdict:",
                     "- mechanical drawing title block/table/notes isolation verdict:",
+                    "- mechanical drawing title-block cell containment verdict:",
                     "- mechanical drawing annotation margin clearance verdict:",
                     "- mechanical drawing local crowding verdict:",
                     "- mechanical drawing text/table/frame overlap verdict:",
+                    "- mechanical drawing text integrity audit verdict:",
+                    "- mechanical drawing text orientation audit verdict:",
+                    "- mechanical drawing content-overlap audit verdict:",
+                    "- mechanical drawing outside-frame ink audit verdict:",
+                    "- mechanical drawing inner-frame safe-margin audit verdict:",
+                    "- mechanical drawing hatch/section fill clipping audit verdict:",
                 ):
                     report_field = _mechanical_cad_acceptance_to_report_field(prefix)
                     if not report_field:
@@ -3268,6 +5438,21 @@ def docx_has_figure_caption(docx_path: Path | None) -> bool:
     return bool(docx_figure_surface_summary(docx_path).get("figure_caption_count"))
 
 
+def docx_has_body_table_or_caption(docx_path: Path | None) -> bool:
+    if docx_path is None or not docx_path.exists() or docx_path.suffix.lower() != ".docx":
+        return False
+    try:
+        with zipfile.ZipFile(docx_path) as zf:
+            root = ET.fromstring(zf.read("word/document.xml"))
+    except Exception:
+        return False
+    if root.findall(f".//{W}tbl"):
+        return True
+    texts = [node.text or "" for node in root.findall(f".//{W}t")]
+    joined = "\n".join(texts)
+    return bool(re.search(r"(^|\n)\s*(表|Table)\s*\d+[\-.．、]?\d*", joined, flags=re.IGNORECASE))
+
+
 def sample_self_check_detector_registry(text: str) -> dict[str, dict[str, object]]:
     detectors: dict[str, dict[str, object]] = {}
     for line in text.splitlines():
@@ -3348,6 +5533,8 @@ def validate_sample_self_check_report(
         if detector is None:
             issues.append(f"sample self-check report missing required detector `{detector_id}`: {report_path}")
             continue
+        if detector.get("passed") is not True or detector.get("failed") is True:
+            issues.append(f"sample self-check required detector `{detector_id}` is not pass-shaped: {report_path}")
         evidence = detector.get("evidence")
         if not isinstance(evidence, dict) or not evidence:
             issues.append(f"sample self-check detector `{detector_id}` has no evidence object: {report_path}")
@@ -3583,7 +5770,24 @@ def validate_user_reported_visual_defect_evidence(
         issues.append(f"user-reported visual defect evidence must include full-page binding: {evidence_path}")
     if not contains_any(lowered, {"key-surface", "key surface", "crop", "region", "bbox", "bounding box"}):
         issues.append(f"user-reported visual defect evidence must include key-surface/crop binding: {evidence_path}")
-    if contains_any(lowered, USER_REPORTED_VISUAL_BAD_TOKENS):
+    bad_token_scan_lines = []
+    path_like_prefixes = (
+        "- final docx path:",
+        "- final pdf path:",
+        "- reviewed output path:",
+        "- template path:",
+        "- template rendered region image path:",
+        "- actual rendered region image path:",
+        "- target actual final artifact binding:",
+        "- surface evidence paths:",
+        "- final docx sha256:",
+    )
+    for line in lowered.splitlines():
+        stripped = line.strip()
+        if any(stripped.startswith(prefix) for prefix in path_like_prefixes):
+            continue
+        bad_token_scan_lines.append(line)
+    if contains_any("\n".join(bad_token_scan_lines), USER_REPORTED_VISUAL_BAD_TOKENS):
         issues.append(f"user-reported visual defect evidence contains blocked or substitute proof wording: {evidence_path}")
     for line in lowered.splitlines():
         if contains_any(line, USER_REPORTED_VISUAL_NOT_APPLICABLE_CONTEXT_TOKENS) and contains_any(
@@ -3693,6 +5897,204 @@ def figure_manifest_has_er_diagrams(manifest_path: Path | None) -> bool:
     return False
 
 
+def _int_from_gate_value(value: str) -> int | None:
+    match = re.search(r"-?\d+", value or "")
+    if not match:
+        return None
+    try:
+        return int(match.group(0))
+    except ValueError:
+        return None
+
+
+def _mechanical_cad_context_required(gate_values: dict[str, str], record_text_lower: str) -> bool:
+    cad_field_prefixes = (
+        "- exact final CAD delivery package path:",
+        "- mechanical drawing package audit path:",
+        "- mechanical drawing package exact package path:",
+        "- exact combined drawing PDF path:",
+    )
+    if any(
+        is_explicit(gate_values.get(prefix, ""))
+        and not is_explicit_none(gate_values.get(prefix, ""))
+        for prefix in cad_field_prefixes
+    ):
+        return True
+    return False
+
+
+def _mechanical_formula_minimum_required(record_context: str) -> bool:
+    lowered = record_context.lower()
+    if contains_any(lowered, MECHANICAL_FORMULA_EXCLUSION_TOKENS):
+        return False
+    return contains_any(lowered, MECHANICAL_FORMULA_CONTEXT_TOKENS)
+
+
+def _validate_cad_appendix_binding_record(
+    *,
+    record_path: Path,
+    gate_values: dict[str, str],
+    gate_raw_values: dict[str, str],
+    final_docx_path: Path | None,
+    record_text_lower: str,
+) -> list[str]:
+    issues: list[str] = []
+    if not _mechanical_cad_context_required(gate_values, record_text_lower):
+        return issues
+    if final_docx_path is None or not final_docx_path.exists():
+        issues.append("CAD appendix binding requires an existing exact final DOCX path")
+        return issues
+
+    for prefix in (
+        "- mechanical drawing package audit path:",
+        "- mechanical drawing package audit verdict:",
+        "- mechanical drawing formal CAD source provenance verdict:",
+        "- mechanical drawing schematic/concept substitute rejection verdict:",
+    ):
+        value = gate_values.get(prefix, "")
+        if not is_explicit(value) or is_explicit_none(value):
+            issues.append(f"thesis final acceptance with mechanical CAD drawings must bind {prefix[2:-1]}")
+    if not _mechanical_cad_passish(gate_values.get("- mechanical drawing package audit verdict:", "")):
+        issues.append("mechanical drawing package audit verdict must be pass-shaped")
+    if not _mechanical_cad_passish(gate_values.get("- mechanical drawing formal CAD source provenance verdict:", "")):
+        issues.append("mechanical drawing formal CAD source provenance verdict must be pass-shaped")
+    if not _mechanical_cad_passish(
+        gate_values.get("- mechanical drawing schematic/concept substitute rejection verdict:", "")
+    ):
+        issues.append("mechanical drawing schematic/concept substitute rejection verdict must be pass-shaped")
+    issues.extend(_mechanical_cad_require_final_surface_fields(gate_values))
+    expected_cad_package_sha = (
+        gate_values.get("- exact final CAD delivery package sha256:", "")
+        or gate_values.get("- mechanical drawing package exact package sha256:", "")
+    )
+    issues.extend(
+        _mechanical_cad_validate_render_readability_fields(
+            record_path=record_path,
+            values=gate_values,
+            raw_values=gate_raw_values,
+        )
+    )
+    issues.extend(
+        _mechanical_cad_validate_linework_and_color_fields(
+            record_path=record_path,
+            values=gate_values,
+            raw_values=gate_raw_values,
+            expected_package_sha=expected_cad_package_sha,
+        )
+    )
+    package_audit_value = gate_values.get("- mechanical drawing package audit path:", "")
+    if is_explicit(package_audit_value) and not is_explicit_none(package_audit_value):
+        package_audit_path = resolve_record_path(
+            gate_raw_values.get("- mechanical drawing package audit path:", ""),
+            record_path,
+        )
+        try:
+            package_report = json.loads(package_audit_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            issues.append(f"mechanical drawing package audit path must be readable JSON: {package_audit_path} ({exc})")
+        else:
+            formal_source = package_report.get("formal_cad_source_verdict")
+            if not isinstance(formal_source, dict) or formal_source.get("passed") is not True:
+                issues.append("mechanical drawing package audit must pass formal CAD source provenance")
+            elif formal_source.get("schematic_substitute_hits"):
+                issues.append("mechanical drawing package audit must report zero schematic/concept substitute hits")
+            issues.extend(
+                _mechanical_cad_validate_final_package_audit_report(
+                    package_report=package_report,
+                    values=gate_values,
+                    expected_package_sha=expected_cad_package_sha,
+                )
+            )
+
+    for prefix in CAD_APPENDIX_FIELD_PREFIXES:
+        value = gate_values.get(prefix, "")
+        if not is_explicit(value) or is_explicit_none(value):
+            issues.append(f"thesis final acceptance with mechanical CAD drawings must bind {prefix[2:-1]}")
+
+    audit_path_value = gate_values.get("- CAD appendix binding audit path:", "")
+    package_value = gate_values.get("- CAD appendix final package path:", "")
+    if not is_explicit(audit_path_value) or is_explicit_none(audit_path_value):
+        return issues
+    audit_path = resolve_record_path(gate_raw_values.get("- CAD appendix binding audit path:", ""), record_path)
+    try:
+        report = json.loads(audit_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        issues.append(f"CAD appendix binding audit path must be readable JSON: {audit_path} ({exc})")
+        return issues
+    if report.get("schema") != "graduation-project-builder.docx-cad-appendix-binding-audit.v1":
+        issues.append(f"CAD appendix binding audit has wrong schema: {audit_path}")
+    if report.get("passed") is not True:
+        issues.append("CAD appendix binding audit report must be passing")
+    package_only_user_override = str(report.get("binding_mode") or "").strip().lower() == "package-only-user-override"
+    if package_only_user_override:
+        override_reason = str(report.get("user_override_reason") or "").strip().lower()
+        if not override_reason or not contains_any(override_reason, {"user", "explicit", "cad", "package"}):
+            issues.append("CAD appendix package-only override must record the explicit user/package reason")
+    verdict = gate_values.get("- CAD appendix binding audit verdict:", "")
+    if not _mechanical_cad_passish(verdict):
+        issues.append("CAD appendix binding audit verdict must be pass-shaped")
+
+    final_docx_sha = sha256_file(final_docx_path)
+    recorded_docx_sha = str(report.get("docx_sha256", ""))
+    field_docx_sha = gate_values.get("- CAD appendix final DOCX SHA256:", "")
+    if recorded_docx_sha and recorded_docx_sha.upper() != final_docx_sha.upper():
+        issues.append("CAD appendix binding audit docx_sha256 must match exact final DOCX")
+    if field_docx_sha and is_explicit(field_docx_sha) and not is_explicit_none(field_docx_sha):
+        if field_docx_sha.upper() != final_docx_sha.upper():
+            issues.append("CAD appendix final DOCX SHA256 field must match exact final DOCX")
+
+    matched_count = int(report.get("matched_cad_png_count") or 0)
+    missing_count = int(report.get("missing_cad_png_count") or 0)
+    cad_png_count = int(report.get("cad_png_count") or 0)
+    if not package_only_user_override:
+        if matched_count <= 0 or cad_png_count <= 0:
+            issues.append("CAD appendix binding audit must prove at least one final CAD sheet render was embedded")
+        if missing_count != 0:
+            issues.append("CAD appendix binding audit must have zero missing final CAD sheet renders")
+        if matched_count < cad_png_count:
+            issues.append("CAD appendix binding audit matched sheet count must cover every CAD PNG sheet render")
+    field_matched = _int_from_gate_value(gate_values.get("- CAD appendix matched sheet count:", ""))
+    field_missing = _int_from_gate_value(gate_values.get("- CAD appendix missing sheet count:", ""))
+    if field_matched != matched_count:
+        issues.append("CAD appendix matched sheet count field must match the audit report")
+    if package_only_user_override:
+        if field_missing != missing_count:
+            issues.append("CAD appendix missing sheet count field must match the package-only audit report")
+    elif field_missing != 0 or field_missing != missing_count:
+        issues.append("CAD appendix missing sheet count field must be 0 and match the audit report")
+
+    if is_explicit(package_value) and not is_explicit_none(package_value):
+        package_path = resolve_record_path(gate_raw_values.get("- CAD appendix final package path:", ""), record_path)
+    else:
+        package_path = Path(str(report.get("cad_source_path", "")))
+    if not package_path.exists():
+        issues.append(f"CAD appendix final package path does not exist: {package_path}")
+    else:
+        report_package_sha = str(report.get("cad_source_sha256", ""))
+        if package_path.is_file() and report_package_sha:
+            actual_package_sha = sha256_file(package_path)
+            if report_package_sha.upper() != actual_package_sha.upper():
+                issues.append("CAD appendix binding audit CAD package SHA256 must match the final package")
+        if not package_only_user_override:
+            try:
+                live_report = audit_docx_cad_appendix_binding(
+                    final_docx_path,
+                    package_path,
+                    min_cad_images_in_appendix=1,
+                    require_all_cad_pngs=True,
+                )
+            except Exception as exc:
+                issues.append(f"CAD appendix binding live audit could not run: {exc}")
+            else:
+                if live_report.get("passed") is not True:
+                    issues.append("CAD appendix binding live audit must pass on exact final DOCX and CAD package")
+                if int(live_report.get("matched_cad_png_count") or 0) != matched_count:
+                    issues.append("CAD appendix binding audit matched count differs from live audit")
+                if int(live_report.get("missing_cad_png_count") or 0) != missing_count:
+                    issues.append("CAD appendix binding audit missing count differs from live audit")
+    return issues
+
+
 def check_gate_record(record_path: Path) -> list[str]:
     issues: list[str] = []
     if not record_path.exists():
@@ -3770,10 +6172,17 @@ def check_gate_record(record_path: Path) -> list[str]:
                 final_citation_audit.body_citation_paragraph_count > 0
                 or final_citation_audit.bibliography_item_count > 0
             )
+            if not final_citation_audit.passed:
+                error_codes = ", ".join(final_citation_audit.error_codes) or "unknown"
+                issues.append(
+                    "thesis gate record final DOCX canonical citation audit failed on the exact output "
+                    f"({error_codes}); body citation superscript/order/coupled-chain verdict text cannot override "
+                    "scripts/audit_thesis_citations.py"
+                )
             if not final_docx_has_citation_surface and contains_any(
                 record_text_lower,
                 {"citation", "citations", "bibliography", "reference", "\u5f15\u7528", "\u53c2\u8003\u6587\u732e"},
-            ):
+                ):
                 final_citation_surface_removed = True
     live_toc_required_lines = find_lines_with_prefix(record_lines, "- live TOC required this round?:")
     live_toc_required_value = parse_line_value(live_toc_required_lines[0]) if live_toc_required_lines else ""
@@ -3786,18 +6195,22 @@ def check_gate_record(record_path: Path) -> list[str]:
         issues.append("whole-thesis thesis gate records must preserve live TOC requirement instead of marking it not required")
         live_toc_required = True
     if task_mode in THESIS_MODES and live_toc_required and final_docx_path is not None:
-        live_toc_count = count_live_toc_fields(final_docx_path)
-        toc_visible_passed = any(
-            "passed" in parse_line_value(line).lower()
-            for line in find_lines_with_prefix(record_lines, "- TOC visible format summary:")
-        )
-        if live_toc_count <= 0 and not toc_visible_passed:
+        toc_field_state = inspect_live_toc_fields(final_docx_path)
+        live_toc_count = toc_field_state["count"]
+        locked_toc_count = toc_field_state["locked_count"]
+        if live_toc_count <= 0:
             issues.append("live TOC is required but the final DOCX has no standard TOC field instruction")
+        elif locked_toc_count < live_toc_count:
+            issues.append(
+                "live TOC is required but not every standard TOC field is locked with w:fldLock=true"
+            )
         live_toc_field_verdict_lines = find_lines_with_prefix(record_lines, "- live TOC field verdict:")
         if live_toc_field_verdict_lines:
             verdict_value = parse_line_value(live_toc_field_verdict_lines[0]).lower()
-            if live_toc_count <= 0 and "pass" in verdict_value and not toc_visible_passed:
+            if live_toc_count <= 0 and "pass" in verdict_value:
                 issues.append("live TOC field verdict is pass-shaped while the final DOCX has no TOC field")
+            if locked_toc_count < live_toc_count and "pass" in verdict_value:
+                issues.append("live TOC field verdict is pass-shaped while the final DOCX TOC field is not locked")
     whole_format_path_prefix = "- final DOCX whole-format structural audit path:"
     whole_format_verdict_prefix = "- final DOCX whole-format structural audit verdict:"
     whole_format_required = task_mode in THESIS_MODES and selected_workflow in {
@@ -3834,6 +6247,47 @@ def check_gate_record(record_path: Path) -> list[str]:
         whole_format_verdict = parse_line_value(whole_format_verdict_lines[0]).lower()
         if whole_format_required and "pass" not in whole_format_verdict:
             issues.append("whole-thesis final acceptance whole-format structural audit verdict must be pass-shaped")
+    list_pollution_path_prefix = "- final DOCX list-pollution audit path:"
+    list_pollution_verdict_prefix = "- final DOCX list-pollution audit verdict:"
+    whole_format_list_pollution_prefix = "- whole-format list_pollution_audit verdict:"
+    list_pollution_required = task_mode in THESIS_MODES
+    list_pollution_path_lines = find_lines_with_prefix(record_lines, list_pollution_path_prefix)
+    list_pollution_verdict_lines = find_lines_with_prefix(record_lines, list_pollution_verdict_prefix)
+    whole_format_list_pollution_lines = find_lines_with_prefix(record_lines, whole_format_list_pollution_prefix)
+    if list_pollution_required:
+        if len(list_pollution_path_lines) != 1:
+            issues.append(f"thesis gate records must contain exactly one '{list_pollution_path_prefix}' line")
+        if len(list_pollution_verdict_lines) != 1:
+            issues.append(f"thesis gate records must contain exactly one '{list_pollution_verdict_prefix}' line")
+        if len(whole_format_list_pollution_lines) != 1:
+            issues.append(f"thesis gate records must contain exactly one '{whole_format_list_pollution_prefix}' line")
+    if len(list_pollution_path_lines) > 1:
+        issues.append(f"gate record must contain at most one '{list_pollution_path_prefix}' line")
+    if len(list_pollution_verdict_lines) > 1:
+        issues.append(f"gate record must contain at most one '{list_pollution_verdict_prefix}' line")
+    if len(whole_format_list_pollution_lines) > 1:
+        issues.append(f"gate record must contain at most one '{whole_format_list_pollution_prefix}' line")
+    if list_pollution_path_lines:
+        list_pollution_value = parse_line_value(list_pollution_path_lines[0])
+        list_pollution_raw = raw_line_value(list_pollution_path_lines[0])
+        if list_pollution_required and (
+            not is_explicit(list_pollution_value) or is_explicit_none(list_pollution_value)
+        ):
+            issues.append("thesis final acceptance must bind an exact-output list-pollution audit path")
+        elif is_explicit(list_pollution_value) and not is_explicit_none(list_pollution_value):
+            list_pollution_report = first_resolved_path(list_pollution_raw, record_path)
+            if list_pollution_report is None:
+                issues.append("list-pollution audit path could not be resolved")
+            else:
+                issues.extend(check_docx_list_pollution_audit_report(list_pollution_report, final_docx_path))
+    if list_pollution_verdict_lines:
+        list_pollution_verdict = parse_line_value(list_pollution_verdict_lines[0]).lower()
+        if list_pollution_required and "pass" not in list_pollution_verdict:
+            issues.append("thesis final acceptance list-pollution audit verdict must be pass-shaped")
+    if whole_format_list_pollution_lines:
+        whole_format_list_pollution_verdict = parse_line_value(whole_format_list_pollution_lines[0]).lower()
+        if list_pollution_required and "pass" not in whole_format_list_pollution_verdict:
+            issues.append("thesis final acceptance whole-format list_pollution_audit verdict must be pass-shaped")
     font_color_path_prefix = "- final DOCX font-color audit path:"
     font_color_verdict_prefix = "- final DOCX font-color audit verdict:"
     font_color_required = task_mode in THESIS_MODES
@@ -3928,10 +6382,12 @@ def check_gate_record(record_path: Path) -> list[str]:
                 if value not in EXPLICIT_VALUES and value in PLACEHOLDER_VALUES:
                     issues.append(f"gate record has incomplete field: {normalize(line)}")
 
+    mechanical_cad_scope = _mechanical_cad_final_acceptance_scope_from_record(record_lines)
     active_single_prefixes = [
         prefix
         for prefix in FINAL_ACCEPTANCE_SCHEMA["single_prefixes"]
         if task_mode in THESIS_MODES or prefix not in THESIS_ONLY_SOURCE_ROLE_PREFIXES
+        if mechanical_cad_scope or not _is_mechanical_cad_final_acceptance_prefix(prefix)
     ]
 
     for prefix in active_single_prefixes:
@@ -3973,8 +6429,24 @@ def check_gate_record(record_path: Path) -> list[str]:
         for prefix in active_single_prefixes
     ):
         return issues
+    rendered_pdf_path = (
+        first_resolved_path(gate_raw_values.get("- rendered PDF path:", ""), record_path)
+        if is_explicit(gate_values.get("- rendered PDF path:", ""))
+        and not is_explicit_none(gate_values.get("- rendered PDF path:", ""))
+        else None
+    )
     expected_surface_output_path = rendered_docx_path if task_mode in THESIS_MODES else None
     expected_surface_output_sha256 = gate_values.get("- protected-surface reviewed output sha256:", "").strip()
+    if task_mode in THESIS_MODES:
+        issues.extend(
+            _validate_cad_appendix_binding_record(
+                record_path=record_path,
+                gate_values=gate_values,
+                gate_raw_values=gate_raw_values,
+                final_docx_path=final_docx_path,
+                record_text_lower=record_text_lower,
+            )
+        )
     issues.extend(
         validate_skill_invocation_lock(
             record_path=record_path,
@@ -4082,10 +6554,26 @@ def check_gate_record(record_path: Path) -> list[str]:
                     source_citation_audit.body_citation_paragraph_count > 0
                     or source_citation_audit.bibliography_item_count > 0
                 )
+        citation_field_presence = any(
+            find_lines_with_prefix(record_lines, prefix)
+            for prefix in (
+                "- source body-citation run inventory path:",
+                "- final body-citation run diff path:",
+                "- citation audit source-to-final run diff path:",
+                "- citation audit evidence path:",
+                "- citation audit path:",
+                "- body citation superscripts preservation verdict:",
+                "- citation-reference coupled-chain verdict:",
+            )
+        )
         citation_evidence_required = (
-            final_docx_has_citation_surface
-            or source_docx_has_citation_surface
-            or final_citation_surface_removed
+            task_mode in THESIS_MODES
+            and (
+                citation_field_presence
+                or final_docx_has_citation_surface
+                or source_docx_has_citation_surface
+                or final_citation_surface_removed
+            )
         )
         if citation_evidence_required:
             verdict = gate_values.get("- body citation superscripts preservation verdict:", "")
@@ -4093,25 +6581,82 @@ def check_gate_record(record_path: Path) -> list[str]:
                 issues.append(
                     "thesis gate record with citations must record a passing body citation superscripts preservation verdict"
                 )
+            citation_audit_report_path = None
+            citation_audit_value = gate_values.get("- citation audit evidence path:", "")
+            if is_explicit(citation_audit_value) and not is_explicit_none(citation_audit_value):
+                citation_audit_report_path = first_resolved_path(
+                    gate_raw_values.get("- citation audit evidence path:", ""),
+                    record_path,
+                )
+            if citation_audit_report_path is None:
+                issues.append(
+                    "thesis gate record with citations must name a canonical citation audit evidence path "
+                    "generated by scripts/audit_thesis_citations.py; text verdicts are not sufficient"
+                )
+            else:
+                issues.extend(
+                    check_thesis_citation_audit_report(
+                        citation_audit_report_path,
+                        expected_docx_path=rendered_docx_path,
+                    )
+                )
+            citation_anchor_pollution_report_path = None
+            citation_anchor_pollution_value = gate_values.get("- citation anchor pollution audit path:", "")
+            if is_explicit(citation_anchor_pollution_value) and not is_explicit_none(citation_anchor_pollution_value):
+                citation_anchor_pollution_report_path = first_resolved_path(
+                    gate_raw_values.get("- citation anchor pollution audit path:", ""),
+                    record_path,
+                )
+            if citation_anchor_pollution_report_path is None:
+                issues.append(
+                    "thesis gate record with citations must name a canonical citation anchor pollution audit path "
+                    "generated by scripts/audit_docx_citation_anchor_pollution.py"
+                )
+            else:
+                issues.extend(
+                    check_docx_citation_anchor_pollution_audit_report(
+                        citation_anchor_pollution_report_path,
+                        expected_docx_path=rendered_docx_path,
+                        expected_pdf_path=rendered_pdf_path,
+                    )
+                )
+            citation_anchor_verdict = gate_values.get("- citation anchor pollution verdict:", "")
+            if (
+                not is_explicit(citation_anchor_verdict)
+                or is_explicit_none(citation_anchor_verdict)
+                or not contains_any(citation_anchor_verdict, {"pass", "passed"})
+                or _contains_blocking_status_token(citation_anchor_verdict)
+            ):
+                issues.append("thesis gate record with citations must record a passing citation anchor pollution verdict")
+            for prefix in (
+                "- citation anchor visible DOCX hit count:",
+                "- citation anchor field-result hit count:",
+                "- citation anchor rendered PDF hit count:",
+            ):
+                raw_count = normalize(gate_values.get(prefix, ""))
+                if raw_count in {"none", "not-applicable", "not applicable"} and prefix == "- citation anchor rendered PDF hit count:" and rendered_pdf_path is None:
+                    continue
+                if not re.fullmatch(r"\d+", raw_count):
+                    issues.append(f"thesis gate record citation anchor pollution count must be a nonnegative integer: {prefix}")
+                elif int(raw_count) != 0:
+                    issues.append(f"thesis gate record citation anchor pollution count must be zero: {prefix} {raw_count}")
+            citation_anchor_final_sha = gate_values.get("- citation anchor pollution final DOCX SHA256:", "").strip()
+            if len(citation_anchor_final_sha) != 64 or any(
+                ch not in "0123456789abcdefABCDEF" for ch in citation_anchor_final_sha
+            ):
+                issues.append("thesis gate record citation anchor pollution final DOCX SHA256 must be a 64-hex value")
+            elif rendered_docx_path is not None and rendered_docx_path.exists():
+                actual_anchor_docx_sha = sha256_file(rendered_docx_path)
+                if actual_anchor_docx_sha.lower() != citation_anchor_final_sha.lower():
+                    issues.append(
+                        "thesis gate record citation anchor pollution final DOCX SHA256 does not match the rendered final DOCX"
+                    )
             coupled_verdict = gate_values.get("- citation-reference coupled-chain verdict:", "")
             if (
                 not is_explicit(coupled_verdict)
                 or is_explicit_none(coupled_verdict)
                 or not contains_any(coupled_verdict, {"pass", "passed"})
-                or contains_any(
-                    coupled_verdict,
-                    {
-                        "fail",
-                        "failed",
-                        "missing",
-                        "not checked",
-                        "pending",
-                        "blocked",
-                        "stale",
-                        "not-applicable",
-                        "not applicable",
-                    },
-                )
+                or _contains_blocking_status_token(coupled_verdict)
             ):
                 issues.append(
                     "thesis gate record with citations must record a passing citation-reference coupled-chain verdict"
@@ -4127,11 +6672,18 @@ def check_gate_record(record_path: Path) -> list[str]:
                     "thesis gate record with citations must name a citation audit source-to-final run diff path"
                 )
         if source_body_citation_run_inventory_path is not None and final_body_citation_run_diff_path is not None:
+            allowed_citation_preservation_scopes = {STRICT_CITATION_PRESERVATION_SCOPE}
+            if selected_workflow in WHOLE_REBUILD_CITATION_SCOPE_WORKFLOWS:
+                allowed_citation_preservation_scopes.add(WHOLE_REBUILD_CITATION_PRESERVATION_SCOPE)
+                allowed_citation_preservation_scopes.add(APPROVED_NONPRESERVATION_CITATION_SCOPE)
+            elif selected_workflow in STRICT_CITATION_SCOPE_WORKFLOWS:
+                allowed_citation_preservation_scopes = {STRICT_CITATION_PRESERVATION_SCOPE}
             issues.extend(
                 validate_citation_run_reports(
                     source_body_citation_run_inventory_path,
                     final_body_citation_run_diff_path,
                     expected_final_docx=rendered_docx_path,
+                    allowed_preservation_scopes=allowed_citation_preservation_scopes,
                 )
             )
         if citation_audit_source_to_final_run_diff_path is not None and final_body_citation_run_diff_path is not None:
@@ -4346,6 +6898,63 @@ def check_gate_record(record_path: Path) -> list[str]:
                 issues.extend(check_format_repair_task_record(resolved))
             elif prefix == "- citation audit evidence path:":
                 issues.extend(check_thesis_citation_audit_report(resolved, expected_docx_path=rendered_docx_path))
+            elif prefix == "- reference rendered label geometry path:":
+                try:
+                    label_report = json.loads(resolved.read_text(encoding="utf-8"))
+                except Exception as exc:
+                    issues.append(f"reference rendered label geometry path must be readable JSON: {resolved} ({exc})")
+                else:
+                    if label_report.get("schema") != "graduation-project-builder.pdf-bibliography-label-audit.v1":
+                        issues.append(f"reference rendered label geometry path has wrong schema: {resolved}")
+                    if label_report.get("result") != "pass":
+                        issues.append("reference rendered label geometry result must be pass")
+                    expected_family = str(label_report.get("expected_label_family", "")).lower()
+                    chosen_family = str(label_report.get("chosen_label_family", "")).lower()
+                    if expected_family not in {"bracket", "dot"}:
+                        issues.append("reference rendered label geometry expected_label_family must be bracket or dot")
+                    if chosen_family != expected_family:
+                        issues.append("reference rendered label geometry chosen_label_family must match expected_label_family")
+                    min_count = int(label_report.get("min_count") or 60)
+                    selected_count_key = (
+                        "bracket_label_count" if expected_family == "bracket" else "dot_label_count"
+                    )
+                    if int(label_report.get(selected_count_key) or 0) < min_count:
+                        issues.append(
+                            f"reference rendered label geometry must prove at least {min_count} {expected_family} labels"
+                        )
+                    unexpected_core_count = int(label_report.get("unexpected_core_label_count") or 0)
+                    if unexpected_core_count:
+                        issues.append("reference rendered label geometry must not show fallback labels inside 1..min_count")
+                    if label_report.get("label_geometry_verdict") != "pass":
+                        issues.append("reference rendered label geometry verdict must be pass")
+            elif prefix == "- bibliography label-family decision path:":
+                try:
+                    decision_text = resolved.read_text(encoding="utf-8")
+                except Exception as exc:
+                    issues.append(f"bibliography label-family decision path must be readable: {resolved} ({exc})")
+                else:
+                    lowered_decision = decision_text.lower()
+                    locks_bracket = "chosen visible label family: bracket" in lowered_decision or "chosen label family: bracket" in lowered_decision
+                    locks_dot = "chosen visible label family: dot" in lowered_decision or "chosen label family: dot" in lowered_decision
+                    if not locks_bracket and not locks_dot:
+                        issues.append("bibliography label-family decision must explicitly lock chosen visible label family: bracket or dot")
+                    if locks_bracket and locks_dot:
+                        issues.append("bibliography label-family decision must not lock both bracket and dot")
+                    if locks_dot and "[1]" in decision_text and "body citation" not in lowered_decision:
+                        issues.append("bibliography label-family decision choosing dot must distinguish bibliography labels from body citation brackets")
+            elif prefix == "- formula rendered label geometry path:":
+                try:
+                    formula_render_report = json.loads(resolved.read_text(encoding="utf-8"))
+                except Exception as exc:
+                    issues.append(f"formula rendered label geometry path must be readable JSON: {resolved} ({exc})")
+                else:
+                    if int(formula_render_report.get("rendered_formula_label_issue_count") or 0) != 0:
+                        issues.append("formula rendered label geometry report must have rendered_formula_label_issue_count=0")
+                    if int(formula_render_report.get("rendered_formula_label_split_pair_count") or 0) != 0:
+                        issues.append("formula rendered label geometry report must have rendered_formula_label_split_pair_count=0")
+                    sizes = formula_render_report.get("rendered_formula_number_unique_sizes") or []
+                    if isinstance(sizes, list) and len(sizes) > 1:
+                        issues.append("formula rendered label geometry report must show one visible font-size family")
             elif prefix == "- body style audit evidence path:":
                 issues.extend(check_docx_body_style_audit_report(resolved, expected_final_docx_path=rendered_docx_path))
             elif prefix == "- docx font/encoding audit evidence path:":
@@ -4375,8 +6984,53 @@ def check_gate_record(record_path: Path) -> list[str]:
                 issues.extend(validate_existing_path(resolved, require_nonempty_file=False))
                 if prefix == "- rendered PDF path:" and resolved.suffix.lower() not in PDF_EXTENSIONS:
                     issues.append(f"gate record rendered PDF path is not a pdf: {resolved}")
+                if prefix == "- full rendered page/footer map path:":
+                    try:
+                        footer_report = json.loads(resolved.read_text(encoding="utf-8"))
+                    except Exception as exc:
+                        issues.append(f"full rendered page/footer map path must be readable JSON: {resolved} ({exc})")
+                    else:
+                        if footer_report.get("schema") != "graduation-project-builder.pdf-page-footer-audit.v1":
+                            issues.append(f"full rendered page/footer map path has wrong schema: {resolved}")
+                        if footer_report.get("result") != "pass":
+                            issues.append("full rendered page/footer map result must be pass")
+                        if int(footer_report.get("footer_mismatch_count") or 0) != 0:
+                            issues.append("full rendered page/footer map must have footer_mismatch_count=0")
+                        if rendered_pdf_path and rendered_pdf_path.exists():
+                            expected_pdf_sha = sha256_file(rendered_pdf_path)
+                            recorded_pdf_sha = str(footer_report.get("pdf_sha256", ""))
+                            if recorded_pdf_sha and recorded_pdf_sha.upper() != expected_pdf_sha.upper():
+                                issues.append("full rendered page/footer map pdf_sha256 must match rendered PDF")
                 if prefix == "- page-image artifact paths:" and resolved.suffix.lower() not in IMAGE_EXTENSIONS:
                     issues.append(f"gate record page-image artifact is not an image: {resolved}")
+
+    bibliography_completeness_verdict = gate_values.get("- bibliography empty-entry/content completeness verdict:", "")
+    if task_mode in THESIS_MODES:
+        if not surface_verdict_passes(bibliography_completeness_verdict):
+            issues.append("thesis gate record bibliography empty-entry/content completeness verdict must be pass")
+        bibliography_completeness_paths = gate_raw_values.get(
+            "- bibliography empty-entry/content completeness evidence path:",
+            "",
+        )
+        if is_explicit(bibliography_completeness_verdict) and not is_explicit_none(bibliography_completeness_verdict):
+            resolved_completeness_paths = [
+                resolve_record_path(raw_path, record_path)
+                for raw_path in split_path_values(bibliography_completeness_paths)
+            ]
+            has_citation_completeness_report = any(
+                path.exists() and "- bibliography empty/content-missing entries: 0" in read_optional_text(path)
+                for path in resolved_completeness_paths
+            )
+            has_font_completeness_report = any(
+                path.exists()
+                and "- bibliography empty-entry/content completeness checks: pass" in read_optional_text(path)
+                and "- bibliography empty-entry/content completeness hits: 0" in read_optional_text(path)
+                for path in resolved_completeness_paths
+            )
+            if not has_citation_completeness_report:
+                issues.append("bibliography completeness evidence must include a citation audit with zero empty/content-missing entries")
+            if not has_font_completeness_report:
+                issues.append("bibliography completeness evidence must include a font/encoding audit with zero empty-entry/content hits")
 
     record_text = "\n".join(record_lines)
     verification_scope_claim = gate_values.get("- verification scope claim:", "")
@@ -4491,6 +7145,12 @@ def check_gate_record(record_path: Path) -> list[str]:
         high_risk_verdict = gate_values.get("- high-risk thesis format surface verdict:", "")
         if not surface_verdict_passes(high_risk_verdict):
             issues.append("thesis gate record high-risk thesis format surface verdict must be pass")
+        keyword_title_contamination_verdict = gate_values.get(
+            "- keyword content title-style contamination verdict:",
+            "",
+        )
+        if not surface_verdict_passes(keyword_title_contamination_verdict):
+            issues.append("thesis gate record keyword content title-style contamination verdict must be pass")
 
         if gate_values.get("- forbidden substitute evidence used?:", "") != "no":
             issues.append("thesis gate record must explicitly state forbidden substitute evidence used?: no")
@@ -4639,8 +7299,40 @@ def check_gate_record(record_path: Path) -> list[str]:
         full_scope_required = verification_scope_claim in FULL_SCOPE_CLAIMS or contains_any(
             full_scope_context, FULL_SCOPE_TOKENS
         )
-        formula_context = "\n".join([explicit_override_text, subtask_context, format_task_context]).lower()
-        formula_context_required = contains_any(formula_context, FORMULA_HINT_TOKENS)
+        formula_context_parts = [explicit_override_text, subtask_context, format_task_context]
+        if is_explicit(user_issue_ledger_value) and not is_explicit_none(user_issue_ledger_value):
+            for raw_path in split_path_values(gate_raw_values.get("- user-reported issue ledger path:", "")):
+                ledger_path = resolve_record_path(raw_path, record_path)
+                formula_context_parts.append(read_optional_text(ledger_path))
+        for prefix in (
+            "- formula source coverage audit path:",
+            "- formula source map paths:",
+            "- formula source DOCX paths:",
+            "- formula source count:",
+            "- formula source matched count:",
+            "- formula source missing count:",
+            "- formula source coverage ratio:",
+            "- formula object preservation summary:",
+            "- formula numbering surface summary:",
+        ):
+            value = gate_values.get(prefix, "")
+            if is_explicit(value) and not is_explicit_none(value):
+                formula_context_parts.append(value)
+        formula_context = "\n".join(formula_context_parts).lower()
+        mechanical_context_parts = list(formula_context_parts)
+        for prefix in (
+            "- exact final CAD delivery package path:",
+            "- mechanical drawing package audit path:",
+            "- mechanical drawing package exact package path:",
+        ):
+            value = gate_values.get(prefix, "")
+            if is_explicit(value) and not is_explicit_none(value):
+                mechanical_context_parts.append(value)
+        mechanical_formula_context = "\n".join(mechanical_context_parts).lower()
+        mechanical_formula_required = _mechanical_formula_minimum_required(mechanical_formula_context)
+        formula_context_required = contains_any(formula_context, FORMULA_HINT_TOKENS) or mechanical_formula_required
+        min_formula_count = MECHANICAL_FORMULA_MIN_COUNT if mechanical_formula_required else 0
+        min_body_formula_count = MECHANICAL_FORMULA_MIN_COUNT if mechanical_formula_required else 0
         formula_audit_report: dict[str, object] | None = None
         formula_surface_present = False
         if (
@@ -4650,12 +7342,18 @@ def check_gate_record(record_path: Path) -> list[str]:
             and (zipfile.is_zipfile(rendered_docx_path) or formula_context_required)
         ):
             try:
-                formula_audit_report = audit_formula_objects(rendered_docx_path)
+                formula_audit_report = audit_formula_objects(
+                    rendered_docx_path,
+                    min_formula_count=min_formula_count if min_formula_count else None,
+                    min_body_formula_count=min_body_formula_count if min_body_formula_count else None,
+                    rendered_pdf=rendered_pdf_path if rendered_pdf_path and rendered_pdf_path.exists() else None,
+                )
             except Exception as exc:
                 if formula_context_required:
                     issues.append(f"thesis gate record formula object audit could not read final DOCX: {exc}")
             else:
                 formula_math_count = int(formula_audit_report.get("math_object_count") or 0)
+                formula_body_math_count = int(formula_audit_report.get("body_math_object_count") or 0)
                 formula_like_count = int(formula_audit_report.get("formula_like_paragraph_count") or 0)
                 formula_pseudo_count = int(formula_audit_report.get("pseudo_formula_count") or 0)
                 formula_surface_present = formula_math_count > 0 or formula_like_count > 0
@@ -4671,11 +7369,47 @@ def check_gate_record(record_path: Path) -> list[str]:
                         f"{formula_pseudo_count}"
                         + (f" (example: {example_text})" if example_text else "")
                     )
+                formula_number_layout_issue_count = int(
+                    formula_audit_report.get("formula_number_layout_issue_count") or 0
+                )
+                rendered_formula_label_issue_count = int(
+                    formula_audit_report.get("rendered_formula_label_issue_count") or 0
+                )
+                if formula_number_layout_issue_count > 0:
+                    issues.append(
+                        "thesis gate record final DOCX formula number cells have layout defects: "
+                        f"{formula_number_layout_issue_count}"
+                    )
+                formula_number_requirement_issue_count = int(
+                    formula_audit_report.get("formula_number_requirement_issue_count") or 0
+                )
+                if formula_number_requirement_issue_count > 0:
+                    issues.append(
+                        "thesis gate record final DOCX formula numbering requirement failed: "
+                        f"{formula_number_requirement_issue_count}"
+                    )
+                if rendered_formula_label_issue_count > 0:
+                    issues.append(
+                        "thesis gate record rendered PDF formula labels have split-line or font-size defects: "
+                        f"{rendered_formula_label_issue_count}"
+                    )
                 if formula_context_required and not formula_surface_present:
                     issues.append("thesis gate record formula task has no detectable formula object in the final DOCX")
+                if min_formula_count and formula_math_count < min_formula_count:
+                    issues.append(
+                        "mechanical thesis formula object count is below minimum "
+                        f"{min_formula_count}: math_object_count={formula_math_count}"
+                    )
+                if min_body_formula_count and formula_body_math_count < min_body_formula_count:
+                    issues.append(
+                        "mechanical thesis body formula object count is below minimum "
+                        f"{min_body_formula_count}: body_math_object_count={formula_body_math_count}"
+                    )
                 formula_object_audit_value = gate_values.get("- formula object audit evidence path:", "")
-                if formula_surface_present and (not is_explicit(formula_object_audit_value) or is_explicit_none(formula_object_audit_value)):
-                    issues.append("thesis gate record with formulas must name formula object audit evidence path")
+                if (formula_surface_present or formula_context_required) and (
+                    not is_explicit(formula_object_audit_value) or is_explicit_none(formula_object_audit_value)
+                ):
+                    issues.append("thesis gate record with formula-required context must name formula object audit evidence path")
                 elif is_explicit(formula_object_audit_value) and not is_explicit_none(formula_object_audit_value):
                     formula_audit_path = resolve_record_path(
                         gate_raw_values.get("- formula object audit evidence path:", ""),
@@ -4694,9 +7428,88 @@ def check_gate_record(record_path: Path) -> list[str]:
                             issues.append("formula object audit evidence docx_sha256 must match final DOCX")
                         if int(recorded_formula_audit.get("pseudo_formula_count") or 0) != formula_pseudo_count:
                             issues.append("formula object audit evidence pseudo_formula_count differs from live final DOCX audit")
+                        if int(recorded_formula_audit.get("formula_number_layout_issue_count") or 0) != 0:
+                            issues.append("formula object audit evidence formula_number_layout_issue_count must be 0")
+                        if str(recorded_formula_audit.get("formula_number_requirement_verdict", "")).lower() != "pass":
+                            issues.append("formula object audit evidence formula_number_requirement_verdict must be pass")
+                        if int(recorded_formula_audit.get("formula_number_requirement_issue_count") or 0) != 0:
+                            issues.append("formula object audit evidence formula_number_requirement_issue_count must be 0")
+                        if int(recorded_formula_audit.get("body_formula_group_count") or 0) > 0 and int(
+                            recorded_formula_audit.get("strict_formula_number_label_count") or 0
+                        ) < int(recorded_formula_audit.get("body_formula_group_count") or 0):
+                            issues.append("formula object audit evidence strict_formula_number_label_count must cover body_formula_group_count")
+                        if int(recorded_formula_audit.get("rendered_formula_label_issue_count") or 0) != 0:
+                            issues.append("formula object audit evidence rendered_formula_label_issue_count must be 0")
+                        if int(recorded_formula_audit.get("rendered_formula_label_split_pair_count") or 0) != 0:
+                            issues.append("formula object audit evidence rendered_formula_label_split_pair_count must be 0")
+                        if str(recorded_formula_audit.get("formula_narrative_context_verdict", "")).lower() != "pass":
+                            issues.append("formula object audit evidence formula_narrative_context_verdict must be pass")
+                        if int(recorded_formula_audit.get("formula_dump_marker_count") or 0) != 0:
+                            issues.append("formula object audit evidence formula_dump_marker_count must be 0")
+                        if int(recorded_formula_audit.get("formula_without_nearby_body_explanation_count") or 0) != 0:
+                            issues.append(
+                                "formula object audit evidence formula_without_nearby_body_explanation_count must be 0"
+                            )
+                        if int(recorded_formula_audit.get("formula_narrative_style_issue_count") or 0) != 0:
+                            issues.append("formula object audit evidence formula_narrative_style_issue_count must be 0")
+                        if int(recorded_formula_audit.get("orphan_formula_style_issue_count") or 0) != 0:
+                            issues.append("formula object audit evidence orphan_formula_style_issue_count must be 0")
+                        if min_formula_count:
+                            if str(recorded_formula_audit.get("formula_duplicate_density_verdict", "")).lower() != "pass":
+                                issues.append("formula object audit evidence formula_duplicate_density_verdict must be pass")
+                            if float(recorded_formula_audit.get("unique_formula_ratio") or 0.0) <= 0.0:
+                                issues.append("formula object audit evidence unique_formula_ratio must be positive")
+                            if int(recorded_formula_audit.get("duplicate_formula_body_text_count") or 0) < 0:
+                                issues.append("formula object audit evidence duplicate_formula_body_text_count must be non-negative")
+                            density_field = gate_values.get("- formula duplicate-density verdict:", "")
+                            unique_ratio_field = gate_values.get("- unique formula ratio:", "")
+                            duplicate_count_field = gate_values.get("- duplicate formula body text count:", "")
+                            if not _mechanical_cad_passish(density_field):
+                                issues.append("formula duplicate-density verdict field must be pass-shaped")
+                            if not is_explicit(unique_ratio_field) or is_explicit_none(unique_ratio_field):
+                                issues.append("unique formula ratio field must be explicit for high-density mechanical formula audits")
+                            if not is_explicit(duplicate_count_field) or is_explicit_none(duplicate_count_field):
+                                issues.append("duplicate formula body text count field must be explicit for high-density mechanical formula audits")
+                        recorded_sizes = recorded_formula_audit.get("rendered_formula_number_unique_sizes") or []
+                        if isinstance(recorded_sizes, list) and len(recorded_sizes) > 1:
+                            issues.append("formula object audit evidence rendered formula label font sizes must be consistent")
+                        if rendered_pdf_path and rendered_pdf_path.exists():
+                            expected_pdf_sha = sha256_file(rendered_pdf_path)
+                            recorded_pdf_sha = str(recorded_formula_audit.get("rendered_pdf_sha256", ""))
+                            if recorded_pdf_sha and recorded_pdf_sha.upper() != expected_pdf_sha.upper():
+                                issues.append("formula object audit evidence rendered_pdf_sha256 must match rendered PDF")
+                        if formula_surface_present and recorded_formula_audit.get("result") != "pass":
+                            issues.append("formula object audit evidence result must be pass when formula surface is present")
+                        if min_formula_count:
+                            recorded_math_count = int(recorded_formula_audit.get("math_object_count") or 0)
+                            recorded_body_math_count = int(recorded_formula_audit.get("body_math_object_count") or 0)
+                            recorded_minimum = int(recorded_formula_audit.get("min_formula_count") or 0)
+                            recorded_body_minimum = int(recorded_formula_audit.get("min_body_formula_count") or 0)
+                            if recorded_minimum < min_formula_count:
+                                issues.append(
+                                    "mechanical thesis formula audit evidence must bind "
+                                    f"min_formula_count={min_formula_count}"
+                                )
+                            if recorded_body_minimum < min_body_formula_count:
+                                issues.append(
+                                    "mechanical thesis formula audit evidence must bind "
+                                    f"min_body_formula_count={min_body_formula_count}"
+                                )
+                            if recorded_math_count < min_formula_count:
+                                issues.append(
+                                    "mechanical thesis formula audit evidence math_object_count is below "
+                                    f"minimum {min_formula_count}"
+                                )
+                            if recorded_body_math_count < min_body_formula_count:
+                                issues.append(
+                                    "mechanical thesis formula audit evidence body_math_object_count is below "
+                                    f"minimum {min_body_formula_count}"
+                                )
+                            if recorded_formula_audit.get("result") != "pass":
+                                issues.append("mechanical thesis formula audit evidence result must be pass")
                 formula_object_summary_value_for_audit = gate_values.get("- formula object preservation summary:", "")
-                if formula_surface_present and not formula_object_summary_value_for_audit.startswith("passed"):
-                    issues.append("thesis gate record formula object preservation summary must be passed when formula surface is present")
+                if (formula_surface_present or formula_context_required) and not formula_object_summary_value_for_audit.startswith("passed"):
+                    issues.append("thesis gate record formula object preservation summary must be passed when formula context or formula surface is present")
         if full_scope_required:
             if not is_explicit(page_class_matrix_value) or is_explicit_none(page_class_matrix_value):
                 issues.append(
@@ -4848,6 +7661,7 @@ def check_gate_record(record_path: Path) -> list[str]:
             for prefix, label in (
                 ("- content mutation machine-vision verdict:", "content mutation machine-vision verdict"),
                 ("- inserted body heading-contamination verdict:", "inserted body heading-contamination verdict"),
+                ("- caption/table sibling body contamination verdict:", "caption/table sibling body contamination verdict"),
                 ("- format lane post-mutation rendered audit verdict:", "format lane post-mutation rendered audit verdict"),
             ):
                 verdict_value = gate_values.get(prefix, "")
@@ -5160,6 +7974,9 @@ def check_gate_record(record_path: Path) -> list[str]:
                     gate_raw_values=gate_raw_values,
                     gate_record_path=record_path,
                 )
+
+    if task_mode in THESIS_MODES and not table_touched_in_gate and docx_has_body_table_or_caption(final_docx_path):
+        table_touched_in_gate = True
 
     if helper_target_lock not in {"locked", "not-applicable", "n/a"}:
         issues.append("gate record helper-script target path lock must be locked or not-applicable")

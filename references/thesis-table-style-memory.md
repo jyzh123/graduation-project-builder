@@ -124,7 +124,31 @@ If table text still looks visually offset after paragraph-indent repair, inspect
   - header repeat verdict (`tblHeader` or donor-backed equivalent)
   - row split verdict (`cantSplit` or donor-backed equivalent)
 - If no real body table spans pages, final QA must still record `no cross-page body tables detected` with the rendered table page list. Silence on continuation evidence is not acceptable.
+- Short tables must not be treated as cross-page tables only because their header or body tokens reappear on later PDF pages. Unless DOCX/rendered evidence proves that the actual table object crosses a page boundary, tables below the active long-table threshold must record `no cross-page body tables detected` instead of requiring a `续表` title.
 - A run fails if even one table remains on a Word default full-grid family, keeps visible vertical separators, keeps body-row horizontal separators, or otherwise deviates from the locked three-line border family.
+
+## Table Manifest And Validator Gate
+
+- Every real body table that is generated, repaired, preserved, detected in the final DOCX, or otherwise in scope must have a `tables` entry in the figure asset manifest or the active thesis surface manifest.
+- A table entry with only `caption`, `title`, `table number`, or `rows` is a false pass. It must fail until the row includes table authority, rendered evidence, and final DOCX binding.
+- Required per-table manifest fields:
+  - active table authority lock
+  - authority source type and source path, or a pass no-template authority verdict
+  - manuscript-binding proof between the authority and this table
+  - title/caption mode
+  - border-family verdict
+  - header separator verdict
+  - vertical separator verdict
+  - body-row separator verdict
+  - table-local structure verdict
+  - rendered table evidence path
+  - pagination or continuation verdict
+  - insertion status
+  - rendered-page status
+  - final DOCX table evidence or final DOCX relationship/binding evidence
+  - final DOCX SHA256 binding in the acceptance record
+- If the final DOCX contains `w:tbl` or a rendered table caption, the table lane is considered touched even when the format-repair task card forgot to mark table work.
+- Final acceptance must name the table surface inventory path, table manifest path, table manifest contract verdict, per-table evidence rows, exact-output DOCX binding evidence, and final DOCX SHA256 binding.
 
 ## Active Rendered Evidence
 

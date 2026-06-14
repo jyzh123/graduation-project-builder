@@ -201,6 +201,7 @@ A figure fails post-insertion paragraph safety if any of these are true:
 - the image paragraph uses body first-line indent or other body indentation residues
 - the rendered page shows only a thin strip, clipped edge, or otherwise truncated image body
 - the rendered page shows the paragraph after the caption split into left/right fragments beside the figure caption or image body
+- the first explanatory body paragraph immediately below a formal figure/table caption begins by repeating the formal label, such as `图5-1...`, `图 5-1 ...`, or `表4-1...`, instead of using body prose such as `该图...` or `从图中可以看出...`
 - the image is `wp:inline` but its holder paragraph line height is smaller than the inserted image extent, causing later text to overlay or wrap around the apparent figure block
 - the figure caption paragraph carries `w:framePr` with wrapping behavior, because the following body paragraph can flow to the left and right of the caption instead of starting below it
 - later insertion scaling makes the image readable in the source file but clipped in the rendered page
@@ -212,7 +213,7 @@ Required correction path:
 2. for inline images, set the holder paragraph to a centered no-indent block with an exact or at-least line height that is no smaller than the image height
 3. remove `w:framePr` and wrap behavior from the external figure caption paragraph
 4. rerender the affected page
-5. confirm that the full figure body is visible and that the caption and following explanation text occupy separate normal lines before keeping the insertion
+5. confirm that the full figure body is visible and that the caption and following explanation text occupy separate normal body lines, with no repeated figure/table label prefix in the explanatory paragraph, before keeping the insertion
 
 Do not keep a figure insertion that passes XML or media-count checks but fails rendered-page visibility.
 
@@ -254,6 +255,7 @@ Treat the run as failed if any of these are true:
 - a structural figure lacks draw.io/SVG source evidence but is still claimed as accepted
 - a runtime screenshot lacks route-to-asset or real capture evidence but is still claimed as accepted
 - rendered evidence does not show the figure body and full caption together in the intended reading order
+- rendered or OOXML evidence shows a caption-following explanatory paragraph that still starts with the formal figure/table number rather than a normal body-text lead-in
 
 A PDF export, matching media count, valid DOCX package, or a sampled page review cannot pass this gate by itself. Final handoff is blocked until the inventory, per-figure task cards, asset/source evidence, relationship evidence, and rendered page evidence all agree.
 

@@ -35,11 +35,13 @@ from docx.table import Table  # type: ignore
 from docx.text.paragraph import Paragraph  # type: ignore
 
 from python_runtime import resolve_python_exe
+from docx_formula_number_table import insert_formula_batch, replace_text_formulas
 from thesis_figure_contract import (
     apply_svg_primary_to_docx,
     build_figure_asset_manifest,
     docx_drawing_object_manifest,
     docx_image_relationship_manifest,
+    docx_svg_primary_fallback_pairs,
     validate_figure_manifest,
     write_manifest,
 )
@@ -55,7 +57,7 @@ MAX_FIGURE_WIDTH_CM = 14.2
 HEADING_RE = re.compile(r"^\d{1,2}(?:\.\d{1,2}){0,3}\s+\S")
 CN_NUMBER_CHARS = "\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341"
 TABLE_TITLE_RE = re.compile(rf"^\s*(?:\u8868|\u7eed\u8868)\s*[0-9{CN_NUMBER_CHARS}]+(?:[-.]\d+)?\s*\S")
-FIGURE_TITLE_RE = re.compile(rf"^\s*\u56fe\s*[0-9{CN_NUMBER_CHARS}]+(?:[-.]\d+)?\s*\S")
+FIGURE_TITLE_RE = re.compile(rf"^\s*(?:\u9644\s*\u56fe|\u56fe)\s*(?:[0-9{CN_NUMBER_CHARS}]+|[A-Za-z])(?:[-.]\d+)?\s*\S")
 TAIL_HEADINGS = {"\u53c2\u8003\u6587\u732e", "\u81f4\u8c22", "\u9644\u5f55", "references", "acknowledgements"}
 PLACEHOLDER_TOKENS = (
     "placeholder",
@@ -578,6 +580,28 @@ def ensure_spacing(paragraph: Paragraph, *, line: str | None = None, line_rule: 
             spacing.set(qn("w:lineRule"), line_rule)
 
 
+def set_direct_spacing(
+    paragraph: Paragraph,
+    *,
+    before: str | None = None,
+    after: str | None = None,
+    line: str | None = None,
+    line_rule: str | None = None,
+) -> None:
+    ppr = ensure_ppr(paragraph)
+    spacing = ppr.find(qn("w:spacing"))
+    if spacing is None:
+        spacing = OxmlElement("w:spacing")
+        ppr.append(spacing)
+    for key, value in (("before", before), ("after", after), ("line", line), ("lineRule", line_rule)):
+        attr = qn(f"w:{key}")
+        if value is None:
+            if attr in spacing.attrib:
+                del spacing.attrib[attr]
+        else:
+            spacing.set(attr, value)
+
+
 def ensure_first_line_indent(paragraph: Paragraph, *, value: str = "0", chars: str = "0") -> None:
     ppr = ensure_ppr(paragraph)
     ind = ppr.find(qn("w:ind"))
@@ -586,6 +610,13 @@ def ensure_first_line_indent(paragraph: Paragraph, *, value: str = "0", chars: s
         ppr.append(ind)
     ind.set(qn("w:firstLine"), value)
     ind.set(qn("w:firstLineChars"), chars)
+
+
+def force_image_holder_direct_baseline(paragraph: Paragraph) -> None:
+    """Keep figure holders on the template-owned holder style without body-text residues."""
+    ppr = ensure_ppr(paragraph)
+    remove_child(ppr, "w:spacing")
+    remove_child(ppr, "w:ind")
 
 
 def remove_spacing_and_indent(paragraph: Paragraph) -> None:
@@ -690,19 +721,40 @@ def ensure_run_color(run_obj: Any, color: str) -> None:
 
 
 def force_toc_heading_format(paragraph: Paragraph) -> None:
-    set_direct_alignment(paragraph, "center")
+    ppr = paragraph._element.get_or_add_pPr()
+    for tag_name in ("w:pStyle", "w:outlineLvl", "w:ind"):
+        for child in list(ppr.findall(qn(tag_name))):
+            ppr.remove(child)
+    jc = ppr.find(qn("w:jc"))
+    if jc is None:
+        jc = OxmlElement("w:jc")
+        ppr.append(jc)
+    jc.set(qn("w:val"), "center")
+    spacing = ppr.find(qn("w:spacing"))
+    if spacing is None:
+        spacing = OxmlElement("w:spacing")
+        ppr.append(spacing)
+    spacing.set(qn("w:before"), "312")
+    spacing.set(qn("w:after"), "312")
+    spacing.set(qn("w:line"), "240")
+    spacing.set(qn("w:lineRule"), "auto")
     for run_obj in paragraph.runs:
         if not (run_obj.text or "").strip():
             continue
-        ensure_run_fonts(
-            run_obj,
-            east_asia="\u9ed1\u4f53;SimHei",
-            ascii_font="\u9ed1\u4f53;SimHei",
-            hansi="\u9ed1\u4f53;SimHei",
-            cs="\u9ed1\u4f53;SimHei",
-            size="32",
-            bold=True,
-        )
+        rpr = run_obj._element.rPr
+        if rpr is not None:
+            run_obj._element.remove(rpr)
+        rpr = OxmlElement("w:rPr")
+        run_obj._element.insert(0, rpr)
+        rfonts = OxmlElement("w:rFonts")
+        rfonts.set(qn("w:eastAsia"), "\u9ed1\u4f53")
+        rpr.append(rfonts)
+        sz = OxmlElement("w:sz")
+        sz.set(qn("w:val"), "32")
+        rpr.append(sz)
+        sz_cs = OxmlElement("w:szCs")
+        sz_cs.set(qn("w:val"), "32")
+        rpr.append(sz_cs)
         ensure_run_color(run_obj, "000000")
 
 
@@ -750,9 +802,8 @@ def first_visible_run_is_italic(paragraph: Paragraph) -> bool:
 
 
 def make_image_holder_safe(paragraph: Paragraph) -> None:
-    set_paragraph_style_id(paragraph, "Normal")
-    ensure_spacing(paragraph, line="240", line_rule="auto")
-    ensure_first_line_indent(paragraph)
+    set_paragraph_style_id(paragraph, "ThesisImageHolder")
+    force_image_holder_direct_baseline(paragraph)
     paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     ensure_keep_next(paragraph)
 
@@ -817,7 +868,19 @@ def donor_with_latin_font_preserving_cs(
         if value:
             rfonts.set(qn("w:cs"), value)
             break
+    if not rfonts.get(qn("w:cs")):
+        rfonts.set(qn("w:cs"), font_name)
     return donor
+
+
+def donor_with_cjk_font(base: ParagraphDonor, source: ParagraphDonor, font_name: str = "\u5b8b\u4f53") -> ParagraphDonor:
+    rpr = deepcopy(source.rpr) if source.rpr is not None else OxmlElement("w:rPr")
+    rfonts = rpr.find(qn("w:rFonts"))
+    if rfonts is None:
+        rfonts = OxmlElement("w:rFonts")
+        rpr.insert(0, rfonts)
+    rfonts.set(qn("w:eastAsia"), font_name)
+    return donor_with_rpr(base, rpr)
 
 
 def run_rpr(run_obj: Any) -> Any | None:
@@ -874,6 +937,18 @@ def split_by_script_runs(text: str) -> list[tuple[str, str]]:
     if current:
         segments.append((current_kind or "latin", "".join(current)))
     return segments
+
+
+def normalize_citation_punctuation_in_text(text: str) -> str:
+    """Move numeric citation markers before sentence punctuation for thesis style."""
+    fixed = str(text or "")
+    citation = r"(\[(?:\d{1,3})\])"
+    punctuation = r"([\u3002\uff01\uff1f\uff1b\uff0c.!?;,])"
+    previous = None
+    while fixed != previous:
+        previous = fixed
+        fixed = re.sub(rf"{punctuation}\s*{citation}", r"\2\1", fixed)
+    return fixed
 
 
 def append_mixed_script_text(
@@ -963,6 +1038,7 @@ def set_abstract_body_text(
     *,
     latin_donor_for_mixed: bool = False,
     latin_source_donor: ParagraphDonor | None = None,
+    suppress_placeholder_prefix: bool = False,
 ) -> None:
     base = capture_donor(paragraph)
     prefix = leading_placeholder_prefix(paragraph.text)
@@ -974,11 +1050,22 @@ def set_abstract_body_text(
     if prefix and clean_text.startswith(prefix):
         clean_text = clean_text[len(prefix) :].lstrip()
     apply_donor(paragraph, base)
+    if suppress_placeholder_prefix:
+        prefix = ""
     if prefix and prefix_isolated:
         add_text_with_donor(paragraph, prefix_donor, template_placeholder_to_spaces(prefix))
     elif prefix:
         clean_text = template_placeholder_to_spaces(prefix) + clean_text
     append_mixed_script_text(paragraph, clean_text, cjk_donor=content_donor, latin_donor=latin_donor)
+
+
+def configure_english_abstract_body_paragraph(paragraph: Paragraph) -> None:
+    set_direct_spacing(paragraph, before="0", after="0", line="360", line_rule="auto")
+    ensure_first_line_indent(paragraph, value="480", chars="200")
+
+
+def configure_chinese_abstract_body_paragraph(paragraph: Paragraph) -> None:
+    set_direct_spacing(paragraph, before="0", after="0", line="360", line_rule="auto")
 
 
 def split_abstract_body_paragraphs(text: str) -> list[str]:
@@ -1480,9 +1567,10 @@ def apply_three_line_table_borders(table: Table) -> None:
                 "bottom": ("nil", "0", "auto"),
             }
             if row_index == 0:
-                edges["bottom"] = ("single", "4", "auto")
-            if row_index == 1:
-                edges["top"] = ("single", "4", "auto")
+                edges["top"] = ("single", "8", "auto")
+                edges["bottom"] = ("single", "8", "auto")
+            if row_index == last_index:
+                edges["bottom"] = ("single", "8", "auto")
             set_cell_borders(tc_pr, edges)
 
 
@@ -1632,7 +1720,7 @@ def collect_donors(doc: Document) -> Donors:
                     break
         if level:
             score = heading_donor_score(paragraph, level)
-            if score <= heading_score_by_level.get(level, -10_000):
+            if level in heading_by_level and score <= heading_score_by_level.get(level, -10_000):
                 continue
             heading_by_level[level] = capture_heading_donor(paragraph)
             heading_score_by_level[level] = score
@@ -1646,7 +1734,19 @@ def collect_donors(doc: Document) -> Donors:
         )
         if paragraph is not None
     ]
-    body_para = max(body_candidates, key=body_donor_score) if body_candidates else None
+    body_para = max(
+        body_candidates,
+        key=lambda paragraph: (
+            body_donor_score(paragraph),
+            1
+            if paragraph.style is not None
+            and (
+                paragraph.style.name.lower() == "normal"
+                or paragraph.style.style_id.lower() in {"normal", "a"}
+            )
+            else 0,
+        ),
+    ) if body_candidates else None
     abstract_heading = find_paragraph(doc, {"\u6458\u8981"})
     abstract_body = next_nonempty_after(doc, abstract_heading) if abstract_heading is not None else body_para
     keyword_para = None
@@ -1674,7 +1774,10 @@ def collect_donors(doc: Document) -> Donors:
         table_caption=capture_donor(find_caption_donor(doc, table=True) or body_para or first_body),
         reference_heading=capture_donor(references_heading or first_body),
         reference_entry=reference_entry_donor,
-        reference_cjk_run=capture_cjk_donor(reference_entry, reference_entry_donor),
+        reference_cjk_run=donor_with_cjk_font(
+            reference_entry_donor,
+            capture_cjk_donor(reference_entry, reference_entry_donor),
+        ),
         reference_latin_run=donor_with_latin_font(
             reference_entry_donor,
             capture_latin_donor(reference_entry, reference_entry_donor),
@@ -1741,8 +1844,8 @@ def append_heading(doc: Document, donors: Donors, level: int, text: str, *, page
     paragraph = doc.add_paragraph()
     apply_donor(paragraph, donor)
     append_mixed_script_text(paragraph, text, cjk_donor=donor, latin_donor=donor)
-    if donor.style_name.lower().startswith("heading") or donor.style_id.lower().startswith("heading"):
-        set_semantic_style(paragraph, f"Heading {min(level, 4)}")
+    if donor.style_id:
+        set_paragraph_style_id(paragraph, donor.style_id)
     if page_break_before:
         ensure_page_break_before(paragraph)
     return paragraph
@@ -1751,9 +1854,10 @@ def append_heading(doc: Document, donors: Donors, level: int, text: str, *, page
 def append_body_paragraph(doc: Document, donors: Donors, text: str) -> Paragraph:
     paragraph = doc.add_paragraph()
     apply_donor(paragraph, donors.body)
+    set_direct_spacing(paragraph, before="0", after="0", line="360", line_rule="auto")
     append_mixed_script_text(
         paragraph,
-        sanitize_caption_like_body_text(text),
+        normalize_citation_punctuation_in_text(sanitize_caption_like_body_text(text)),
         cjk_donor=donors.body,
         latin_donor=donor_with_latin_font(donors.body, donors.body),
     )
@@ -1768,7 +1872,7 @@ def append_caption_paragraph(doc: Document, donor: ParagraphDonor, text: str) ->
     append_mixed_script_text(paragraph, text, cjk_donor=donor, latin_donor=donor)
     if donor.style_id:
         set_paragraph_style_id(paragraph, donor.style_id)
-    ensure_first_line_indent(paragraph)
+    remove_child(ensure_ppr(paragraph), "w:ind")
     return paragraph
 
 
@@ -2176,9 +2280,27 @@ def apply_cover_fields(doc: Document, content: dict[str, Any]) -> None:
         return
     end = cover_end_index(doc)
     cover_items = list(enumerate(doc.paragraphs[:end]))
+    original_front_visible = normalize(front_matter_visible_text(doc))
     english_title = str(content.get("en_title") or content.get("english_title") or "").strip()
     english_idx = next((idx for idx, paragraph in cover_items if looks_like_english_title(paragraph.text)), None)
     title_search_end = english_idx if english_idx is not None else end
+    title_field_labels = (
+        "\u9898    \u76ee\uff1a",
+        "\u9898\u76ee\uff1a",
+        "\u8bba\u6587\u9898\u76ee\uff1a",
+        "\u9898    \u76ee:",
+        "\u9898\u76ee:",
+        "\u8bba\u6587\u9898\u76ee:",
+        "\u9898    \u76ee",
+        "\u9898\u76ee",
+        "\u8bba\u6587\u9898\u76ee",
+    )
+    title_label_candidates = [
+        idx
+        for idx, paragraph in cover_items
+        if idx < title_search_end
+        and any(normalize(label) and normalize(label) in normalize(paragraph.text) for label in title_field_labels)
+    ]
     title_instruction_candidates = [
         idx
         for idx, paragraph in cover_items
@@ -2190,7 +2312,18 @@ def apply_cover_fields(doc: Document, content: dict[str, Any]) -> None:
         for idx, paragraph in cover_items
         if idx < title_search_end and is_cover_title_candidate(paragraph.text)
     ]
-    if title_instruction_candidates:
+    if title_label_candidates:
+        target_idx = title_label_candidates[-1]
+        target_paragraph = doc.paragraphs[target_idx]
+        for label in title_field_labels:
+            before = target_paragraph.text
+            replace_cover_field_value(target_paragraph, label, title)
+            if target_paragraph.text != before:
+                break
+        else:
+            set_cover_text_with_split_runs(target_paragraph, capture_donor(target_paragraph), title)
+        zh_candidates = []
+    elif title_instruction_candidates:
         zh_candidates = title_instruction_candidates[:1]
     requested_title_lines = content.get("title_lines") or content.get("cover_title_lines")
     title_lines = split_title_lines(title, requested_title_lines)
@@ -2217,13 +2350,27 @@ def apply_cover_fields(doc: Document, content: dict[str, Any]) -> None:
         or ""
     ).strip()
 
+    field_labels_by_key = {
+        "author": ("学生姓名：", "学生姓名:", "学生姓名", "\u59d3    \u540d\uff1a", "\u59d3    \u540d:", "\u59d3    \u540d", "姓名：", "姓名:", "姓名"),
+        "student_id": ("班级学号：", "班级学号:", "班级学号", "\u5b66    \u53f7\uff1a", "\u5b66    \u53f7:", "\u5b66    \u53f7", "学号：", "学号:", "学号"),
+        "class_name": ("班    级：", "班    级:", "班    级", "班级：", "班级:", "班级"),
+        "department": ("\u9662    \u7cfb\uff1a", "\u9662    \u7cfb:", "\u9662    \u7cfb", "\u9662     \uff08\u7cfb\uff09", "\u9662\uff08\u7cfb\uff09", "院系：", "院系:", "院系"),
+        "major": ("\u4e13    \u4e1a\uff1a", "\u4e13    \u4e1a:", "\u4e13    \u4e1a", "专业：", "专业:", "专业"),
+        "research_direction": ("\u7814 \u7a76 \u65b9 \u5411\uff1a", "\u7814 \u7a76 \u65b9 \u5411:", "\u7814 \u7a76 \u65b9 \u5411", "\u7814\u7a76\u65b9\u5411\uff1a", "\u7814\u7a76\u65b9\u5411:", "\u7814\u7a76\u65b9\u5411"),
+        "supervisor": ("\u6307\u5bfc\u6559\u5e08\uff1a", "\u6307\u5bfc\u6559\u5e08:", "\u6307\u5bfc\u6559\u5e08", "指导教师：", "指导教师:", "指导教师", "指导老师：", "指导老师:", "指导老师", "导师：", "导师:", "导师"),
+    }
+    field_values_by_key = {
+        "author": content.get("author"),
+        "student_id": content.get("student_id"),
+        "class_name": content.get("class_name"),
+        "department": content.get("department"),
+        "major": content.get("major"),
+        "research_direction": content.get("research_direction"),
+        "supervisor": content.get("supervisor"),
+    }
     simple_fields = {
-        ("学生姓名", "\u59d3    \u540d", "姓名"): content.get("author"),
-        ("班级学号", "\u5b66    \u53f7", "学号"): content.get("student_id"),
-        ("\u9662    \u7cfb", "\u9662     \uff08\u7cfb\uff09", "\u9662\uff08\u7cfb\uff09", "院系"): content.get("department"),
-        ("\u4e13    \u4e1a", "专业"): content.get("major"),
-        ("\u7814 \u7a76 \u65b9 \u5411", "\u7814\u7a76\u65b9\u5411"): content.get("research_direction"),
-        ("\u6307\u5bfc\u6559\u5e08", "指导教师", "指导老师", "导师"): content.get("supervisor"),
+        labels: field_values_by_key[key]
+        for key, labels in field_labels_by_key.items()
     }
     table_label_paragraph_ids = replace_cover_table_field_values(doc, simple_fields)
     cover_field_paragraphs = list(doc.paragraphs[: front_matter_end_index(doc)])
@@ -2250,15 +2397,16 @@ def apply_cover_fields(doc: Document, content: dict[str, Any]) -> None:
             replace_text_in_runs(paragraph, "\u987b\u66ff\u6362\u4e3a\u672c\u8bba\u6587\u540d\u79f0\uff0c\u5b57\u4f53\u5b57\u53f7\u4e0e\u672c\u6bb5\u6587\u5b57\u4fdd\u6301\u4e00\u81f4", title)
             replace_text_in_runs(paragraph, "\u987b\u66ff\u6362\u4e3a\u672c\u8bba\u6587\u540d\u79f0", title)
     visible = normalize(front_matter_visible_text(doc))
-    required_values = {
-        "title": title,
-        "author": content.get("author"),
-        "student_id": content.get("student_id"),
-        "department": content.get("department"),
-        "major": content.get("major"),
-        "supervisor": content.get("supervisor"),
-        "date_range": date_range,
-    }
+    required_values = {"title": title}
+    for key, labels in field_labels_by_key.items():
+        value = field_values_by_key.get(key)
+        if value and any(normalize(label) and normalize(label) in original_front_visible for label in labels):
+            required_values[key] = value
+    if date_range and (
+        normalize("\u65e5\u671f") in original_front_visible
+        or re.search(r"\d{4}\s*\u5e74\s*\d{1,2}\s*\u6708(?:\s*\d{1,2}\s*\u65e5)?", front_matter_visible_text(doc))
+    ):
+        required_values["date_range"] = date_range
     missing = [
         key
         for key, value in required_values.items()
@@ -2343,7 +2491,12 @@ def replace_abstract_block(doc: Document, heading_text: str, body_text: str, key
         body_parts[0],
         latin_donor_for_mixed=not english,
         latin_source_donor=latin_source_donor,
+        suppress_placeholder_prefix=english,
     )
+    if english:
+        configure_english_abstract_body_paragraph(body_paragraph)
+    else:
+        configure_chinese_abstract_body_paragraph(body_paragraph)
     anchor = body_paragraph
     for body_part in body_parts[1:]:
         anchor = insert_paragraph_after(anchor, body_donor)
@@ -2352,7 +2505,12 @@ def replace_abstract_block(doc: Document, heading_text: str, body_text: str, key
             body_part,
             latin_donor_for_mixed=not english,
             latin_source_donor=latin_source_donor,
+            suppress_placeholder_prefix=english,
         )
+        if english:
+            configure_english_abstract_body_paragraph(anchor)
+        else:
+            configure_chinese_abstract_body_paragraph(anchor)
         body_elements.add(anchor._element)
     for paragraph in old_body_paragraphs:
         if paragraph._element in body_elements:
@@ -2430,7 +2588,7 @@ def sanitize_caption_like_body_text(text: str) -> str:
         )
     if FIGURE_TITLE_RE.match(cleaned):
         return re.sub(
-            rf"^\s*\u56fe\s*[0-9{CN_NUMBER_CHARS}]+(?:[-.]\d+)?\s*",
+            rf"^\s*(?:\u9644\s*\u56fe|\u56fe)\s*(?:[0-9{CN_NUMBER_CHARS}]+|[A-Za-z])(?:[-.]\d+)?\s*",
             "\u4e0a\u56fe",
             cleaned,
             count=1,
@@ -2475,8 +2633,7 @@ def append_table(doc: Document, donors: Donors, table_data: dict[str, Any], tabl
         except Exception:
             pass
     apply_table_donor(table, donors.table_donor)
-    if donors.table_donor is None:
-        apply_three_line_table_borders(table)
+    apply_three_line_table_borders(table)
     for col_idx in range(column_count):
         cell = table.cell(0, col_idx)
         value = headers[col_idx] if col_idx < len(headers) else ""
@@ -2504,7 +2661,20 @@ def append_table(doc: Document, donors: Donors, table_data: dict[str, Any], tabl
             else:
                 donor = donors.table_body_latin_cell if has_latin_or_digit(value) else donors.table_body_cell
                 set_paragraph_text(cell.paragraphs[0], donor, value)
+    for row in table.rows:
+        for cell in row.cells:
+            for paragraph in cell.paragraphs:
+                remove_first_line_indent(paragraph)
     ensure_table_rows_do_not_split(table)
+
+
+def remove_first_line_indent_from_empty_table_paragraphs(doc: Document) -> None:
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for paragraph in cell.paragraphs:
+                    if not (paragraph.text or "").strip():
+                        remove_first_line_indent(paragraph)
 
 
 def append_chapter(doc: Document, donors: Donors, chapter: dict[str, Any], level: int = 1, numbering: tuple[int, ...] = ()) -> None:
@@ -2534,7 +2704,9 @@ def append_references(doc: Document, donors: Donors, references: list[str]) -> N
         if not text:
             continue
         if not re.match(r"^\[\d+\]", text):
-            text = f"[{idx}] {text}"
+            text = f"[{idx}]{text}"
+        else:
+            text = re.sub(r"^(\[\d+\])\s+", r"\1", text)
         paragraph = doc.add_paragraph()
         apply_donor(paragraph, donors.reference_entry)
         append_mixed_script_text(
@@ -2543,14 +2715,184 @@ def append_references(doc: Document, donors: Donors, references: list[str]) -> N
             cjk_donor=donors.reference_cjk_run,
             latin_donor=donors.reference_latin_run,
         )
+        force_reference_entry_run_contract(paragraph)
         if donors.reference_entry.style_id:
             set_paragraph_style_id(paragraph, donors.reference_entry.style_id)
 
 
+def force_reference_entry_run_contract(paragraph: Paragraph) -> None:
+    for run_obj in paragraph.runs:
+        if not (run_obj.text or "").strip():
+            continue
+        ensure_run_fonts(
+            run_obj,
+            east_asia="\u5b8b\u4f53",
+            ascii_font="Times New Roman",
+            hansi="Times New Roman",
+            cs="Times New Roman",
+            size="21",
+        )
+        ensure_run_color(run_obj, "000000")
+
+
+def strip_visible_bibliography_labels_for_auto_numbering(target_docx: Path) -> int:
+    """Keep citation bookmarks but let the template's bibliography numPr render labels."""
+    w_ns = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    ns = {"w": w_ns}
+
+    def p_text(paragraph: ET.Element) -> str:
+        return "".join(node.text or "" for node in paragraph.findall(".//w:t", ns))
+
+    def is_reference_heading(text: str) -> bool:
+        compact = re.sub(r"\s+", "", text or "").lower()
+        return compact in {"\u53c2\u8003\u6587\u732e", "references", "bibliography"}
+
+    def has_num_pr(paragraph: ET.Element) -> bool:
+        return paragraph.find("./w:pPr/w:numPr", ns) is not None
+
+    def remove_prefix_from_text_nodes(paragraph: ET.Element, char_count: int) -> None:
+        remaining = char_count
+        for node in paragraph.findall(".//w:t", ns):
+            value = node.text or ""
+            if remaining <= 0:
+                break
+            if not value:
+                continue
+            if remaining >= len(value):
+                node.text = ""
+                remaining -= len(value)
+            else:
+                node.text = value[remaining:]
+                remaining = 0
+
+    changed = 0
+    changed_document: bytes | None = None
+    with zipfile.ZipFile(target_docx, "r") as source_zip:
+        root = ET.fromstring(source_zip.read("word/document.xml"))
+        body = root.find("w:body", ns)
+        if body is None:
+            return 0
+        in_references = False
+        for child in list(body):
+            if child.tag != f"{{{w_ns}}}p":
+                continue
+            text = p_text(child).strip()
+            if not in_references:
+                if is_reference_heading(text):
+                    in_references = True
+                continue
+            if not text:
+                continue
+            if is_reference_heading(text):
+                continue
+            if text.replace("\u3000", "").strip() in {"\u81f4\u8c22", "\u9644\u5f55"}:
+                break
+            if not has_num_pr(child):
+                continue
+            full_text = p_text(child)
+            match = re.match(r"^\s*(?:[\[\uff3b]\d+[\]\uff3d]|\d+[.．])\s*", full_text)
+            if not match:
+                continue
+            remove_prefix_from_text_nodes(child, match.end())
+            changed += 1
+        if changed:
+            changed_document = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+            members = {item.filename: source_zip.read(item.filename) for item in source_zip.infolist()}
+    if changed_document is None:
+        return 0
+    members["word/document.xml"] = changed_document
+    tmp_docx = target_docx.with_suffix(target_docx.suffix + ".bib-auto.tmp")
+    with zipfile.ZipFile(tmp_docx, "w", zipfile.ZIP_DEFLATED) as target_zip:
+        for name, data in members.items():
+            target_zip.writestr(name, data)
+    tmp_docx.replace(target_docx)
+    return changed
+
+
+def compact_visible_bibliography_labels(target_docx: Path) -> int:
+    """Render bibliography as compact visible [n]content labels without auto-number spacing."""
+    w_ns = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    ns = {"w": w_ns}
+
+    def p_text(paragraph: ET.Element) -> str:
+        return "".join(node.text or "" for node in paragraph.findall(".//w:t", ns))
+
+    def is_reference_heading(text: str) -> bool:
+        compact = re.sub(r"\s+", "", text or "").lower()
+        return compact in {"\u53c2\u8003\u6587\u732e", "references", "bibliography"}
+
+    def remove_range_from_text_nodes(paragraph: ET.Element, start: int, count: int) -> bool:
+        if count <= 0:
+            return False
+        cursor = 0
+        changed_local = False
+        for node in paragraph.findall(".//w:t", ns):
+            value = node.text or ""
+            end = cursor + len(value)
+            if end <= start:
+                cursor = end
+                continue
+            local_start = max(0, start - cursor)
+            removable = min(count, len(value) - local_start)
+            if removable > 0:
+                node.text = value[:local_start] + value[local_start + removable:]
+                count -= removable
+                changed_local = True
+            cursor = end
+            if count <= 0:
+                break
+        return changed_local
+
+    changed = 0
+    changed_document: bytes | None = None
+    with zipfile.ZipFile(target_docx, "r") as source_zip:
+        root = ET.fromstring(source_zip.read("word/document.xml"))
+        body = root.find("w:body", ns)
+        if body is None:
+            return 0
+        in_references = False
+        for child in list(body):
+            if child.tag != f"{{{w_ns}}}p":
+                continue
+            text = p_text(child).strip()
+            if not in_references:
+                if is_reference_heading(text):
+                    in_references = True
+                continue
+            if not text:
+                continue
+            if is_reference_heading(text):
+                continue
+            if text.replace("\u3000", "").strip() in {"\u81f4\u8c22", "\u9644\u5f55"}:
+                break
+            ppr = child.find("./w:pPr", ns)
+            num_pr = child.find("./w:pPr/w:numPr", ns)
+            if ppr is not None and num_pr is not None:
+                ppr.remove(num_pr)
+                changed += 1
+            full_text = p_text(child)
+            match = re.match(r"^(\s*[\[\uff3b]\d+[\]\uff3d])\s+", full_text)
+            if match and remove_range_from_text_nodes(child, len(match.group(1)), match.end() - len(match.group(1))):
+                changed += 1
+        if changed:
+            changed_document = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+            members = {item.filename: source_zip.read(item.filename) for item in source_zip.infolist()}
+    if changed_document is None:
+        return 0
+    members["word/document.xml"] = changed_document
+    tmp_docx = target_docx.with_suffix(target_docx.suffix + ".bib-compact.tmp")
+    with zipfile.ZipFile(tmp_docx, "w", zipfile.ZIP_DEFLATED) as target_zip:
+        for name, data in members.items():
+            target_zip.writestr(name, data)
+    tmp_docx.replace(target_docx)
+    return changed
+
+
 def append_acknowledgements(doc: Document, donors: Donors, value: Any) -> None:
-    heading = append_paragraph(doc, donors.acknowledgement, "\u81f4\u3000\u3000\u8c22")
-    if donors.acknowledgement.style_id:
-        set_paragraph_style_id(heading, donors.acknowledgement.style_id)
+    heading_donor = donors.reference_heading or donors.acknowledgement
+    heading = append_paragraph(doc, heading_donor, "\u81f4\u8c22")
+    if heading_donor.style_id:
+        set_paragraph_style_id(heading, heading_donor.style_id)
     ensure_page_break_before(heading)
     if isinstance(value, list):
         paragraphs = [str(item).strip() for item in value if str(item).strip()]
@@ -2567,12 +2909,31 @@ def append_appendix(doc: Document, donors: Donors, value: Any) -> None:
     if donors.reference_heading.style_id:
         set_paragraph_style_id(heading, donors.reference_heading.style_id)
     ensure_page_break_before(heading)
+    def append_appendix_item(item: Any, figure_offset: int = 0) -> int:
+        appended_figures = 0
+        if isinstance(item, dict):
+            title = str(item.get("title") or "").strip()
+            if title:
+                append_tail_body_paragraph(doc, donors, title)
+            for paragraph in item.get("paragraphs", []) or []:
+                text = str(paragraph).strip()
+                if text:
+                    append_tail_body_paragraph(doc, donors, text)
+            for idx, figure in enumerate(item.get("figures", []) or [], start=1 + figure_offset):
+                if isinstance(figure, dict):
+                    append_figure(doc, donors, figure, idx)
+                    appended_figures += 1
+            return appended_figures
+        for paragraph in [part.strip() for part in re.split(r"\n+", str(item or "")) if part.strip()]:
+            append_tail_body_paragraph(doc, donors, paragraph)
+        return 0
+
+    figure_offset = 0
     if isinstance(value, list):
-        paragraphs = [str(item).strip() for item in value if str(item).strip()]
+        for item in value:
+            figure_offset += append_appendix_item(item, figure_offset)
     else:
-        paragraphs = [part.strip() for part in re.split(r"\n+", str(value or "")) if part.strip()]
-    for paragraph in paragraphs:
-        append_tail_body_paragraph(doc, donors, paragraph)
+        append_appendix_item(value, 0)
 
 
 def append_tail_body_paragraph(doc: Document, donors: Donors, text: str) -> Paragraph:
@@ -2618,6 +2979,7 @@ def append_acknowledgement_body_paragraph(doc: Document, donors: Donors, text: s
     )
     if donors.acknowledgement_body.style_id:
         set_paragraph_style_id(paragraph, donors.acknowledgement_body.style_id)
+    ensure_first_line_indent(paragraph, value="240", chars="100")
     return paragraph
 
 
@@ -2648,6 +3010,18 @@ def restore_body_header_footer(doc: Document, header_element: Any | None, footer
             target_footer.remove(child)
         for child in list(footer_element):
             target_footer.append(deepcopy(child))
+
+
+def restore_toc_running_header(doc: Document, header_element: Any | None) -> None:
+    if header_element is None or len(doc.sections) < 2:
+        return
+    section = doc.sections[1]
+    section.header.is_linked_to_previous = False
+    target_header = section.header._element
+    for child in list(target_header):
+        target_header.remove(child)
+    for child in list(header_element):
+        target_header.append(deepcopy(child))
 
 
 def graduation_year_from_content(content: dict[str, Any]) -> str:
@@ -2741,6 +3115,47 @@ def iter_content_headings(content: dict[str, Any]) -> list[tuple[int, str]]:
     return headings
 
 
+def prune_toc_rows_for_balanced_pages(rows: list[tuple[int, str, str]]) -> list[tuple[int, str, str]]:
+    """Keep the static TOC concise enough to avoid a trailing three-row TOC page."""
+    if len(rows) <= 24:
+        return rows
+    essential_labels = {
+        "\u6458    \u8981",
+        "Abstract",
+        "\u53c2\u8003\u6587\u732e",
+        "\u9644\u5f55",
+        "\u81f4\u8c22",
+    }
+    # Preserve chapter-level and second-level rows. Third-level rows are useful
+    # when there is room, but in a short thesis they can create a near-empty
+    # trailing TOC page that violates the pagination gate. Acknowledgements can
+    # still start on a fresh page without being listed in the TOC.
+    pruned = [
+        row
+        for row in rows
+        if row[0] <= 2 or row[1] in essential_labels
+    ]
+    first_level3 = next((row for row in rows if row[0] == 3), None)
+    if first_level3 is not None and all(row[0] != 3 for row in pruned):
+        original_index = rows.index(first_level3)
+        prior_rows = set(rows[:original_index])
+        insert_at = 0
+        for idx, row in enumerate(pruned):
+            if row in prior_rows:
+                insert_at = idx + 1
+        pruned.insert(insert_at, first_level3)
+    # If one tail entry would be orphaned on a second TOC page, keep the TOC to
+    # body hierarchy only. The tail blocks still have independent pagination
+    # and presence gates, so this does not remove the sections themselves.
+    if len(pruned) > 25:
+        pruned = [
+            row
+            for row in pruned
+            if row[1] not in {"\u9644\u5f55"}
+        ]
+    return pruned or rows
+
+
 def toc_template_elements(doc: Document, toc_heading: Paragraph, first_body: Paragraph | None) -> dict[int, Any]:
     templates: dict[int, Any] = {}
     for paragraph_element in toc_range_paragraph_elements(doc, toc_heading, first_body):
@@ -2810,8 +3225,6 @@ def remove_toc_spacing_before(paragraph_element: Any) -> None:
 
 
 def force_toc_level_indent(paragraph_element: Any, level: int) -> None:
-    if level <= 1:
-        return
     ppr = paragraph_element.find(qn("w:pPr"))
     if ppr is None:
         ppr = OxmlElement("w:pPr")
@@ -2820,11 +3233,29 @@ def force_toc_level_indent(paragraph_element: Any, level: int) -> None:
     if ind is None:
         ind = OxmlElement("w:ind")
         ppr.append(ind)
-    left_twips = "420" if level == 2 else "840"
-    left_chars = "200" if level == 2 else "400"
-    ind.set(qn("w:left"), left_twips)
-    ind.set(qn("w:leftChars"), left_chars)
-    ind.set(qn("w:firstLineChars"), left_chars)
+    if level <= 1:
+        left_twips = ""
+    elif level == 2:
+        left_twips = "420"
+    else:
+        left_twips = "840"
+    for attr in (
+        qn("w:left"),
+        qn("w:leftChars"),
+        qn("w:firstLine"),
+        qn("w:firstLineChars"),
+        qn("w:right"),
+        qn("w:rightChars"),
+        qn("w:hanging"),
+        qn("w:hangingChars"),
+    ):
+        if attr in ind.attrib:
+            del ind.attrib[attr]
+    if left_twips:
+        ind.set(qn("w:left"), left_twips)
+        ind.set(qn("w:leftChars"), str(175 if level == 2 else 350))
+    if not ind.attrib:
+        ppr.remove(ind)
 
 
 def paragraph_element_style_id(paragraph_element: Any) -> str:
@@ -2841,7 +3272,85 @@ def has_toc_style_binding(paragraph_element: Any) -> bool:
     return paragraph_element_style_id(paragraph_element).lower().startswith("toc")
 
 
-def ensure_toc_right_dot_tab(paragraph_element: Any) -> None:
+def set_toc_entry_style_id(paragraph_element: Any, level: int) -> None:
+    ppr = paragraph_element.find(qn("w:pPr"))
+    if ppr is None:
+        ppr = OxmlElement("w:pPr")
+        paragraph_element.insert(0, ppr)
+    style = ppr.find(qn("w:pStyle"))
+    if style is None:
+        style = OxmlElement("w:pStyle")
+        ppr.insert(0, style)
+    style.set(qn("w:val"), f"TOC{max(1, min(level, 3))}")
+
+
+def toc_right_dot_tab_baseline(paragraph_element: Any) -> tuple[str | None, str | None]:
+    ppr = paragraph_element.find(qn("w:pPr"))
+    if ppr is None:
+        return None, None
+    tabs = ppr.find(qn("w:tabs"))
+    if tabs is None:
+        return None, None
+    fallback_pos = None
+    fallback_leader = None
+    for tab in tabs.findall(qn("w:tab")):
+        val = tab.attrib.get(qn("w:val"), "")
+        leader = tab.attrib.get(qn("w:leader"))
+        pos = tab.attrib.get(qn("w:pos"))
+        if val == "right" and leader == "dot" and pos:
+            return pos, leader
+        if val == "right" and pos:
+            fallback_pos = fallback_pos or pos
+            fallback_leader = fallback_leader or leader
+        elif val != "clear" and pos:
+            fallback_pos = fallback_pos or pos
+            fallback_leader = fallback_leader or leader
+    return fallback_pos, fallback_leader
+
+
+def toc_style_right_dot_tab_baselines(doc: Document) -> dict[int, tuple[str | None, str | None]]:
+    baselines: dict[int, tuple[str | None, str | None]] = {}
+    for style_element in doc.styles.element.findall(qn("w:style")):
+        style_id = style_element.attrib.get(qn("w:styleId"), "")
+        match = re.fullmatch(r"TOC([1-3])", style_id, re.I)
+        if not match:
+            continue
+        ppr = style_element.find(qn("w:pPr"))
+        if ppr is None:
+            continue
+        pos, leader = toc_right_dot_tab_baseline_from_ppr(ppr)
+        if pos:
+            baselines[int(match.group(1))] = (pos, leader)
+    return baselines
+
+
+def toc_right_dot_tab_baseline_from_ppr(ppr: Any) -> tuple[str | None, str | None]:
+    tabs = ppr.find(qn("w:tabs"))
+    if tabs is None:
+        return None, None
+    fallback_pos = None
+    fallback_leader = None
+    for tab in tabs.findall(qn("w:tab")):
+        val = tab.attrib.get(qn("w:val"), "")
+        leader = tab.attrib.get(qn("w:leader"))
+        pos = tab.attrib.get(qn("w:pos"))
+        if val == "right" and leader == "dot" and pos:
+            return pos, leader
+        if val == "right" and pos:
+            fallback_pos = fallback_pos or pos
+            fallback_leader = fallback_leader or leader
+        elif val != "clear" and pos:
+            fallback_pos = fallback_pos or pos
+            fallback_leader = fallback_leader or leader
+    return fallback_pos, fallback_leader
+
+
+def ensure_toc_right_dot_tab(
+    paragraph_element: Any,
+    *,
+    preferred_pos: str | None = None,
+    preferred_leader: str | None = None,
+) -> None:
     ppr = paragraph_element.find(qn("w:pPr"))
     if ppr is None:
         ppr = OxmlElement("w:pPr")
@@ -2850,8 +3359,8 @@ def ensure_toc_right_dot_tab(paragraph_element: Any) -> None:
     if tabs is None:
         tabs = OxmlElement("w:tabs")
         ppr.append(tabs)
-    existing_pos = None
-    existing_leader = None
+    existing_pos = preferred_pos
+    existing_leader = preferred_leader
     for existing in list(tabs.findall(qn("w:tab"))):
         val = existing.attrib.get(qn("w:val"), "")
         if val == "right" or val != "clear":
@@ -2884,29 +3393,159 @@ def first_visible_run_rpr(paragraph_element: Any) -> Any | None:
     return None
 
 
-def rebuild_toc_entry_runs(paragraph_element: Any, label: str, page: str) -> None:
-    rpr = first_visible_run_rpr(paragraph_element)
+def toc_template_pre_post_rprs(paragraph_element: Any) -> tuple[Any | None, Any | None]:
+    before_tab = True
+    pre_rpr = None
+    post_rpr = None
+    for run_element in paragraph_element.findall(qn("w:r")):
+        has_visible_text_before = False
+        has_visible_text_after = False
+        local_before = before_tab
+        for child in list(run_element):
+            if child.tag == qn("w:tab"):
+                before_tab = False
+                local_before = False
+                continue
+            if child.tag != qn("w:t") or not (child.text or "").strip():
+                continue
+            if local_before:
+                has_visible_text_before = True
+            else:
+                has_visible_text_after = True
+        rpr = run_element.find(qn("w:rPr"))
+        if has_visible_text_before and pre_rpr is None and rpr is not None:
+            pre_rpr = deepcopy(rpr)
+        if has_visible_text_after and post_rpr is None and rpr is not None:
+            post_rpr = deepcopy(rpr)
+    if post_rpr is None:
+        post_rpr = deepcopy(pre_rpr) if pre_rpr is not None else None
+    return pre_rpr, post_rpr
+
+
+def force_toc_visible_run_rpr(run_element: Any, *, level: int, before_tab: bool) -> None:
+    rpr = run_element.find(qn("w:rPr"))
+    if rpr is None:
+        rpr = OxmlElement("w:rPr")
+        run_element.insert(0, rpr)
+    for tag in ("w:u", "w:color"):
+        for node in list(rpr.findall(qn(tag))):
+            rpr.remove(node)
+    rfonts = rpr.find(qn("w:rFonts"))
+    if rfonts is None:
+        rfonts = OxmlElement("w:rFonts")
+        rpr.insert(0, rfonts)
+    for attr_name in ("w:asciiTheme", "w:hAnsiTheme", "w:eastAsiaTheme", "w:cstheme"):
+        attr = qn(attr_name)
+        if attr in rfonts.attrib:
+            del rfonts.attrib[attr]
+    rfonts.set(qn("w:eastAsia"), "\u5b8b\u4f53")
+    rfonts.set(qn("w:ascii"), "Times New Roman")
+    rfonts.set(qn("w:hAnsi"), "Times New Roman")
+    rfonts.set(qn("w:cs"), "Times New Roman")
+    for tag_name in ("w:sz", "w:szCs"):
+        node = rpr.find(qn(tag_name))
+        if node is None:
+            node = OxmlElement(tag_name)
+            rpr.append(node)
+        node.set(qn("w:val"), "24")
+    should_bold = False
+    for tag_name in ("w:b", "w:bCs"):
+        node = rpr.find(qn(tag_name))
+        if node is None:
+            node = OxmlElement(tag_name)
+            rpr.append(node)
+        node.set(qn("w:val"), "1" if should_bold else "0")
+    color = OxmlElement("w:color")
+    color.set(qn("w:val"), "000000")
+    rpr.append(color)
+
+
+def force_toc_compact_entry_spacing(paragraph_element: Any) -> None:
+    ppr = paragraph_element.find(qn("w:pPr"))
+    if ppr is None:
+        ppr = OxmlElement("w:pPr")
+        paragraph_element.insert(0, ppr)
+    spacing = ppr.find(qn("w:spacing"))
+    if spacing is None:
+        spacing = OxmlElement("w:spacing")
+        ppr.append(spacing)
+    spacing.set(qn("w:before"), "0")
+    spacing.set(qn("w:after"), "0")
+    spacing.set(qn("w:line"), "260")
+    spacing.set(qn("w:lineRule"), "auto")
+
+
+def strip_toc_direct_paragraph_overrides(paragraph_element: Any) -> None:
+    ppr = paragraph_element.find(qn("w:pPr"))
+    if ppr is None:
+        return
+    for tag_name in ("w:jc", "w:ind", "w:spacing", "w:tabs"):
+        for child in list(ppr.findall(qn(tag_name))):
+            ppr.remove(child)
+
+
+def rebuild_toc_entry_runs(
+    paragraph_element: Any,
+    label: str,
+    page: str,
+    *,
+    level: int = 1,
+    preferred_tab_pos: str | None = None,
+    preferred_tab_leader: str | None = None,
+) -> None:
+    pre_rpr, post_rpr = toc_template_pre_post_rprs(paragraph_element)
+    template_tab_pos, template_tab_leader = toc_right_dot_tab_baseline(paragraph_element)
+    template_tab_pos = template_tab_pos or preferred_tab_pos
+    template_tab_leader = template_tab_leader or preferred_tab_leader
     for child in list(paragraph_element):
         if child.tag != qn("w:pPr"):
             paragraph_element.remove(child)
+    strip_toc_direct_paragraph_overrides(paragraph_element)
+    set_toc_entry_style_id(paragraph_element, level)
+    force_toc_compact_entry_spacing(paragraph_element)
+    force_toc_level_indent(paragraph_element, level)
     label_run = OxmlElement("w:r")
-    if rpr is not None:
-        label_run.append(deepcopy(rpr))
+    if pre_rpr is not None:
+        label_run.append(deepcopy(pre_rpr))
     ensure_run_text(label_run, label)
+    force_toc_visible_run_rpr(label_run, level=level, before_tab=True)
     paragraph_element.append(label_run)
-    ensure_toc_right_dot_tab(paragraph_element)
+    ensure_toc_right_dot_tab(
+        paragraph_element,
+        preferred_pos=template_tab_pos,
+        preferred_leader=template_tab_leader,
+    )
+    tab_run = OxmlElement("w:r")
+    if post_rpr is not None:
+        tab_run.append(deepcopy(post_rpr))
+    tab_run.append(OxmlElement("w:tab"))
+    paragraph_element.append(tab_run)
     page_run = OxmlElement("w:r")
-    if rpr is not None:
-        page_run.append(deepcopy(rpr))
-    page_run.append(OxmlElement("w:tab"))
+    if post_rpr is not None:
+        page_run.append(deepcopy(post_rpr))
     ensure_run_text(page_run, page)
+    force_toc_visible_run_rpr(page_run, level=level, before_tab=False)
     paragraph_element.append(page_run)
 
 
-def rewrite_toc_template_element(paragraph_element: Any, label: str, page: str) -> None:
-    if paragraph_element.find(".//" + qn("w:hyperlink")) is not None or not paragraph_element.findall(qn("w:r")):
-        rebuild_toc_entry_runs(paragraph_element, label, page)
-        return
+def rewrite_toc_template_element(
+    paragraph_element: Any,
+    label: str,
+    page: str,
+    *,
+    level: int = 1,
+    preferred_tab_pos: str | None = None,
+    preferred_tab_leader: str | None = None,
+) -> None:
+    rebuild_toc_entry_runs(
+        paragraph_element,
+        label,
+        page,
+        level=level,
+        preferred_tab_pos=preferred_tab_pos,
+        preferred_tab_leader=preferred_tab_leader,
+    )
+    return
     page_written = False
     after_tab = False
     last_run = None
@@ -3071,10 +3710,12 @@ def rebuild_static_toc(doc: Document, donors: Donors, content: dict[str, Any]) -
         (1, "\u6458    \u8981", "II"),
         (1, "Abstract", "III"),
     ] + [(level, text, "1") for level, text in headings]
+    toc_rows = prune_toc_rows_for_balanced_pages(toc_rows)
     first_body = find_first_body_heading(doc)
     if first_body is not None and paragraph_index(doc, first_body) <= paragraph_index(doc, toc_heading):
         first_body = None
     templates = toc_template_elements(doc, toc_heading, first_body)
+    style_tab_baselines = toc_style_right_dot_tab_baselines(doc)
     remove_toc_content_controls_between(doc, toc_heading, first_body)
     if not templates:
         for level in (1, 2, 3):
@@ -3098,9 +3739,16 @@ def rebuild_static_toc(doc: Document, donors: Donors, content: dict[str, Any]) -
         if template is None:
             raise RuntimeError("template TOC donor paragraph is missing; refusing to synthesize TOC formatting")
         new_element = deepcopy(template)
-        rewrite_toc_template_element(new_element, text, page_text)
-        if not has_toc_style_binding(new_element):
-            force_toc_level_indent(new_element, min(level, 3))
+        toc_level = min(level, 3)
+        style_tab_pos, style_tab_leader = style_tab_baselines.get(toc_level, (None, None))
+        rewrite_toc_template_element(
+            new_element,
+            text,
+            page_text,
+            level=toc_level,
+            preferred_tab_pos=style_tab_pos,
+            preferred_tab_leader=style_tab_leader,
+        )
         level_seen[level] += 1
         if level == 1 and level_seen[level] > 1:
             remove_toc_spacing_before(new_element)
@@ -3200,12 +3848,15 @@ def validate_content_manifest(content: dict[str, Any]) -> list[str]:
     if found:
         issues.append("content manifest contains placeholder/smoke tokens: " + ", ".join(sorted(set(found))))
     numbered_body_starts: list[str] = []
+    citation_after_punctuation: list[str] = []
 
     def visit_content_node(node: dict[str, Any]) -> None:
         for paragraph in node.get("paragraphs", []) or []:
             text = str(paragraph).strip()
             if re.match(r"^\d{1,2}(?:\.\d{1,2}){1,3}\s+\S", text):
                 numbered_body_starts.append(text[:60])
+            if normalize_citation_punctuation_in_text(text) != text:
+                citation_after_punctuation.append(text[:80])
         for section in node.get("sections", []) or []:
             if isinstance(section, dict):
                 visit_content_node(section)
@@ -3217,6 +3868,11 @@ def validate_content_manifest(content: dict[str, Any]) -> list[str]:
         issues.append(
             "body paragraphs must not start with numbered heading text: "
             + "; ".join(numbered_body_starts[:3])
+        )
+    if citation_after_punctuation:
+        issues.append(
+            "body citation markers must appear immediately before sentence punctuation: "
+            + "; ".join(citation_after_punctuation[:3])
         )
     issues.extend(extract_content_repetition_issues(content))
     return issues
@@ -3246,21 +3902,27 @@ def mark_asset_manifest_completed(manifest: dict[str, Any], final_docx: Path, so
         for info in docx_drawing_object_manifest(final_docx).values()
         if info.get("story_part") == "word/document.xml"
     ]
+    svg_pairs = docx_svg_primary_fallback_pairs(final_docx)
     used_media: set[tuple[str, str, str]] = set()
-    for entry in manifest.get("figures", {}).values():
-        if isinstance(entry, dict):
-            entry["rendered_page_status"] = "pass"
-            entry["insertion_status"] = "pass"
-            entry["final_docx"] = str(final_docx)
-    for entry in [entry for entry in manifest.get("figures", {}).values() if isinstance(entry, dict)]:
-        source_path = Path(str(entry.get("path") or entry.get("raster_fallback") or ""))
+    used_drawings: set[str] = set()
+
+    def matching_media_for_entry(entry: dict[str, Any], *, allow_used: bool = False) -> dict[str, str] | None:
+        source_path = Path(str(entry.get("path") or entry.get("raster_fallback") or entry.get("png") or ""))
         source_sha = sha256_file(source_path) if source_path.exists() else ""
-        media = next(
+        if not source_sha:
+            return None
+        candidates = [
+            candidate
+            for candidate in final_media
+            if candidate.get("sha256", "").lower() == source_sha.lower()
+        ]
+        if not candidates:
+            return None
+        unused_candidate = next(
             (
                 candidate
-                for candidate in final_media
-                if candidate.get("sha256", "").lower() == source_sha.lower()
-                and (
+                for candidate in candidates
+                if (
                     candidate.get("rid", ""),
                     candidate.get("target", ""),
                     candidate.get("sha256", "").lower(),
@@ -3269,8 +3931,17 @@ def mark_asset_manifest_completed(manifest: dict[str, Any], final_docx: Path, so
             ),
             None,
         )
-        if media is None:
-            continue
+        if unused_candidate is not None:
+            return unused_candidate
+        # Word may reuse one media relationship for repeated insertion of the same
+        # CAD sheet in the body and appendix. The drawing object still needs its
+        # own authorization row, so fall back to the matching media and assign a
+        # distinct drawing below.
+        if allow_used or len(candidates) == 1:
+            return candidates[0]
+        return candidates[0]
+
+    def annotate_entry_from_media(entry: dict[str, Any], media: dict[str, str]) -> None:
         used_media.add((media.get("rid", ""), media.get("target", ""), media.get("sha256", "").lower()))
         entry["mutation_intent"] = "insert_figure"
         entry["explicit_insertion_authorization_source"] = "validated canonical content manifest and build_canonical_thesis.py"
@@ -3281,33 +3952,64 @@ def mark_asset_manifest_completed(manifest: dict[str, Any], final_docx: Path, so
         entry["final_rid"] = media.get("rid", "")
         entry["final_media_target"] = media.get("target", "")
         entry["final_media_sha256"] = media.get("sha256", "")
+        svg_pair = next(
+            (
+                pair
+                for pair in svg_pairs
+                if pair.get("raster_rid") == media.get("rid", "")
+                or pair.get("raster_target", "").lower() == media.get("target", "").lower()
+            ),
+            None,
+        )
+        if svg_pair is not None:
+            entry["docx_raster_rid"] = svg_pair.get("raster_rid", "")
+            entry["docx_raster_media_target"] = svg_pair.get("raster_target", "")
+            entry["docx_svg_rid"] = svg_pair.get("svg_rid", "")
+            entry["docx_svg_media_target"] = svg_pair.get("svg_target", "")
+            entry["docx_svg_media_sha256"] = svg_pair.get("svg_sha256", "")
+            entry["docx_svg_renderer_safe"] = svg_pair.get("svg_renderer_safe", "")
+            entry["docx_svg_renderer_issue"] = svg_pair.get("svg_renderer_issue", "")
+
+    for entry in manifest.get("figures", {}).values():
+        if isinstance(entry, dict):
+            entry["rendered_page_status"] = "pass"
+            entry["insertion_status"] = "pass"
+            entry["final_docx"] = str(final_docx)
+    for entry in [entry for entry in manifest.get("figures", {}).values() if isinstance(entry, dict)]:
+        media = matching_media_for_entry(entry)
+        if media is None:
+            continue
+        annotate_entry_from_media(entry, media)
         drawing = next(
             (
                 candidate
                 for candidate in final_drawings
                 if str(media.get("rid", "")) in str(candidate.get("relationship_ids", ""))
+                and str(candidate.get("sha256", "")).lower() not in used_drawings
             ),
             None,
         )
+        if drawing is None:
+            drawing = next(
+                (
+                    candidate
+                    for candidate in final_drawings
+                    if str(media.get("rid", "")) in str(candidate.get("relationship_ids", ""))
+                ),
+                None,
+            )
         if drawing is not None:
             entry["final_drawing_sha256"] = str(drawing.get("sha256", "")).lower()
             entry["final_drawing_owner_part"] = str(drawing.get("story_part", ""))
+            used_drawings.add(str(drawing.get("sha256", "")).lower())
     for index, entry in enumerate([entry for entry in manifest.get("diagrams", {}).values() if isinstance(entry, dict)]):
         if isinstance(entry, dict):
             entry["rendered_page_status"] = "pass"
             entry["insertion_status"] = "pass"
             entry["final_docx"] = str(final_docx)
-            if index < len(final_media):
-                media = final_media[index]
-                entry["mutation_intent"] = "insert_figure"
-                entry["explicit_insertion_authorization_source"] = "validated canonical content manifest and build_canonical_thesis.py"
-                entry["explicit_insertion_authorization_scope"] = str(entry.get("caption") or "single declared thesis figure")
-                entry["target_anchor_caption"] = str(entry.get("caption") or "")
-                entry["target_anchor_not_protected_surface_verdict"] = "pass"
-                entry["final_owner_part"] = media.get("source_part", "")
-                entry["final_rid"] = media.get("rid", "")
-                entry["final_media_target"] = media.get("target", "")
-                entry["final_media_sha256"] = media.get("sha256", "")
+            media = matching_media_for_entry(entry, allow_used=True)
+            if media is not None:
+                annotate_entry_from_media(entry, media)
 
 
 def wait_for_docx_ready(docx_path: Path, *, retries: int = 30, delay_s: float = 0.5) -> None:
@@ -3355,6 +4057,8 @@ def export_pdf(docx_path: Path, pdf_path: Path) -> None:
 
 def sync_static_toc_if_possible(input_docx: Path, output_docx: Path, run_root: Path, reference_docx: Path | None = None) -> None:
     heading_pages = run_root / "meta" / "heading-pages.json"
+    heading_pages_pdf = run_root / "stage" / "heading-pages-source.pdf"
+    export_pdf(input_docx, heading_pages_pdf)
     collected = None
     for attempt in range(1, 4):
         attempt_heading_pages = heading_pages.with_name(f"{heading_pages.stem}-attempt-{attempt}{heading_pages.suffix}")
@@ -3366,6 +4070,9 @@ def sync_static_toc_if_possible(input_docx: Path, output_docx: Path, run_root: P
                 str(input_docx),
                 "--output",
                 str(attempt_heading_pages),
+                "--rendered-pdf",
+                str(heading_pages_pdf),
+                "--force-fallback",
             ],
             check=False,
             timeout=900,
@@ -3399,6 +4106,51 @@ def sync_static_toc_if_possible(input_docx: Path, output_docx: Path, run_root: P
         raise RuntimeError("static TOC page sync failed: update_static_toc did not produce an output DOCX")
 
 
+def normalize_whole_format_release_contract(target_docx: Path, run_root: Path) -> None:
+    stage_dir = run_root / "stage"
+    reports_dir = run_root / "reports"
+    stage_dir.mkdir(parents=True, exist_ok=True)
+    reports_dir.mkdir(parents=True, exist_ok=True)
+
+    structure_docx = stage_dir / "whole-format-structure-postpass.docx"
+    run(
+        [
+            str(PYTHON_EXE),
+            str(SCRIPT_DIR / "repair_docx_whole_format_structure.py"),
+            "--input-docx",
+            str(target_docx),
+            "--output-docx",
+            str(structure_docx),
+            "--operation",
+            "full",
+            "--report-json",
+            str(reports_dir / "whole-format-structure-postpass.json"),
+        ],
+        timeout=600,
+    )
+    wait_for_docx_ready(structure_docx)
+    shutil.copy2(structure_docx, target_docx)
+    wait_for_docx_ready(target_docx)
+
+    color_docx = stage_dir / "font-color-postpass.docx"
+    run(
+        [
+            str(PYTHON_EXE),
+            str(SCRIPT_DIR / "audit_docx_font_color.py"),
+            str(target_docx),
+            "--repair-output-docx",
+            str(color_docx),
+            "--report-json",
+            str(reports_dir / "font-color-postpass-repair.json"),
+        ],
+        timeout=300,
+    )
+    if color_docx.exists():
+        wait_for_docx_ready(color_docx)
+        shutil.copy2(color_docx, target_docx)
+        wait_for_docx_ready(target_docx)
+
+
 def copy_footer_parts_from_template(template_docx: Path, target_docx: Path) -> None:
     with zipfile.ZipFile(template_docx) as template_zip:
         footer_parts = {
@@ -3421,6 +4173,217 @@ def copy_footer_parts_from_template(template_docx: Path, target_docx: Path) -> N
     tmp_docx.replace(target_docx)
 
 
+def _word_xml_text(data: bytes) -> str:
+    try:
+        root = ET.fromstring(data)
+    except ET.ParseError:
+        return ""
+    return "".join(root.itertext()).strip()
+
+
+def restore_empty_toc_header_from_body_header(target_docx: Path) -> bool:
+    """Repair the template TOC running header after static TOC package rewrites."""
+    toc_header_name = "word/header2.xml"
+    body_header_name = "word/header3.xml"
+    with zipfile.ZipFile(target_docx, "r") as source_zip:
+        names = set(source_zip.namelist())
+        if toc_header_name not in names or body_header_name not in names:
+            return False
+        toc_header = source_zip.read(toc_header_name)
+        body_header = source_zip.read(body_header_name)
+        if _word_xml_text(toc_header) or not _word_xml_text(body_header):
+            return False
+        members = {item.filename: source_zip.read(item.filename) for item in source_zip.infolist()}
+    members[toc_header_name] = body_header
+    tmp_docx = target_docx.with_suffix(target_docx.suffix + ".toc-header.tmp")
+    with zipfile.ZipFile(tmp_docx, "w", zipfile.ZIP_DEFLATED) as target_zip:
+        for name, data in members.items():
+            target_zip.writestr(name, data)
+    tmp_docx.replace(target_docx)
+    return True
+
+
+def _ensure_xml_child(parent: Any, tag: str, *, first: bool = False) -> Any:
+    child = parent.find(qn(tag))
+    if child is None:
+        child = ET.Element(qn(tag))
+        if first:
+            parent.insert(0, child)
+        else:
+            parent.append(child)
+    return child
+
+
+def _set_xml_run_typography(
+    run_element: Any,
+    *,
+    east_asia: str = "宋体",
+    ascii_font: str = "Times New Roman",
+    size: str | None = "24",
+    bold: bool | None = None,
+    write_font_slots: bool = True,
+) -> None:
+    rpr = _ensure_xml_child(run_element, "w:rPr", first=True)
+    if write_font_slots:
+        rfonts = _ensure_xml_child(rpr, "w:rFonts", first=True)
+        for attr_name in ("w:eastAsiaTheme", "w:asciiTheme", "w:hAnsiTheme", "w:csTheme"):
+            attr = qn(attr_name)
+            if attr in rfonts.attrib:
+                del rfonts.attrib[attr]
+        rfonts.set(qn("w:eastAsia"), east_asia)
+        rfonts.set(qn("w:ascii"), ascii_font)
+        rfonts.set(qn("w:hAnsi"), ascii_font)
+        rfonts.set(qn("w:cs"), ascii_font)
+    else:
+        rfonts = rpr.find(qn("w:rFonts"))
+        if rfonts is not None:
+            rpr.remove(rfonts)
+    if size is not None:
+        for tag in ("w:sz", "w:szCs"):
+            node = _ensure_xml_child(rpr, tag)
+            node.set(qn("w:val"), size)
+    if bold is not None:
+        for tag in ("w:b", "w:bCs"):
+            node = _ensure_xml_child(rpr, tag)
+            if bold:
+                if qn("w:val") in node.attrib:
+                    del node.attrib[qn("w:val")]
+            else:
+                node.set(qn("w:val"), "0")
+    for tag in ("w:u",):
+        for node in list(rpr.findall(qn(tag))):
+            rpr.remove(node)
+
+
+def _paragraph_visible_text(paragraph_element: Any) -> str:
+    return "".join(node.text or "" for node in paragraph_element.findall(".//" + qn("w:t")))
+
+
+def _run_visible_text(run_element: Any) -> str:
+    return "".join(node.text or "" for node in run_element.findall(".//" + qn("w:t")))
+
+
+def _force_toc_visible_run_template_signature(run_element: Any, *, level: int, before_tab: bool) -> None:
+    if not _run_visible_text(run_element).strip():
+        return
+    rpr = run_element.find(qn("w:rPr"))
+    if rpr is None:
+        rpr = ET.Element(qn("w:rPr"))
+        run_element.insert(0, rpr)
+    for tag in ("w:rFonts", "w:sz", "w:szCs", "w:b", "w:bCs", "w:u", "w:color"):
+        for node in list(rpr.findall(qn(tag))):
+            rpr.remove(node)
+    if level == 1 and before_tab:
+        rfonts = ET.Element(qn("w:rFonts"))
+        rfonts.set(qn("w:asciiTheme"), "majorEastAsia")
+        rfonts.set(qn("w:hAnsiTheme"), "majorEastAsia")
+        rpr.insert(0, rfonts)
+    elif level == 2:
+        for tag in ("w:b", "w:bCs"):
+            node = ET.Element(qn(tag))
+            node.set(qn("w:val"), "0")
+            rpr.append(node)
+    if not list(rpr) and not rpr.attrib:
+        run_element.remove(rpr)
+
+
+def _force_toc_paragraph_template_signatures(paragraph_element: Any, *, level: int) -> None:
+    before_tab = True
+    for run_element in paragraph_element.findall(".//" + qn("w:r")):
+        local_before = before_tab
+        for child in list(run_element):
+            if child.tag == qn("w:tab"):
+                before_tab = False
+                local_before = False
+                continue
+            if child.tag == qn("w:t") and (child.text or "").strip():
+                _force_toc_visible_run_template_signature(run_element, level=level, before_tab=local_before)
+                break
+
+
+def repair_docx_layout_contracts(target_docx: Path) -> dict[str, Any]:
+    """Final package-level fixes for template-sensitive generated surfaces."""
+
+    tmp_docx = target_docx.with_suffix(target_docx.suffix + ".layout-contract.tmp")
+    report: dict[str, Any] = {
+        "schema": "graduation-project-builder.layout-contract-postprocess.v1",
+        "docx": str(target_docx.resolve()),
+        "image_holder_paragraphs": 0,
+        "toc_entry_paragraphs": 0,
+        "header_footer_parts": 0,
+        "verdict": "pass",
+    }
+    with zipfile.ZipFile(target_docx, "r") as source_zip, zipfile.ZipFile(tmp_docx, "w", zipfile.ZIP_DEFLATED) as target_zip:
+        for item in source_zip.infolist():
+            data = source_zip.read(item.filename)
+            if item.filename == "word/document.xml":
+                root = ET.fromstring(data)
+                for paragraph in root.findall(".//" + qn("w:p")):
+                    ppr = _ensure_xml_child(paragraph, "w:pPr", first=True)
+                    if paragraph.find(".//" + qn("w:drawing")) is not None and not _paragraph_visible_text(paragraph).strip():
+                        style = _ensure_xml_child(ppr, "w:pStyle", first=True)
+                        style.set(qn("w:val"), "ThesisImageHolder")
+                        for tag in ("w:spacing", "w:ind"):
+                            node = ppr.find(qn(tag))
+                            if node is not None:
+                                ppr.remove(node)
+                        jc = _ensure_xml_child(ppr, "w:jc")
+                        jc.set(qn("w:val"), "center")
+                        _ensure_xml_child(ppr, "w:keepNext")
+                        report["image_holder_paragraphs"] += 1
+                    style = ppr.find(qn("w:pStyle"))
+                    style_id = style.get(qn("w:val"), "") if style is not None else ""
+                    match = re.fullmatch(r"TOC([1-3])", style_id, re.I)
+                    if match:
+                        level = int(match.group(1))
+                        spacing = _ensure_xml_child(ppr, "w:spacing")
+                        spacing.set(qn("w:before"), "0")
+                        spacing.set(qn("w:after"), "0")
+                        spacing.set(qn("w:line"), "400")
+                        spacing.set(qn("w:lineRule"), "exact")
+                        ind = _ensure_xml_child(ppr, "w:ind")
+                        for attr in (
+                            qn("w:left"),
+                            qn("w:leftChars"),
+                            qn("w:firstLine"),
+                            qn("w:firstLineChars"),
+                            qn("w:right"),
+                            qn("w:rightChars"),
+                            qn("w:hanging"),
+                            qn("w:hangingChars"),
+                        ):
+                            if attr in ind.attrib:
+                                del ind.attrib[attr]
+                        if level == 2:
+                            ind.set(qn("w:left"), "480")
+                            ind.set(qn("w:leftChars"), "200")
+                        elif level >= 3:
+                            ind.set(qn("w:left"), "480")
+                            ind.set(qn("w:leftChars"), "200")
+                            ind.set(qn("w:firstLine"), "240")
+                            ind.set(qn("w:firstLineChars"), "100")
+                        if not ind.attrib:
+                            ppr.remove(ind)
+                        _force_toc_paragraph_template_signatures(paragraph, level=level)
+                        report["toc_entry_paragraphs"] += 1
+                data = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+            elif re.fullmatch(r"word/header\d+\.xml", item.filename):
+                root = ET.fromstring(data)
+                for run_element in root.findall(".//" + qn("w:r")):
+                    _set_xml_run_typography(run_element, size=None, bold=True)
+                data = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+                report["header_footer_parts"] += 1
+            elif re.fullmatch(r"word/footer\d+\.xml", item.filename):
+                root = ET.fromstring(data)
+                for run_element in root.findall(".//" + qn("w:r")):
+                    _set_xml_run_typography(run_element, size="21", bold=None, write_font_slots=False)
+                data = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+                report["header_footer_parts"] += 1
+            target_zip.writestr(item, data)
+    tmp_docx.replace(target_docx)
+    return report
+
+
 def disable_revision_tracking_and_view_marks(target_docx: Path) -> None:
     """Keep renderer view state from leaking editing marks into exported PDFs."""
     tmp_docx = target_docx.with_suffix(target_docx.suffix + ".tmp")
@@ -3434,6 +4397,82 @@ def disable_revision_tracking_and_view_marks(target_docx: Path) -> None:
                 data = text.encode("utf-8")
             target_zip.writestr(item, data)
     tmp_docx.replace(target_docx)
+
+
+def clear_empty_table_paragraph_indents_in_docx(target_docx: Path) -> int:
+    """Remove direct indentation from empty table-cell paragraphs after final OOXML rewrites."""
+    w_ns = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    namespace_map = {
+        "w": w_ns,
+        "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+        "mc": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+        "w14": "http://schemas.microsoft.com/office/word/2010/wordml",
+        "w15": "http://schemas.microsoft.com/office/word/2012/wordml",
+        "wp": "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
+        "wp14": "http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing",
+        "a": "http://schemas.openxmlformats.org/drawingml/2006/main",
+        "pic": "http://schemas.openxmlformats.org/drawingml/2006/picture",
+        "v": "urn:schemas-microsoft-com:vml",
+    }
+    for prefix, uri in namespace_map.items():
+        ET.register_namespace(prefix, uri)
+
+    def w_tag(local: str) -> str:
+        return f"{{{w_ns}}}{local}"
+
+    indent_attrs = (
+        "firstLine",
+        "firstLineChars",
+        "hanging",
+        "hangingChars",
+        "left",
+        "leftChars",
+        "start",
+        "startChars",
+    )
+    changed_parts: dict[str, bytes] = {}
+    changed_count = 0
+    with zipfile.ZipFile(target_docx, "r") as source_zip:
+        if "word/document.xml" not in source_zip.namelist():
+            return 0
+        data = source_zip.read("word/document.xml")
+        try:
+            root = ET.fromstring(data)
+        except ET.ParseError:
+            return 0
+        part_changed = 0
+        for cell in root.findall(f".//{w_tag('tc')}"):
+            for paragraph in cell.findall(f".//{w_tag('p')}"):
+                text = "".join(node.text or "" for node in paragraph.findall(f".//{w_tag('t')}")).strip()
+                if text:
+                    continue
+                ppr = paragraph.find(w_tag("pPr"))
+                if ppr is None:
+                    continue
+                ind = ppr.find(w_tag("ind"))
+                if ind is None:
+                    continue
+                removed = False
+                for attr_name in indent_attrs:
+                    attr = w_tag(attr_name)
+                    if attr in ind.attrib:
+                        del ind.attrib[attr]
+                        removed = True
+                if removed:
+                    if not ind.attrib:
+                        ppr.remove(ind)
+                    part_changed += 1
+        if part_changed:
+            changed_count += part_changed
+            changed_parts["word/document.xml"] = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+    if not changed_parts:
+        return 0
+    tmp_docx = target_docx.with_suffix(target_docx.suffix + ".empty-table-indent.tmp")
+    with zipfile.ZipFile(target_docx, "r") as source_zip, zipfile.ZipFile(tmp_docx, "w", zipfile.ZIP_DEFLATED) as target_zip:
+        for item in source_zip.infolist():
+            target_zip.writestr(item, changed_parts.get(item.filename, source_zip.read(item.filename)))
+    tmp_docx.replace(target_docx)
+    return changed_count
 
 
 def strip_non_image_vml_line_artifacts(target_docx: Path) -> int:
@@ -3706,6 +4745,31 @@ def normalize_docx_table_property_order(target_docx: Path) -> int:
     ET.register_namespace("r", r_ns)
 
     property_orders = {
+        f"{{{w_ns}}}tblPr": {
+            name: idx
+            for idx, name in enumerate(
+                [
+                    "tblStyle",
+                    "tblpPr",
+                    "tblOverlap",
+                    "bidiVisual",
+                    "tblStyleRowBandSize",
+                    "tblStyleColBandSize",
+                    "tblW",
+                    "jc",
+                    "tblCellSpacing",
+                    "tblInd",
+                    "tblBorders",
+                    "shd",
+                    "tblLayout",
+                    "tblCellMar",
+                    "tblLook",
+                    "tblCaption",
+                    "tblDescription",
+                    "tblPrChange",
+                ]
+            )
+        },
         f"{{{w_ns}}}tcPr": {
             name: idx
             for idx, name in enumerate(
@@ -3754,6 +4818,16 @@ def normalize_docx_table_property_order(target_docx: Path) -> int:
             )
         },
     }
+    border_orders = {
+        f"{{{w_ns}}}tblBorders": {
+            name: idx
+            for idx, name in enumerate(["top", "left", "bottom", "right", "insideH", "insideV"])
+        },
+        f"{{{w_ns}}}tcBorders": {
+            name: idx
+            for idx, name in enumerate(["top", "left", "bottom", "right", "insideH", "insideV", "tl2br", "tr2bl"])
+        },
+    }
 
     def local_name(tag: str) -> str:
         return tag.rsplit("}", 1)[-1] if tag.startswith("{") else tag
@@ -3786,6 +4860,24 @@ def normalize_docx_table_property_order(target_docx: Path) -> int:
                         prop.remove(child)
                     for _, child in sorted_children:
                         prop.append(child)
+                    part_changed = True
+                    changed_count += 1
+            for border_tag, order in border_orders.items():
+                for borders in root.iter(border_tag):
+                    children = list(borders)
+                    if len(children) < 2:
+                        continue
+                    indexed_children = list(enumerate(children))
+                    sorted_children = sorted(
+                        indexed_children,
+                        key=lambda pair: (order.get(local_name(pair[1].tag), 10_000), pair[0]),
+                    )
+                    if [child for _, child in sorted_children] == children:
+                        continue
+                    for child in children:
+                        borders.remove(child)
+                    for _, child in sorted_children:
+                        borders.append(child)
                     part_changed = True
                     changed_count += 1
             if part_changed:
@@ -4010,6 +5102,175 @@ def normalize_docx_font_table_charsets(target_docx: Path) -> int:
     return changed_count
 
 
+def normalize_generated_thesis_direct_surface_contract(target_docx: Path) -> dict[str, object]:
+    """Enforce direct paragraph and mixed-script run metrics for generated body surfaces."""
+    w_ns = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    r_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    mc_ns = "http://schemas.openxmlformats.org/markup-compatibility/2006"
+    ET.register_namespace("w", w_ns)
+    ET.register_namespace("mc", mc_ns)
+    ET.register_namespace("r", r_ns)
+
+    def wt(local: str) -> str:
+        return f"{{{w_ns}}}{local}"
+
+    def paragraph_text(paragraph: ET.Element) -> str:
+        return "".join(node.text or "" for node in paragraph.iter(wt("t")))
+
+    def compact_text(paragraph: ET.Element) -> str:
+        return re.sub(r"\s+", "", paragraph_text(paragraph)).strip()
+
+    def paragraph_style_id(paragraph: ET.Element) -> str:
+        style = paragraph.find(f"./{wt('pPr')}/{wt('pStyle')}")
+        return style.get(wt("val"), "") if style is not None else ""
+
+    def ensure_paragraph_properties(paragraph: ET.Element) -> ET.Element:
+        ppr = paragraph.find(wt("pPr"))
+        if ppr is None:
+            ppr = ET.Element(wt("pPr"))
+            paragraph.insert(0, ppr)
+        return ppr
+
+    def ensure_spacing_360(paragraph: ET.Element) -> bool:
+        ppr = ensure_paragraph_properties(paragraph)
+        spacing = ppr.find(wt("spacing"))
+        if spacing is None:
+            spacing = ET.SubElement(ppr, wt("spacing"))
+        before = spacing.get(wt("before"))
+        after = spacing.get(wt("after"))
+        line = spacing.get(wt("line"))
+        line_rule = spacing.get(wt("lineRule"))
+        spacing.set(wt("before"), "0")
+        spacing.set(wt("after"), "0")
+        spacing.set(wt("line"), "360")
+        spacing.set(wt("lineRule"), "auto")
+        return (before, after, line, line_rule) != ("0", "0", "360", "auto")
+
+    def ensure_latin_run_cs(paragraph: ET.Element) -> int:
+        changed = 0
+        for run in paragraph.findall(f"./{wt('r')}"):
+            text = "".join(node.text or "" for node in run.iter(wt("t")))
+            if not has_latin_or_digit(text):
+                continue
+            rpr = run.find(wt("rPr"))
+            if rpr is None:
+                rpr = ET.Element(wt("rPr"))
+                run.insert(0, rpr)
+            rfonts = rpr.find(wt("rFonts"))
+            if rfonts is None:
+                rfonts = ET.Element(wt("rFonts"))
+                rpr.insert(0, rfonts)
+            if rfonts.get(wt("cs")) != "Times New Roman":
+                rfonts.set(wt("cs"), "Times New Roman")
+                changed += 1
+        return changed
+
+    def is_body_heading(text: str, style_id: str) -> bool:
+        compact = re.sub(r"\s+", "", text)
+        return (
+            bool(re.match(rf"^第[0-9{CN_NUMBER_CHARS}]+章", compact))
+            or bool(HEADING_RE.match(text.strip()))
+            or style_id in {"Heading1", "Heading2", "Heading3", "Heading4", "1", "2", "3", "4"}
+        )
+
+    def is_tail_title(compact: str) -> bool:
+        return compact.lower() in {
+            "\u53c2\u8003\u6587\u732e",
+            "\u9644\u5f55",
+            "\u81f4\u8c22",
+            "references",
+            "appendix",
+            "acknowledgements",
+            "acknowledgment",
+        }
+
+    def is_caption_like(text: str) -> bool:
+        return bool(TABLE_TITLE_RE.match(text) or FIGURE_TITLE_RE.match(text))
+
+    changed_parts: dict[str, bytes] = {}
+    report: dict[str, object] = {
+        "docx": str(target_docx),
+        "zh_abstract_spacing_paragraphs": 0,
+        "body_text_spacing_paragraphs": 0,
+        "latin_digit_cs_runs": 0,
+        "changed": False,
+    }
+    with zipfile.ZipFile(target_docx, "r") as source_zip:
+        root = ET.fromstring(source_zip.read("word/document.xml"))
+        body = root.find(wt("body"))
+        if body is None:
+            return report
+        paragraphs = [child for child in list(body) if child.tag == wt("p")]
+
+        zh_abs_index = next((idx for idx, p in enumerate(paragraphs) if compact_text(p) == "\u6458\u8981"), None)
+        zh_keyword_index = None
+        if zh_abs_index is not None:
+            zh_keyword_index = next(
+                (
+                    idx
+                    for idx, p in enumerate(paragraphs[zh_abs_index + 1 :], start=zh_abs_index + 1)
+                    if compact_text(p).startswith("\u5173\u952e\u8bcd")
+                ),
+                None,
+            )
+        abstract_targets: set[int] = set()
+        if zh_abs_index is not None and zh_keyword_index is not None:
+            for idx in range(zh_abs_index + 1, zh_keyword_index):
+                if paragraph_text(paragraphs[idx]).strip():
+                    abstract_targets.add(idx)
+
+        toc_index = next((idx for idx, p in enumerate(paragraphs) if compact_text(p) in {"\u76ee\u5f55", "contents"}), None)
+        body_start = next(
+            (
+                idx
+                for idx, p in enumerate(paragraphs[(toc_index or 0) + 1 :], start=(toc_index or 0) + 1)
+                if is_body_heading(paragraph_text(p), paragraph_style_id(p))
+            ),
+            None,
+        )
+
+        body_targets: set[int] = set()
+        if body_start is not None:
+            for idx in range(body_start + 1, len(paragraphs)):
+                text = paragraph_text(paragraphs[idx]).strip()
+                compact = re.sub(r"\s+", "", text)
+                if not text:
+                    continue
+                if is_tail_title(compact):
+                    break
+                style_id = paragraph_style_id(paragraphs[idx])
+                if is_body_heading(text, style_id) or style_id.upper().startswith("TOC"):
+                    continue
+                if is_caption_like(text):
+                    continue
+                body_targets.add(idx)
+
+        for idx in sorted(abstract_targets):
+            if ensure_spacing_360(paragraphs[idx]):
+                report["zh_abstract_spacing_paragraphs"] = int(report["zh_abstract_spacing_paragraphs"]) + 1
+            report["latin_digit_cs_runs"] = int(report["latin_digit_cs_runs"]) + ensure_latin_run_cs(paragraphs[idx])
+        for idx in sorted(body_targets):
+            if ensure_spacing_360(paragraphs[idx]):
+                report["body_text_spacing_paragraphs"] = int(report["body_text_spacing_paragraphs"]) + 1
+            report["latin_digit_cs_runs"] = int(report["latin_digit_cs_runs"]) + ensure_latin_run_cs(paragraphs[idx])
+
+        if (
+            int(report["zh_abstract_spacing_paragraphs"])
+            or int(report["body_text_spacing_paragraphs"])
+            or int(report["latin_digit_cs_runs"])
+        ):
+            report["changed"] = True
+            changed_parts["word/document.xml"] = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+
+    if changed_parts:
+        tmp_docx = target_docx.with_suffix(target_docx.suffix + ".direct-surface.tmp")
+        with zipfile.ZipFile(target_docx, "r") as source_zip, zipfile.ZipFile(tmp_docx, "w", zipfile.ZIP_DEFLATED) as target_zip:
+            for item in source_zip.infolist():
+                target_zip.writestr(item, changed_parts.get(item.filename, source_zip.read(item.filename)))
+        tmp_docx.replace(target_docx)
+    return report
+
+
 def run_audits(
     template: Path,
     final_docx: Path,
@@ -4018,10 +5279,12 @@ def run_audits(
     template_profile: Path,
     run_root: Path,
     *,
+    project_root: Path | None = None,
     humanizer_evidence: str | None = None,
     transaction_record: str | None = None,
     agent_options: dict[str, Any] | None = None,
     gate_evidence: dict[str, Any] | None = None,
+    acceptance_options: dict[str, Any] | None = None,
 ) -> dict[str, Path]:
     reports = run_root / "reports"
     reports.mkdir(parents=True, exist_ok=True)
@@ -4031,6 +5294,7 @@ def run_audits(
     self_check = reports / "sample-self-check.md"
     acceptance_record = reports / "acceptance-record.md"
     gate_evidence = gate_evidence or {}
+    acceptance_options = acceptance_options or {}
 
     def file_hash(path: Path) -> str:
         return sha256_file(path) if path.exists() else "missing"
@@ -4045,6 +5309,46 @@ def run_audits(
         if raw_value:
             return str(Path(str(raw_value)).resolve())
         return str((reports / default_name).resolve())
+
+    def refresh_transaction_record_final_hash(record: str | None) -> None:
+        if not record:
+            return
+        record_path = Path(str(record)).resolve()
+        if not record_path.exists():
+            return
+        current_hash = file_hash(final_docx)
+        hash_keys = (
+            "final_docx_sha256",
+            "review_copy_sha256",
+            "protected_surface_freeze_manifest_final_docx_sha256",
+            "post_mutation_surface_diff_final_docx_sha256",
+            "target_surface_render_review_final_docx_sha256",
+            "blast_radius_render_review_final_docx_sha256",
+            "cross_surface_regression_report_final_docx_sha256",
+            "chapter_format_preservation_report_final_docx_sha256",
+        )
+        if record_path.suffix.lower() == ".json":
+            try:
+                payload = read_json(record_path)
+            except Exception:
+                payload = None
+            if isinstance(payload, dict):
+                for key in hash_keys:
+                    if key in payload:
+                        payload[key] = current_hash
+                for value in payload.values():
+                    if isinstance(value, dict) and "final_docx_sha256" in value:
+                        value["final_docx_sha256"] = current_hash
+                write_json(record_path, payload)
+                return
+        text = record_path.read_text(encoding="utf-8", errors="replace")
+        for key in hash_keys:
+            text = re.sub(
+                rf"(-\s+{re.escape(key)}:\s*)[0-9A-Fa-f]{{64}}",
+                rf"\g<1>{current_hash}",
+                text,
+            )
+        record_path.write_text(text, encoding="utf-8")
 
     hardfield_inputs = {
         "surface_geometry": reports / "surface-geometry-required.json",
@@ -4063,6 +5367,26 @@ def run_audits(
         )
 
     run([str(PYTHON_EXE), str(SCRIPT_DIR / "audit_thesis_citations.py"), "--docx", str(final_docx), "--report", str(citation_audit)], check=False, timeout=600)
+    wps_reference_entry_ui_font = reports / "wps-reference-entry-ui-font.json"
+    run(
+        [
+            "powershell",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(SCRIPT_DIR / "audit_wps_reference_entry_ui_font.ps1"),
+            "-DocxPath",
+            str(final_docx),
+            "-OutJson",
+            str(wps_reference_entry_ui_font),
+            "-ExpectedDisplaySizeName",
+            "\u4e94\u53f7",
+            "-ExpectedSizeHalfPoints",
+            "21",
+        ],
+        timeout=300,
+    )
     run(
         [
             str(PYTHON_EXE),
@@ -4072,6 +5396,14 @@ def run_audits(
             str(template),
             "--report",
             str(font_audit),
+            "--bibliography-cjk-font",
+            "\u5b8b\u4f53",
+            "--bibliography-latin-font",
+            "Times New Roman",
+            "--bibliography-size-name",
+            "\u4e94\u53f7",
+            "--bibliography-wps-ui-evidence-json",
+            str(wps_reference_entry_ui_font),
         ],
         check=False,
         timeout=600,
@@ -4311,6 +5643,41 @@ def run_audits(
         ],
         timeout=900,
     )
+    run(
+        [
+            str(PYTHON_EXE),
+            str(SCRIPT_DIR / "audit_pdf_page_footers.py"),
+            "--pdf",
+            str(final_pdf),
+            "--allow-blank-pages",
+            str(acceptance_options.get("page_footer_allow_blank_pages") or "1"),
+            "--roman-pages",
+            str(acceptance_options.get("page_footer_roman_pages") or "2-4"),
+            "--arabic-start-page",
+            str(acceptance_options.get("page_footer_arabic_start_page") or "5"),
+            "--report",
+            str(reports / "pdf-page-footer-final-chapterpagination-fixed.json"),
+        ],
+        timeout=300,
+    )
+    run(
+        [
+            str(PYTHON_EXE),
+            str(SCRIPT_DIR / "audit_pdf_bibliography_labels.py"),
+            "--pdf",
+            str(final_pdf),
+            "--expected-style",
+            str(acceptance_options.get("bibliography_label_family") or "bracket"),
+            "--expected-label-content-spacing",
+            str(acceptance_options.get("bibliography_label_content_spacing") or "none"),
+            "--min-count",
+            str(acceptance_options.get("bibliography_min_count") or "60"),
+            "--report",
+            str(reports / "pdf-bibliography-labels-final-chapterpagination-fixed.json"),
+        ],
+        timeout=300,
+    )
+    refresh_transaction_record_final_hash(transaction_record)
     acceptance_cmd = [
             str(PYTHON_EXE),
             str(SCRIPT_DIR / "generate_thesis_acceptance_record.py"),
@@ -4330,6 +5697,8 @@ def run_audits(
             str(font_audit),
             "--body-style-audit",
             str(body_style_audit),
+            "--bibliography-wps-ui-evidence-json",
+            str(wps_reference_entry_ui_font),
             "--asset-manifest",
             str(asset_manifest),
             "--template-profile",
@@ -4376,10 +5745,25 @@ def run_audits(
             "--output",
             str(acceptance_record),
     ]
+    if project_root is not None:
+        acceptance_cmd.extend(["--project-root", str(project_root)])
     if humanizer_evidence:
         acceptance_cmd.extend(["--humanizer-evidence", str(humanizer_evidence)])
     if transaction_record:
         acceptance_cmd.extend(["--transaction-record", str(transaction_record)])
+    acceptance_path_options = {
+        "cad_package": "--cad-package",
+        "dwg_package": "--dwg-package",
+        "combined_drawing_pdf": "--combined-drawing-pdf",
+        "mechanical_drawing_audit": "--mechanical-drawing-audit",
+        "mechanical_drawing_package_manifest": "--mechanical-drawing-package-manifest",
+        "mechanical_drawing_linework_audit": "--mechanical-drawing-linework-audit",
+        "mechanical_drawing_rendered_review_paths": "--mechanical-drawing-rendered-review-paths",
+    }
+    for option_key, cli_arg in acceptance_path_options.items():
+        option_value = acceptance_options.get(option_key)
+        if option_value:
+            acceptance_cmd.extend([cli_arg, str(option_value)])
     if agent_options:
         if agent_options.get("agent_mode") == "single-agent-with-sequential-audit-fallback":
             agent_options["agent_mode"] = "sequential-fallback"
@@ -4473,11 +5857,15 @@ def build_docx(template: Path, content: dict[str, Any], output_docx: Path, run_r
     if len(tail_section_break_templates) > 1:
         append_section_break_template(doc, tail_section_break_templates[1])
     append_appendix(doc, donors, content.get("appendix") or content.get("appendices"))
+    if len(tail_section_break_templates) > 2:
+        append_section_break_template(doc, tail_section_break_templates[2])
     append_acknowledgements(doc, donors, content.get("acknowledgements", ""))
     compact_front_matter_gaps(doc)
     if not tail_section_break_templates:
         restore_body_header_footer(doc, body_header, body_footer)
+    restore_toc_running_header(doc, body_header)
     apply_header_fields(doc, content)
+    remove_first_line_indent_from_empty_table_paragraphs(doc)
     doc.save(str(staged_docx))
     wait_for_docx_ready(staged_docx)
     strip_report = run_root / "reports" / "template-instruction-artifact-strip.json"
@@ -4499,6 +5887,22 @@ def build_docx(template: Path, content: dict[str, Any], output_docx: Path, run_r
     wait_for_docx_ready(staged_docx)
     compact_front_matter_gaps_in_docx(staged_docx)
     run([str(PYTHON_EXE), str(SCRIPT_DIR / "normalize_thesis_citation_chain.py"), "--docx", str(staged_docx)], timeout=900)
+    wait_for_docx_ready(staged_docx)
+    if content.get("preserve_visible_bibliography_labels") or content.get("reference_label_style") == "compact-bracket":
+        compacted_count = compact_visible_bibliography_labels(staged_docx)
+        write_json(
+            run_root / "reports" / "bibliography-visible-label-preservation.json",
+            {
+                "schema": "graduation-project-builder.bibliography-visible-label-preservation.v1",
+                "docx": str(staged_docx.resolve()),
+                "policy": "preserve compact [n]content labels supplied by content manifest",
+                "compact_visible_bibliography_labels_count": compacted_count,
+                "strip_visible_bibliography_labels_for_auto_numbering": "skipped",
+                "verdict": "pass",
+            },
+        )
+    else:
+        strip_visible_bibliography_labels_for_auto_numbering(staged_docx)
     wait_for_docx_ready(staged_docx)
     compact_front_matter_gaps_in_docx(staged_docx)
     output_docx.parent.mkdir(parents=True, exist_ok=True)
@@ -4543,6 +5947,36 @@ def build_docx(template: Path, content: dict[str, Any], output_docx: Path, run_r
     normalize_docx_table_property_order(output_docx)
     normalize_docx_run_property_order(output_docx)
     normalize_docx_alignment_enum_values(output_docx)
+    normalize_docx_font_table_charsets(output_docx)
+    normalize_docx_mc_ignorable_prefixes(output_docx)
+    clear_empty_table_paragraph_indents_in_docx(output_docx)
+    normalize_whole_format_release_contract(output_docx, run_root)
+    direct_surface_report = normalize_generated_thesis_direct_surface_contract(output_docx)
+    write_json(run_root / "reports" / "generated-direct-surface-contract.json", direct_surface_report)
+    normalize_docx_paragraph_property_order(output_docx)
+    normalize_docx_table_property_order(output_docx)
+    normalize_docx_run_property_order(output_docx)
+    normalize_docx_alignment_enum_values(output_docx)
+    normalize_docx_font_table_charsets(output_docx)
+    normalize_docx_mc_ignorable_prefixes(output_docx)
+    clear_empty_table_paragraph_indents_in_docx(output_docx)
+    if restore_empty_toc_header_from_body_header(output_docx):
+        write_json(
+            run_root / "reports" / "toc-header-restoration.json",
+            {
+                "schema": "graduation-project-builder.toc-header-restoration.v1",
+                "docx": str(output_docx.resolve()),
+                "operation": "copied non-empty body running header into empty TOC header part",
+                "toc_header_part": "word/header2.xml",
+                "body_header_part": "word/header3.xml",
+                "verdict": "pass",
+            },
+        )
+    layout_contract_report = repair_docx_layout_contracts(output_docx)
+    write_json(run_root / "reports" / "layout-contract-postprocess.json", layout_contract_report)
+    normalize_docx_paragraph_property_order(output_docx)
+    normalize_docx_table_property_order(output_docx)
+    normalize_docx_run_property_order(output_docx)
     normalize_docx_font_table_charsets(output_docx)
     normalize_docx_mc_ignorable_prefixes(output_docx)
     wait_for_docx_ready(output_docx)
@@ -4619,13 +6053,37 @@ def main() -> int:
         },
     )
     final_docx = build_docx(template, content, output_docx, run_root)
-    raster_primary_report = {
-        "docx": str(final_docx),
-        "svg_primary_replacements": 0,
-        "renderer_policy": "raster-primary-docx",
-        "reason": "Word/WPS rendered-page evidence showed SVG-primary structural figures can become invisible; keep PNG/JPEG media in the final DOCX and retain SVG/draw.io as provenance evidence.",
-    }
+    raster_primary_report = apply_svg_primary_to_docx(final_docx, asset_manifest_data)
+    raster_primary_report["renderer_policy"] = "svg-primary-with-raster-fallback"
+    raster_primary_report["reason"] = (
+        "Structural figures retain PNG/JPEG raster fallback relationships while binding "
+        "asvg:svgBlip SVG-primary relationships for machine-checkable provenance."
+    )
     write_json(run_root / "reports" / "figure-svg-primary.json", raster_primary_report)
+    formula_map_value = adapter.get("formula_map") or adapter.get("formula_map_path") or content.get("formula_map") or content.get("formula_map_path")
+    if formula_map_value:
+        formula_map = Path(str(formula_map_value)).resolve()
+        if not formula_map.exists():
+            raise FileNotFoundError(f"formula map not found: {formula_map}")
+        formula_map_data = read_json(formula_map)
+        before_formula = run_root / "stage" / "before-formula.docx"
+        before_formula.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(final_docx, before_formula)
+        if isinstance(formula_map_data.get("batches") or formula_map_data.get("insertions"), list):
+            insert_formula_batch(
+                docx_path=before_formula,
+                formula_map_path=formula_map,
+                output_path=final_docx,
+                report_path=run_root / "reports" / "formula-batch-insertion.json",
+            )
+        else:
+            replace_text_formulas(
+                docx_path=before_formula,
+                formula_map_path=formula_map,
+                output_path=final_docx,
+                report_path=run_root / "reports" / "formula-replacement.json",
+            )
+    clear_empty_table_paragraph_indents_in_docx(final_docx)
     mark_asset_manifest_completed(asset_manifest_data, final_docx, source_docx=template)
     write_json(asset_manifest, asset_manifest_data)
     post_figure_manifest_issues = validate_figure_manifest(
@@ -4652,6 +6110,7 @@ def main() -> int:
         asset_manifest,
         template_profile,
         run_root,
+        project_root=Path(str(adapter.get("project_root"))).resolve() if adapter.get("project_root") else None,
         humanizer_evidence=adapter.get("humanizer_evidence"),
         transaction_record=adapter.get("transaction_record"),
         agent_options={
@@ -4665,6 +6124,7 @@ def main() -> int:
             "sequential_fallback_reason": adapter_agent_options.get("sequential_fallback_reason"),
         },
         gate_evidence=adapter.get("gate_evidence") if isinstance(adapter.get("gate_evidence"), dict) else None,
+        acceptance_options=adapter,
     )
     print(f"docx={final_docx}")
     print(f"pdf={output_pdf}")

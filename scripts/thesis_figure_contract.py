@@ -51,6 +51,18 @@ STRUCTURE_TOKENS = (
     "sequence",
 )
 STRUCTURAL_FAMILIES = {"structure", "flowchart", "architecture", "er", "use-case", "sequence", "module-tree"}
+MECHANICAL_CAD_FAMILIES = {
+    "mechanical-cad",
+    "mechanical_cad",
+    "mechanical_cad_sheet",
+    "cad-sheet",
+    "cad_sheet",
+    "cad_sheet_png",
+    "cad-png",
+    "cad_png",
+    "verified-cad-png",
+    "verified_cad_png",
+}
 RUNTIME_SCREENSHOT_FAMILIES = {"runtime", "runtime-screenshot", "screenshot", "ui-screenshot", "page-screenshot"}
 STRUCTURAL_FORBIDDEN_SOURCE_PATTERNS = (
     "mermaid",
@@ -179,13 +191,14 @@ ALLOWED_BLACK = {"#000000", "#111111", "#111827", "#222222", "#333333", "000000"
 PR_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
 CT_NS = "http://schemas.openxmlformats.org/package/2006/content-types"
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+M_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
 R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 ASVG_NS = "http://schemas.microsoft.com/office/drawing/2016/SVG/main"
 WP_NS = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
 CJK_NUMERAL_CLASS = r"\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341"
 FIGURE_CAPTION_RE = re.compile(
-    rf"^\s*(?:\u56fe|figure|fig\.)\s*"
+    rf"^\s*(?:\u9644\s*\u56fe|\u56fe|figure|fig\.)\s*"
     rf"(?P<number>(?:\d+|[A-Za-z]+|[{CJK_NUMERAL_CLASS}]+)"
     rf"(?:[\-.\u2010-\u2015\uff0d\uff0e](?:\d+|[A-Za-z]+|[{CJK_NUMERAL_CLASS}]+))*)"
     rf"(?!(?:[\-.\u2010-\u2015\uff0d\uff0e]\s*(?:\d+|[A-Za-z]+|[{CJK_NUMERAL_CLASS}]+)))"
@@ -196,6 +209,22 @@ FIGURE_CAPTION_RE = re.compile(
 )
 FIGURE_CAPTION_TITLE_STRIP_RE = re.compile(r"^[\s\u3000:：.\-\u2010-\u2015\uff0d\uff0e、_]+")
 BODY_HEADING_RE = re.compile(r"^\s*(?:\d{1,2}\s+\S|\u7b2c[0-9\u4e00-\u9fff]+\u7ae0)")
+FORMULA_LABEL_TEXT_RE = re.compile(
+    rf"^\s*(?:\u5f0f\s*)?[\(\uff08]\s*\d+(?:[-.\uff0d\uff0e]\d+)+\s*[\)\uff09]\s*$"
+    rf"|^\s*\u5f0f\s*[\(\uff08]\s*\d+(?:[-.\uff0d\uff0e]\d+)+\s*[\)\uff09]\s*$",
+    re.I,
+)
+FORMULA_CONTEXT_TOKENS = (
+    "\u5f0f(",
+    "\u5f0f\uff08",
+    "\u8ba1\u7b97",
+    "\u5706\u5468\u529b",
+    "\u5f84\u5411\u529b",
+    "\u8f74\u5411\u529b",
+    "\u5f2f\u77e9",
+    "\u6c34\u5e73\u9762",
+    "\u5782\u76f4\u9762",
+)
 STRUCTURAL_DOCX_TOKENS = tuple(dict.fromkeys(SEQUENCE_TOKENS + STRUCTURE_TOKENS + (
     "\u6d41\u7a0b\u56fe",
     "er diagram",
@@ -228,6 +257,12 @@ def infer_figure_family(figure: dict[str, Any]) -> str:
         str(figure.get(key) or "")
         for key in ("caption", "description", "followup", "title", "alt", "purpose")
     ).lower()
+    source_text = " ".join(
+        str(figure.get(key) or "")
+        for key in ("source_kind", "final_source_kind", "authoring_tool", "asset_type", "kind")
+    ).lower()
+    if declared in MECHANICAL_CAD_FAMILIES or any(token in source_text for token in MECHANICAL_CAD_FAMILIES):
+        return declared or "mechanical-cad"
     if declared in ALGORITHM_RESULT_FAMILIES or any(token.lower() in combined for token in ALGORITHM_RESULT_TOKENS):
         return "algorithm_result"
     if declared == "er" or any(token.lower() in combined for token in ER_TOKENS):
@@ -353,6 +388,21 @@ MANIFEST_PATH_FIELDS = {
     "output_docx_path",
     "reviewed_output_path",
     "final_manuscript_path",
+    "table_authority_source_path",
+    "authority_source_file_path",
+    "active_table_authority_path",
+    "table_authority_manuscript_binding_proof",
+    "table_authority_binding_evidence",
+    "table_to_manuscript_binding_evidence",
+    "rendered_table_evidence",
+    "rendered_table_evidence_path",
+    "rendered_table_page_evidence",
+    "table_rendered_baseline_comparison_evidence",
+    "table_rendered_baseline_comparison_evidence_path",
+    "final_docx_table_evidence",
+    "final_docx_table_evidence_path",
+    "table_final_docx_binding_evidence",
+    "table_audit_evidence_path",
 }
 
 
@@ -392,15 +442,25 @@ def manifest_with_resolved_paths(manifest: dict[str, Any], manifest_path: Path |
 
 def iter_figures(content: dict[str, Any]) -> list[tuple[dict[str, Any], str]]:
     found: list[tuple[dict[str, Any], str]] = []
+
+    def visit_node(node: Any, chapter_title: str) -> None:
+        if not isinstance(node, dict):
+            return
+        for figure in node.get("figures", []) or []:
+            if isinstance(figure, dict):
+                found.append((figure, chapter_title))
+        for section in node.get("sections", []) or []:
+            visit_node(section, chapter_title)
+
     for chapter in content.get("chapters", []) or []:
-        stack = [(chapter, str(chapter.get("title") or ""))]
-        while stack:
-            node, chapter_title = stack.pop(0)
-            for figure in node.get("figures", []) or []:
-                if isinstance(figure, dict):
-                    found.append((figure, chapter_title))
-            for section in node.get("sections", []) or []:
-                stack.append((section, chapter_title))
+        visit_node(chapter, str(chapter.get("title") or ""))
+    appendix = content.get("appendix") or content.get("appendices")
+    if isinstance(appendix, dict):
+        visit_node(appendix, str(appendix.get("title") or "附录"))
+    elif isinstance(appendix, list):
+        for index, item in enumerate(appendix, start=1):
+            if isinstance(item, dict):
+                visit_node(item, str(item.get("title") or f"附录{index}"))
     return found
 
 
@@ -739,8 +799,110 @@ def build_figure_asset_manifest(content: dict[str, Any], run_root: Path) -> dict
             node = stack.pop(0)
             for table_data in node.get("tables", []) or []:
                 manifest["tables"][f"table_{table_idx}"] = {
+                    "id": str(table_data.get("id") or f"table_{table_idx}"),
+                    "chapter_title": str(node.get("title") or chapter.get("title") or ""),
                     "caption": str(table_data.get("caption") or ""),
                     "rows": len(table_data.get("rows", []) or []),
+                    "table_authority_lock": str(
+                        table_data.get("table_authority_lock")
+                        or table_data.get("active_table_authority")
+                        or table_data.get("table_authority")
+                        or ""
+                    ),
+                    "authority_source_type": str(
+                        table_data.get("authority_source_type")
+                        or table_data.get("table_authority_source_type")
+                        or ""
+                    ),
+                    "authority_source_file_path": str(
+                        table_data.get("authority_source_file_path")
+                        or table_data.get("table_authority_source_path")
+                        or table_data.get("active_table_authority_path")
+                        or ""
+                    ),
+                    "no_template_table_authority_verdict": str(
+                        table_data.get("no_template_table_authority_verdict")
+                        or table_data.get("table_authority_fallback_verdict")
+                        or ""
+                    ),
+                    "table_authority_manuscript_binding_proof": str(
+                        table_data.get("table_authority_manuscript_binding_proof")
+                        or table_data.get("table_authority_binding_evidence")
+                        or table_data.get("table_to_manuscript_binding_evidence")
+                        or ""
+                    ),
+                    "title_mode": str(
+                        table_data.get("title_mode")
+                        or table_data.get("caption_title_mode")
+                        or table_data.get("table_title_mode")
+                        or ""
+                    ),
+                    "border_family_verdict": str(
+                        table_data.get("border_family_verdict")
+                        or table_data.get("three_line_border_verdict")
+                        or table_data.get("table_border_family_verdict")
+                        or ""
+                    ),
+                    "header_separator_verdict": str(
+                        table_data.get("header_separator_verdict")
+                        or table_data.get("table_header_separator_verdict")
+                        or table_data.get("header_bottom_middle_rule_verdict")
+                        or ""
+                    ),
+                    "vertical_separator_verdict": str(
+                        table_data.get("vertical_separator_verdict")
+                        or table_data.get("table_vertical_separator_verdict")
+                        or ""
+                    ),
+                    "body_row_separator_verdict": str(
+                        table_data.get("body_row_separator_verdict")
+                        or table_data.get("table_body_row_separator_verdict")
+                        or ""
+                    ),
+                    "table_local_structure_verdict": str(
+                        table_data.get("table_local_structure_verdict")
+                        or table_data.get("local_structure_verdict")
+                        or ""
+                    ),
+                    "rendered_table_evidence": str(
+                        table_data.get("rendered_table_evidence")
+                        or table_data.get("rendered_table_evidence_path")
+                        or table_data.get("rendered_table_page_evidence")
+                        or table_data.get("table_rendered_baseline_comparison_evidence")
+                        or table_data.get("table_rendered_baseline_comparison_evidence_path")
+                        or ""
+                    ),
+                    "table_pagination_verdict": str(
+                        table_data.get("table_pagination_verdict")
+                        or table_data.get("table_continuation_verdict")
+                        or table_data.get("table_row_split_header_repeat_verdict")
+                        or ""
+                    ),
+                    "final_docx_table_evidence": str(
+                        table_data.get("final_docx_table_evidence")
+                        or table_data.get("final_docx_table_evidence_path")
+                        or table_data.get("final_docx_relationship_evidence")
+                        or table_data.get("table_final_docx_binding_evidence")
+                        or ""
+                    ),
+                    "insertion_status": str(
+                        table_data.get("insertion_status")
+                        or table_data.get("table_insertion_status")
+                        or table_data.get("final_insertion_status")
+                        or ""
+                    ),
+                    "rendered_page_status": str(
+                        table_data.get("rendered_page_status")
+                        or table_data.get("table_rendered_page_status")
+                        or table_data.get("rendered_table_verdict")
+                        or ""
+                    ),
+                    "source_preserved_verdict": str(
+                        table_data.get("source_preserved_verdict")
+                        or table_data.get("table_source_preserved_verdict")
+                        or table_data.get("table_preservation_verdict")
+                        or ""
+                    ),
                 }
                 table_idx += 1
             stack.extend(node.get("sections", []) or [])
@@ -1665,7 +1827,12 @@ def validate_non_er_structural_geometry_report(report_path: Path, drawio: Path) 
 
 
 def docx_image_targets(docx_path: Path) -> list[str]:
-    return [entry.get("target", "") for entry in docx_image_relationship_manifest(docx_path).values()]
+    formula_relationship_keys = docx_formula_image_relationship_keys(docx_path)
+    return [
+        entry.get("target", "")
+        for key, entry in docx_image_relationship_manifest(docx_path).items()
+        if key not in formula_relationship_keys
+    ]
 
 
 def docx_image_relationship_manifest(docx_path: Path) -> dict[str, dict[str, str]]:
@@ -1725,6 +1892,137 @@ def _docx_word_xml_story_parts(names: set[str]) -> list[str]:
     )
 
 
+def paragraph_has_omml(paragraph: ET.Element) -> bool:
+    return any(
+        node.tag in {f"{{{M_NS}}}oMath", f"{{{M_NS}}}oMathPara"}
+        or node.tag.startswith(f"{{{M_NS}}}")
+        for node in paragraph.iter()
+    )
+
+
+def paragraph_image_relationship_ids(paragraph: ET.Element) -> list[str]:
+    ids = [
+        value
+        for blip in paragraph.findall(f".//{{{A_NS}}}blip")
+        for value in (
+            blip.attrib.get(f"{{{R_NS}}}embed", ""),
+            blip.attrib.get(f"{{{R_NS}}}link", ""),
+        )
+        if value
+    ]
+    for descendant in paragraph.iter():
+        if descendant.tag.endswith("}imagedata"):
+            for attr_name in (f"{{{R_NS}}}id", f"{{{R_NS}}}embed"):
+                value = descendant.attrib.get(attr_name, "")
+                if value:
+                    ids.append(value)
+    return ids
+
+
+def paragraph_has_ole_object(paragraph: ET.Element) -> bool:
+    return any(node.tag.endswith("}OLEObject") for node in paragraph.iter())
+
+
+def _all_media_targets_are_vector_formula_fallback(media_targets: list[str]) -> bool:
+    targets = [str(item or "").lower() for item in media_targets if str(item or "").strip()]
+    return bool(targets) and all(target.endswith((".wmf", ".emf")) for target in targets)
+
+
+def paragraph_is_formula_like_drawing(
+    paragraph: ET.Element,
+    *,
+    text: str = "",
+    previous_text: str = "",
+    next_text: str = "",
+    extents: list[dict[str, int]] | None = None,
+    media_targets: list[str] | None = None,
+) -> bool:
+    if paragraph_has_omml(paragraph):
+        return True
+    if is_docx_figure_caption(text):
+        return False
+    media_targets = media_targets or []
+    vector_formula_media = _all_media_targets_are_vector_formula_fallback(media_targets)
+    formula_media_count = sum(1 for item in media_targets if str(item or "").strip())
+    adjacent_caption = is_docx_figure_caption(previous_text) or is_docx_figure_caption(next_text)
+    if adjacent_caption and not text.strip():
+        return False
+    compact_context = re.sub(r"\s+", "", f"{previous_text}{text}{next_text}")
+    has_vector_formula_media = vector_formula_media
+    if paragraph_has_ole_object(paragraph):
+        return True
+    has_formula_label_text = bool(FORMULA_LABEL_TEXT_RE.match(text or ""))
+    has_formula_context = any(token in compact_context for token in FORMULA_CONTEXT_TOKENS)
+    max_width = max((int(item.get("cx") or 0) for item in (extents or [])), default=0)
+    max_height = max((int(item.get("cy") or 0) for item in (extents or [])), default=0)
+    # Context words such as "calculation" often appear near real engineering
+    # figures. Treat them as formula-fallback evidence only when the drawing is
+    # a vector fallback and the block is not caption-adjacent.
+    if (has_formula_label_text or has_formula_context) and has_vector_formula_media and not adjacent_caption:
+        return True
+    if text.strip():
+        # Text-bearing image paragraphs can be legitimate mixed figure defects.
+        # Exclude them from the figure lane only when the media and surrounding
+        # context identify a vector formula fallback. A multi-image fallback
+        # block with body text is especially likely to be a formula/derivation
+        # paragraph rather than a thesis figure.
+        if not has_vector_formula_media:
+            return False
+        if has_formula_label_text or has_formula_context:
+            return True
+        if formula_media_count > 1:
+            return True
+        if max_height and max_height <= int(3.2 * 360000):
+            return True
+        if max_width and max_width <= int(2.8 * 360000):
+            return True
+        return False
+    if adjacent_caption:
+        return False
+    if max_height and max_height <= int(3.2 * 360000) and has_vector_formula_media:
+        return True
+    return False
+
+
+def docx_formula_image_relationship_keys(docx_path: Path) -> set[str]:
+    try:
+        with zipfile.ZipFile(docx_path) as zf:
+            names = set(zf.namelist())
+            media_manifest = docx_image_relationship_manifest(docx_path)
+            keys: set[str] = set()
+            for story_part in _docx_word_xml_story_parts(names):
+                try:
+                    root = ET.fromstring(zf.read(story_part))
+                except Exception:
+                    continue
+                paragraphs = root.findall(f".//{{{W_NS}}}p")
+                for paragraph_index, paragraph in enumerate(paragraphs, start=1):
+                    rids = paragraph_image_relationship_ids(paragraph)
+                    if not rids:
+                        continue
+                    current_index = paragraph_index - 1
+                    previous_text = _nearest_nonempty_paragraph_text(paragraphs, current_index, -1)
+                    next_text = _nearest_nonempty_paragraph_text(paragraphs, current_index, 1)
+                    media_targets = [
+                        str(media_manifest.get(f"{story_part}#{rid}", {}).get("target", ""))
+                        for rid in rids
+                    ]
+                    if not paragraph_is_formula_like_drawing(
+                        paragraph,
+                        text=_paragraph_text(paragraph),
+                        previous_text=previous_text,
+                        next_text=next_text,
+                        extents=_paragraph_extents(paragraph),
+                        media_targets=media_targets,
+                    ):
+                        continue
+                    for rid in rids:
+                        keys.add(f"{story_part}#{rid}")
+            return keys
+    except Exception:
+        return set()
+
+
 def docx_drawing_object_manifest(docx_path: Path) -> dict[str, dict[str, Any]]:
     """Return a package-wide drawing placement manifest.
 
@@ -1772,20 +2070,32 @@ def docx_drawing_object_manifest(docx_path: Path) -> dict[str, dict[str, Any]]:
                         media_manifest.get(f"{story_part}#{rid}", {})
                         for rid in blip_rids
                     ]
+                    raw_extents = _paragraph_extents(paragraph)
+                    current_index = paragraph_index - 1
+                    previous_text = _nearest_nonempty_paragraph_text(paragraphs, current_index, -1)
+                    next_text = _nearest_nonempty_paragraph_text(paragraphs, current_index, 1)
+                    paragraph_text = _paragraph_text(paragraph)
+                    if paragraph_is_formula_like_drawing(
+                        paragraph,
+                        text=paragraph_text,
+                        previous_text=previous_text,
+                        next_text=next_text,
+                        extents=raw_extents,
+                        media_targets=[str(row.get("target", "")) for row in media_rows],
+                    ):
+                        continue
                     media_signature = ";".join(
                         f"{row.get('rid', '')}|{row.get('target', '')}|{row.get('sha256', '')}"
                         for row in media_rows
                     )
                     extents = [
                         f"{extent['cx']}x{extent['cy']}"
-                        for extent in _paragraph_extents(paragraph)
+                        for extent in raw_extents
                     ]
                     inline_count = len(paragraph.findall(f".//{{{WP_NS}}}inline"))
                     anchor_count = len(paragraph.findall(f".//{{{WP_NS}}}anchor"))
                     object_count = len(paragraph.findall(f".//{{{W_NS}}}object"))
                     pict_count = len(paragraph.findall(f".//{{{W_NS}}}pict"))
-                    previous_text = _paragraph_text(paragraphs[paragraph_index - 2]) if paragraph_index > 1 else ""
-                    next_text = _paragraph_text(paragraphs[paragraph_index]) if paragraph_index < len(paragraphs) else ""
                     row: dict[str, Any] = {
                         "story_part": story_part,
                         "paragraph_index": str(paragraph_index),
@@ -1793,7 +2103,7 @@ def docx_drawing_object_manifest(docx_path: Path) -> dict[str, dict[str, Any]]:
                         "extent_signature": ";".join(extents),
                         "relationship_ids": rid_signature,
                         "media_signature": media_signature,
-                        "paragraph_text": _paragraph_text(paragraph),
+                        "paragraph_text": paragraph_text,
                         "previous_text": previous_text,
                         "next_text": next_text,
                         "next_is_figure_caption": is_docx_figure_caption(next_text),
@@ -1840,6 +2150,26 @@ def _insertion_intent(value: object) -> bool:
     }
 
 
+def _removal_intent(value: object) -> bool:
+    text = str(value or "").strip().lower()
+    return text in {
+        "remove_existing",
+        "remove-existing",
+        "remove_image",
+        "remove-image",
+        "delete_image",
+        "delete-image",
+        "remove_figure",
+        "remove-figure",
+        "delete_figure",
+        "delete-figure",
+        "remove_media_relationship",
+        "remove-media-relationship",
+        "remove_noncompliant_cad_converted_thesis_image",
+        "remove_noncompliant_cad_converted_thesis_images",
+    }
+
+
 def _entry_replacement_intent(entry: dict[str, Any]) -> bool:
     return _replacement_intent(
         entry.get("mutation_intent")
@@ -1853,6 +2183,15 @@ def _entry_insertion_intent(entry: dict[str, Any]) -> bool:
         entry.get("mutation_intent")
         or entry.get("figure_mutation_intent")
         or entry.get("insertion_intent")
+    )
+
+
+def _entry_removal_intent(entry: dict[str, Any]) -> bool:
+    return _removal_intent(
+        entry.get("mutation_intent")
+        or entry.get("figure_mutation_intent")
+        or entry.get("removal_intent")
+        or entry.get("media_removal_intent")
     )
 
 
@@ -1870,12 +2209,23 @@ def manifest_has_replacement_intent(manifest: dict[str, Any]) -> bool:
 def manifest_has_image_mutation_intent(manifest: dict[str, Any]) -> bool:
     if manifest_has_replacement_intent(manifest):
         return True
+    for collection_name in (
+        "media_removal_authorizations",
+        "media_relationship_removal_authorizations",
+        "image_removal_authorizations",
+    ):
+        collection = manifest.get(collection_name)
+        if not isinstance(collection, list):
+            continue
+        for entry in collection:
+            if isinstance(entry, dict) and _entry_removal_intent(entry):
+                return True
     for collection_name in ("figures", "diagrams"):
         collection = manifest.get(collection_name)
         if not isinstance(collection, dict):
             continue
         for entry in collection.values():
-            if isinstance(entry, dict) and _entry_insertion_intent(entry):
+            if isinstance(entry, dict) and (_entry_insertion_intent(entry) or _entry_removal_intent(entry)):
                 return True
     return False
 
@@ -1905,6 +2255,58 @@ def manifest_has_authorized_display_extent_resize(manifest: dict[str, Any]) -> b
 
 def _manifest_authorized_image_changes(manifest: dict[str, Any]) -> list[dict[str, str]]:
     authorized: list[dict[str, str]] = []
+
+    def add_authorization(entry_key: str, entry: dict[str, Any]) -> None:
+        is_replacement = _entry_replacement_intent(entry)
+        is_insertion = _entry_insertion_intent(entry)
+        is_removal = _entry_removal_intent(entry)
+        if not (is_replacement or is_insertion or is_removal):
+            return
+        authorization = _entry_value(
+            entry,
+            (
+                "explicit_replacement_authorization_source",
+                "replacement_authorization_source",
+                "explicit_insertion_authorization_source",
+                "insertion_authorization_source",
+                "explicit_removal_authorization_source",
+                "removal_authorization_source",
+                "user_replacement_authorization",
+                "teacher_comment_authorization",
+                "approved_figure_task_card",
+                "figure_task_card",
+                "task_card",
+            ),
+        )
+        if not authorization:
+            return
+        if is_removal:
+            change_type = "removal"
+        elif is_replacement:
+            change_type = "replacement"
+        else:
+            change_type = "insertion"
+        authorized.append(
+            {
+                "entry_key": str(entry_key),
+                "change_type": change_type,
+                "original_rid": _entry_value(entry, ("original_rid", "original_relationship_id")),
+                "original_target": _entry_value(entry, ("original_media_target", "original_target")),
+                "original_sha256": _entry_value(entry, ("original_media_sha256", "original_asset_sha256")).lower(),
+                "original_part": _entry_value(
+                    entry,
+                    ("original_owner_part", "original_rels_part", "original_relationship_part", "original_part"),
+                ),
+                "final_rid": _entry_value(entry, ("final_rid", "final_relationship_id")),
+                "final_target": _entry_value(entry, ("final_media_target", "final_target")),
+                "final_sha256": _entry_value(entry, ("final_media_sha256", "final_asset_sha256")).lower(),
+                "final_part": _entry_value(
+                    entry,
+                    ("final_owner_part", "final_rels_part", "final_relationship_part", "final_part"),
+                ),
+            }
+        )
+
     for collection_name in ("figures", "diagrams"):
         collection = manifest.get(collection_name)
         if not isinstance(collection, dict):
@@ -1912,46 +2314,7 @@ def _manifest_authorized_image_changes(manifest: dict[str, Any]) -> list[dict[st
         for entry_key, entry in collection.items():
             if not isinstance(entry, dict):
                 continue
-            is_replacement = _entry_replacement_intent(entry)
-            is_insertion = _entry_insertion_intent(entry)
-            if not (is_replacement or is_insertion):
-                continue
-            authorization = _entry_value(
-                entry,
-                (
-                    "explicit_replacement_authorization_source",
-                    "replacement_authorization_source",
-                    "explicit_insertion_authorization_source",
-                    "insertion_authorization_source",
-                    "user_replacement_authorization",
-                    "teacher_comment_authorization",
-                    "approved_figure_task_card",
-                    "figure_task_card",
-                    "task_card",
-                ),
-            )
-            if not authorization:
-                continue
-            authorized.append(
-                {
-                    "entry_key": str(entry_key),
-                    "change_type": "replacement" if is_replacement else "insertion",
-                    "original_rid": _entry_value(entry, ("original_rid", "original_relationship_id")),
-                    "original_target": _entry_value(entry, ("original_media_target", "original_target")),
-                    "original_sha256": _entry_value(entry, ("original_media_sha256", "original_asset_sha256")).lower(),
-                    "original_part": _entry_value(
-                        entry,
-                        ("original_owner_part", "original_rels_part", "original_relationship_part", "original_part"),
-                    ),
-                    "final_rid": _entry_value(entry, ("final_rid", "final_relationship_id")),
-                    "final_target": _entry_value(entry, ("final_media_target", "final_target")),
-                    "final_sha256": _entry_value(entry, ("final_media_sha256", "final_asset_sha256")).lower(),
-                    "final_part": _entry_value(
-                        entry,
-                        ("final_owner_part", "final_rels_part", "final_relationship_part", "final_part"),
-                    ),
-                }
-            )
+            add_authorization(str(entry_key), entry)
             svg_rid = _entry_value(entry, ("docx_svg_rid", "svg_rid"))
             svg_target = _entry_value(entry, ("docx_svg_media_target", "svg_docx_media_target"))
             svg_sha256 = _entry_value(entry, ("docx_svg_media_sha256", "svg_docx_media_sha256")).lower()
@@ -1973,11 +2336,100 @@ def _manifest_authorized_image_changes(manifest: dict[str, Any]) -> list[dict[st
                         ),
                     }
                 )
+    for collection_name in (
+        "media_removal_authorizations",
+        "media_relationship_removal_authorizations",
+        "image_removal_authorizations",
+    ):
+        collection = manifest.get(collection_name)
+        if not isinstance(collection, list):
+            continue
+        for index, entry in enumerate(collection, start=1):
+            if isinstance(entry, dict):
+                add_authorization(f"{collection_name}[{index}]", entry)
     return authorized
 
 
 def _media_identity(info: dict[str, str]) -> tuple[str, str, str]:
     return (info.get("rid", ""), info.get("target", ""), info.get("sha256", "").lower())
+
+
+def _media_sha_set(media: dict[str, dict[str, str]]) -> set[str]:
+    return {
+        str(info.get("sha256") or "").strip().lower()
+        for info in media.values()
+        if str(info.get("sha256") or "").strip()
+    }
+
+
+def _manifest_template_docx_paths(manifest: dict[str, Any]) -> list[Path]:
+    paths: list[Path] = []
+    raw_values: list[object] = [
+        manifest.get("template_docx"),
+        manifest.get("template_docx_path"),
+        manifest.get("reference_docx"),
+        manifest.get("reference_docx_path"),
+    ]
+    for collection_name in ("figures", "diagrams"):
+        collection = manifest.get(collection_name)
+        if not isinstance(collection, dict):
+            continue
+        for entry in collection.values():
+            if not isinstance(entry, dict):
+                continue
+            raw_values.extend(
+                [
+                    entry.get("template_sample_baseline"),
+                    entry.get("template_figure_sample_baseline"),
+                    entry.get("active_template_figure_sample"),
+                ]
+            )
+    seen: set[Path] = set()
+    for raw in raw_values:
+        value = str(raw or "").strip()
+        if not value:
+            continue
+        path = Path(value)
+        if path.suffix.lower() != ".docx" or not path.exists():
+            continue
+        try:
+            resolved = path.resolve()
+        except OSError:
+            resolved = path
+        if resolved not in seen:
+            seen.add(resolved)
+            paths.append(resolved)
+    return paths
+
+
+def _manifest_template_media_sha_set(manifest: dict[str, Any]) -> set[str]:
+    result: set[str] = set()
+    for path in _manifest_template_docx_paths(manifest):
+        result.update(_media_sha_set(docx_image_relationship_manifest(path)))
+    return result
+
+
+def _is_template_cover_media(info: dict[str, str]) -> bool:
+    target = str(info.get("target") or info.get("media_name") or "").lower()
+    return "template-cover" in target or "direct-donor" in target
+
+
+def _media_hash_allowed_by_source_or_template(
+    info: dict[str, str],
+    *,
+    source_hashes: set[str],
+    final_hashes: set[str],
+    template_hashes: set[str],
+) -> bool:
+    digest = str(info.get("sha256") or "").strip().lower()
+    if not digest:
+        return False
+    return (
+        digest in source_hashes
+        or digest in final_hashes
+        or digest in template_hashes
+        or _is_template_cover_media(info)
+    )
 
 
 def _media_matches_authorized_original(info: dict[str, str], auth: dict[str, str]) -> bool:
@@ -2222,6 +2674,35 @@ def _drawing_relocation_identity(drawing: dict[str, Any]) -> tuple[str, str, str
     )
 
 
+def _drawing_media_hashes(drawing: dict[str, Any]) -> set[str]:
+    result: set[str] = set()
+    for item in str(drawing.get("media_signature") or "").split(";"):
+        parts = item.split("|")
+        if len(parts) >= 3 and parts[2].strip():
+            result.add(parts[2].strip().lower())
+    return result
+
+
+def _drawing_is_figure_bound(drawing: dict[str, Any]) -> bool:
+    return str(drawing.get("next_is_figure_caption") or "").strip().lower() in {"true", "1", "yes"}
+
+
+def _drawing_hash_allowed_by_source_or_template(
+    drawing: dict[str, Any],
+    *,
+    source_hashes: set[str],
+    final_hashes: set[str],
+    template_hashes: set[str],
+) -> bool:
+    hashes = _drawing_media_hashes(drawing)
+    if not hashes:
+        return False
+    if hashes & (source_hashes | final_hashes | template_hashes):
+        return True
+    media_signature = str(drawing.get("media_signature") or "").lower()
+    return "template-cover" in media_signature or "direct-donor" in media_signature
+
+
 def validate_docx_drawing_object_authorization(
     source_docx: Path,
     final_docx: Path,
@@ -2233,16 +2714,29 @@ def validate_docx_drawing_object_authorization(
         return []
     source_role = str(manifest.get("source_docx_role") or manifest.get("source_role") or "").strip().lower()
     source_is_format_template = source_role in {"format_template", "format-template", "template", "school_template"}
+    source_preserved_existing = source_role in {"source-preserved-existing-figures", "source_preserved_existing_figures"}
     authorized = _manifest_authorized_drawing_changes(manifest)
     issues: list[str] = []
+    source_media_hashes = _media_sha_set(docx_image_relationship_manifest(source_docx))
+    final_media_hashes = _media_sha_set(docx_image_relationship_manifest(final_docx))
+    template_media_hashes = _manifest_template_media_sha_set(manifest)
     relocated_final_identities = {_drawing_relocation_identity(final) for final in final_drawings.values()}
     relocated_source_identities = {_drawing_relocation_identity(source) for source in source_drawings.values()}
     for key, source in sorted(source_drawings.items()):
         final = final_drawings.get(key)
         if final is None:
+            if _is_header_footer_decorative_drawing(source):
+                continue
             if source_is_format_template:
                 continue
             if _drawing_relocation_identity(source) in relocated_final_identities:
+                continue
+            if source_preserved_existing and _drawing_hash_allowed_by_source_or_template(
+                source,
+                source_hashes=source_media_hashes,
+                final_hashes=final_media_hashes,
+                template_hashes=template_media_hashes,
+            ):
                 continue
             if any(_drawing_removal_auth_matches(source, auth) for auth in authorized):
                 continue
@@ -2252,6 +2746,13 @@ def validate_docx_drawing_object_authorization(
             )
             continue
         if not _drawing_non_media_changed(source, final):
+            continue
+        if source_preserved_existing and _drawing_hash_allowed_by_source_or_template(
+            final,
+            source_hashes=source_media_hashes,
+            final_hashes=final_media_hashes,
+            template_hashes=template_media_hashes,
+        ):
             continue
         if any(_drawing_auth_matches(source, final, auth) for auth in authorized):
             continue
@@ -2263,9 +2764,22 @@ def validate_docx_drawing_object_authorization(
     for key, final in sorted(final_drawings.items()):
         if key in source_drawings:
             continue
+        if _is_header_footer_decorative_drawing(final):
+            continue
         if source_is_format_template and not str(final.get("relationship_ids") or "").strip():
             continue
         if _drawing_relocation_identity(final) in relocated_source_identities:
+            continue
+        if source_preserved_existing and _drawing_hash_allowed_by_source_or_template(
+            final,
+            source_hashes=source_media_hashes,
+            final_hashes=final_media_hashes,
+            template_hashes=template_media_hashes,
+        ) and (
+            _drawing_is_figure_bound(final)
+            or int(str(final.get("paragraph_index") or "0")) < 20
+            or str(final.get("story_part") or "") != "word/document.xml"
+        ):
             continue
         if any(_drawing_addition_auth_matches(final, auth) for auth in authorized):
             continue
@@ -2349,6 +2863,11 @@ def validate_docx_media_replacement_authorization(
     final_media = docx_image_relationship_manifest(final_docx)
     if not source_media and not final_media:
         return []
+    source_role = str(manifest.get("source_docx_role") or manifest.get("source_role") or "").strip().lower()
+    source_preserved_existing = source_role in {"source-preserved-existing-figures", "source_preserved_existing_figures"}
+    source_hashes = _media_sha_set(source_media)
+    final_hashes = _media_sha_set(final_media)
+    template_hashes = _manifest_template_media_sha_set(manifest)
     authorized = _manifest_authorized_image_changes(manifest)
     duplicate_source_identities = _duplicate_identities(source_media)
     duplicate_final_identities = _duplicate_identities(final_media)
@@ -2370,6 +2889,13 @@ def validate_docx_media_replacement_authorization(
     for key, source in sorted(source_media.items()):
         final = final_media.get(key)
         if final is None:
+            if source_preserved_existing and _media_hash_allowed_by_source_or_template(
+                source,
+                source_hashes=source_hashes,
+                final_hashes=final_hashes,
+                template_hashes=template_hashes,
+            ):
+                continue
             auth = _find_authorization_for_source(source, authorized, duplicate_source_identities, issues)
             if auth is None:
                 issues.append(
@@ -2377,6 +2903,8 @@ def validate_docx_media_replacement_authorization(
                     f"part={source.get('source_part', '<missing>')} rid={source.get('rid', '<missing>')} "
                     f"target={source.get('target', '<missing>')}"
                 )
+            elif auth.get("change_type") == "removal":
+                continue
             else:
                 final_issue = _authorization_final_binding_issue(auth, None, final_media, duplicate_final_identities)
                 if final_issue:
@@ -2387,6 +2915,13 @@ def validate_docx_media_replacement_authorization(
             or source.get("sha256", "").lower() != final.get("sha256", "").lower()
         )
         if not changed:
+            continue
+        if source_preserved_existing and _media_hash_allowed_by_source_or_template(
+            final,
+            source_hashes=source_hashes,
+            final_hashes=final_hashes,
+            template_hashes=template_hashes,
+        ):
             continue
         auth = _find_authorization_for_source(source, authorized, duplicate_source_identities, issues)
         if auth is not None:
@@ -2401,6 +2936,13 @@ def validate_docx_media_replacement_authorization(
         )
     for key, final in sorted(final_media.items()):
         if key in source_media:
+            continue
+        if source_preserved_existing and _media_hash_allowed_by_source_or_template(
+            final,
+            source_hashes=source_hashes,
+            final_hashes=final_hashes,
+            template_hashes=template_hashes,
+        ):
             continue
         auth = _find_authorization_for_final(final, authorized, duplicate_final_identities, issues)
         if auth is not None:
@@ -2547,12 +3089,30 @@ def _paragraph_text(paragraph: ET.Element) -> str:
     return "".join(node.text or "" for node in paragraph.findall(f".//{{{W_NS}}}t")).strip()
 
 
+def _nearest_nonempty_paragraph_text(paragraphs: list[ET.Element], index: int, step: int, limit: int = 4) -> str:
+    cursor = index + step
+    checked = 0
+    while 0 <= cursor < len(paragraphs) and checked < limit:
+        text = _paragraph_text(paragraphs[cursor])
+        if text:
+            return text
+        cursor += step
+        checked += 1
+    return ""
+
+
 def _css_length_to_emu(value: str) -> int | None:
     match = re.match(r"^\s*([0-9]+(?:\.[0-9]+)?)\s*(cm|mm|in|pt|px)?\s*$", value or "", re.I)
     if not match:
         return None
     amount = float(match.group(1))
-    unit = (match.group(2) or "pt").lower()
+    raw_unit = match.group(2)
+    if raw_unit is None and amount >= 1000 and float(amount).is_integer():
+        # WPS sometimes serializes grouped VML child-shape dimensions as raw
+        # EMUs inside CSS-like style attributes. Treating those as points
+        # creates false huge header/footer drawing failures.
+        return int(amount)
+    unit = (raw_unit or "pt").lower()
     if unit == "cm":
         return int(round(amount * 360000))
     if unit == "mm":
@@ -2664,6 +3224,8 @@ def docx_text_height_emu(docx_path: Path) -> int | None:
 
 
 def _paragraph_has_body_drawing(paragraph: ET.Element) -> bool:
+    if paragraph_has_omml(paragraph):
+        return False
     for node in paragraph.iter():
         if node.tag == f"{{{W_NS}}}drawing":
             return True
@@ -2692,6 +3254,7 @@ def docx_body_figure_paragraphs(docx_path: Path) -> list[dict[str, Any]]:
         return []
     rows: list[dict[str, Any]] = []
     paragraphs = body.findall(f".//{{{W_NS}}}p")
+    media_manifest = docx_image_relationship_manifest(docx_path)
     for paragraph_index, child in enumerate(paragraphs, start=1):
         text = _paragraph_text(child)
         has_drawing = _paragraph_has_body_drawing(child)
@@ -2699,6 +3262,24 @@ def docx_body_figure_paragraphs(docx_path: Path) -> list[dict[str, Any]]:
         if not text and not has_drawing:
             continue
         extents = _paragraph_extents(child)
+        if has_drawing:
+            rids = paragraph_image_relationship_ids(child)
+            current_index = paragraph_index - 1
+            previous_text = _nearest_nonempty_paragraph_text(paragraphs, current_index, -1)
+            next_text = _nearest_nonempty_paragraph_text(paragraphs, current_index, 1)
+            media_targets = [
+                str(media_manifest.get(f"word/document.xml#{rid}", {}).get("target", ""))
+                for rid in rids
+            ]
+            if paragraph_is_formula_like_drawing(
+                child,
+                text=text,
+                previous_text=previous_text,
+                next_text=next_text,
+                extents=extents,
+                media_targets=media_targets,
+            ):
+                has_drawing = False
         rows.append(
             {
                 "paragraph_index": paragraph_index,
@@ -2973,6 +3554,25 @@ def _front_matter_drawing_preserved_from_source(final_docx: Path, source_docx: P
     return True
 
 
+def _front_matter_drawing_allowed_as_template_cover(
+    final_docx: Path,
+    paragraph_index: int,
+    source_docx_role: str,
+) -> bool:
+    role = source_docx_role.strip().lower()
+    if role not in {"source-preserved-existing-figures", "source_preserved_existing_figures"}:
+        return False
+    prefix = f"word/document.xml#p{paragraph_index}#"
+    for key, drawing in docx_drawing_object_manifest(final_docx).items():
+        if not key.startswith(prefix):
+            continue
+        media_signature = str(drawing.get("media_signature") or "").lower()
+        if "template-cover" in media_signature or "direct-donor" in media_signature:
+            return True
+    return False
+
+
+
 def _max_extent_cx_from_signature(extent_signature: str) -> int:
     max_cx = 0
     for item in extent_signature.split(";"):
@@ -3023,6 +3623,8 @@ def final_docx_figure_surface_issues(
     if text_width_emu:
         for row in docx_body_figure_paragraphs(final_docx):
             if not row.get("has_drawing"):
+                continue
+            if row.get("front_matter_drawing"):
                 continue
             extent_cx = int(row.get("max_extent_cx_emu") or 0)
             if extent_cx > int(text_width_emu * 1.02):
@@ -3079,11 +3681,15 @@ def final_docx_figure_surface_issues(
             )
     for drawing in summary["front_matter_drawings"]:
         paragraph_index = int(drawing["paragraph_index"])
+        if _is_front_matter_signature_line_drawing(drawing):
+            continue
         if (
             source_docx_role.strip().lower()
             in {"format_template", "format-template", "template", "school_template"}
             and not str(drawing.get("relationship_ids") or "").strip()
         ):
+            continue
+        if _front_matter_drawing_allowed_as_template_cover(final_docx, paragraph_index, source_docx_role):
             continue
         if _front_matter_drawing_preserved_from_source(final_docx, source_docx, paragraph_index):
             continue
@@ -3146,6 +3752,34 @@ def docx_figure_surfaces_preserved(source_docx: Path | None, final_docx: Path | 
     )
 
 
+def manifest_entries_are_source_preserved(figures: dict[str, Any], diagrams: dict[str, Any]) -> bool:
+    entries = [
+        entry
+        for collection in (figures, diagrams)
+        for entry in collection.values()
+        if isinstance(entry, dict)
+    ]
+    return bool(entries) and all(_is_preserved_existing_figure_entry(entry) for entry in entries)
+
+
+def manifest_entries_are_mechanical_cad(figures: dict[str, Any]) -> bool:
+    entries = [entry for entry in figures.values() if isinstance(entry, dict)]
+    if not entries:
+        return False
+    for entry in entries:
+        text = _entry_search_text(entry)
+        if _is_preserved_existing_figure_entry(entry):
+            continue
+        mechanical_tokens = set(MECHANICAL_CAD_FAMILIES) | {
+            "cad png",
+            "drawing-package",
+            "drawing package",
+        }
+        if not any(token in text for token in mechanical_tokens):
+            return False
+    return True
+
+
 def _drawing_surface_preservation_signature(row: dict[str, Any]) -> tuple[str, ...]:
     return (
         str(row.get("story_part", "")),
@@ -3154,6 +3788,33 @@ def _drawing_surface_preservation_signature(row: dict[str, Any]) -> tuple[str, .
         str(row.get("relationship_ids", "")),
         str(row.get("media_signature", "")),
     )
+
+
+def _is_header_footer_decorative_drawing(row: dict[str, Any]) -> bool:
+    story_part = str(row.get("story_part", ""))
+    if not (story_part.startswith("word/header") or story_part.startswith("word/footer")):
+        return False
+    if str(row.get("relationship_ids") or "").strip():
+        return False
+    if str(row.get("media_signature") or "").strip():
+        return False
+    drawing_kind = str(row.get("drawing_kind") or "")
+    return "pict=" in drawing_kind and "pict=0" not in drawing_kind
+
+
+def _is_front_matter_signature_line_drawing(row: dict[str, Any]) -> bool:
+    text = str(row.get("text") or "")
+    compact = re.sub(r"\s+", "", text)
+    if "签名" not in compact:
+        return False
+    if not any(token in compact for token in ("论文作者", "指导教师", "教师确认", "作者")):
+        return False
+    if str(row.get("relationship_ids") or "").strip():
+        return False
+    if str(row.get("media_signature") or "").strip():
+        return False
+    drawing_kind = str(row.get("drawing_kind") or "")
+    return not drawing_kind or "pict=" in drawing_kind or "shape=" in drawing_kind
 
 
 def _entry_value(entry: dict[str, Any], aliases: tuple[str, ...]) -> str:
@@ -3705,6 +4366,109 @@ def validate_algorithm_result_entry(key: str, entry: dict[str, Any]) -> list[str
     return issues
 
 
+def _validate_manifest_evidence_paths(value: object, field_name: str) -> list[str]:
+    paths = _split_evidence_paths(value)
+    if not paths:
+        return [f"missing {field_name}"]
+    issues: list[str] = []
+    for path in paths:
+        if not path.exists():
+            issues.append(f"{field_name} missing file: {path}")
+        elif path.is_file() and path.stat().st_size <= 0:
+            issues.append(f"{field_name} file is empty: {path}")
+    return issues
+
+
+def validate_table_manifest_entries(tables: object) -> list[str]:
+    if tables in (None, {}):
+        return []
+    if not isinstance(tables, dict):
+        return ["figure manifest tables section must be an object when present"]
+    issues: list[str] = []
+    required_text_fields: tuple[tuple[str, tuple[str, ...]], ...] = (
+        ("table authority lock", ("table_authority_lock", "active_table_authority", "table_authority")),
+        ("authority source type", ("authority_source_type", "table_authority_source_type")),
+        ("title mode", ("title_mode", "caption_title_mode", "table_title_mode")),
+    )
+    required_pass_verdicts: tuple[tuple[str, tuple[str, ...]], ...] = (
+        ("border_family_verdict", ("border_family_verdict", "three_line_border_verdict", "table_border_family_verdict")),
+        ("header_separator_verdict", ("header_separator_verdict", "table_header_separator_verdict", "header_bottom_middle_rule_verdict")),
+        ("vertical_separator_verdict", ("vertical_separator_verdict", "table_vertical_separator_verdict")),
+        ("body_row_separator_verdict", ("body_row_separator_verdict", "table_body_row_separator_verdict")),
+        ("table_local_structure_verdict", ("table_local_structure_verdict", "local_structure_verdict")),
+        ("table_pagination_verdict", ("table_pagination_verdict", "table_continuation_verdict", "table_row_split_header_repeat_verdict")),
+    )
+    required_path_fields: tuple[tuple[str, tuple[str, ...]], ...] = (
+        (
+            "table_authority_manuscript_binding_proof",
+            (
+                "table_authority_manuscript_binding_proof",
+                "table_authority_binding_evidence",
+                "table_to_manuscript_binding_evidence",
+            ),
+        ),
+        (
+            "rendered_table_evidence",
+            (
+                "rendered_table_evidence",
+                "rendered_table_evidence_path",
+                "rendered_table_page_evidence",
+                "table_rendered_baseline_comparison_evidence",
+                "table_rendered_baseline_comparison_evidence_path",
+            ),
+        ),
+        (
+            "final_docx_table_evidence",
+            (
+                "final_docx_table_evidence",
+                "final_docx_table_evidence_path",
+                "final_docx_relationship_evidence",
+                "table_final_docx_binding_evidence",
+                "table_audit_evidence_path",
+            ),
+        ),
+    )
+    for key, entry in tables.items():
+        if not isinstance(entry, dict):
+            issues.append(f"{key}: table manifest entry is not an object")
+            continue
+        present_keys = {str(field) for field, value in entry.items() if value not in (None, "", [], {})}
+        if present_keys <= {"caption", "rows", "id", "chapter_title"}:
+            issues.append(f"{key}: table manifest cannot pass with caption/row-count only; table authority, rendered evidence, and final DOCX binding are required")
+        if not _entry_value(entry, ("caption", "title", "table_caption")):
+            issues.append(f"{key}: table manifest entry missing caption/title")
+        for label, aliases in required_text_fields:
+            if not _entry_value(entry, aliases):
+                issues.append(f"{key}: table manifest entry missing {label}")
+        authority_path = _entry_value(
+            entry,
+            (
+                "authority_source_file_path",
+                "table_authority_source_path",
+                "active_table_authority_path",
+                "template_table_sample_path",
+            ),
+        )
+        if authority_path:
+            path = Path(authority_path)
+            if not path.exists():
+                issues.append(f"{key}: table authority source file missing: {authority_path}")
+        elif not _verdict_is_pass(
+            _entry_value(entry, ("no_template_table_authority_verdict", "table_authority_fallback_verdict"))
+        ):
+            issues.append(f"{key}: table manifest entry missing authority source file or pass no-template table authority verdict")
+        for label, aliases in required_pass_verdicts:
+            if not _verdict_is_pass(_entry_value(entry, aliases)):
+                issues.append(f"{key}: table manifest {label} must be pass")
+        if not _status_is_pass_or_inserted(_entry_value(entry, ("insertion_status", "table_insertion_status", "final_insertion_status"))):
+            issues.append(f"{key}: table manifest insertion_status must be pass/inserted")
+        if not _status_is_pass_or_inserted(_entry_value(entry, ("rendered_page_status", "table_rendered_page_status", "rendered_table_verdict"))):
+            issues.append(f"{key}: table manifest rendered_page_status must be pass")
+        for label, aliases in required_path_fields:
+            issues.extend(f"{key}: {issue}" for issue in _validate_manifest_evidence_paths(_entry_value(entry, aliases), label))
+    return issues
+
+
 def validate_figure_manifest(
     manifest: dict[str, Any],
     *,
@@ -3723,6 +4487,7 @@ def validate_figure_manifest(
     figures = manifest.get("figures")
     if not isinstance(figures, dict):
         figures = {}
+    issues.extend(validate_table_manifest_entries(manifest.get("tables")))
     svg_fallback_pairs = (
         docx_svg_primary_fallback_pairs(final_docx)
         if final_docx is not None and final_docx.exists()
@@ -3781,6 +4546,32 @@ def validate_figure_manifest(
         if family == "flowchart" and drawio is not None and drawio.exists():
             issues.extend(f"{key}: {issue}" for issue in drawio_flowchart_issues(drawio))
             issues.extend(f"{key}: {issue}" for issue in drawio_structural_geometry_issues(drawio, family=family))
+            geometry_report_value = str(
+                entry.get("geometry_validation_report")
+                or entry.get("geometry_report")
+                or entry.get("source_geometry_report")
+                or ""
+            )
+            geometry_report = Path(geometry_report_value) if geometry_report_value else None
+            if geometry_report is None:
+                issues.append(f"{key}: flowchart structural figure missing geometry validation report")
+            else:
+                issues.extend(f"{key}: {issue}" for issue in validate_non_er_structural_geometry_report(geometry_report, drawio))
+            for field_name in (
+                "source_scale_bbox_map",
+                "inserted_scale_geometry_evidence",
+                "post_insertion_rendered_evidence",
+                "final_docx_relationship_evidence",
+            ):
+                issues.extend(f"{key}: {issue}" for issue in _validate_manifest_evidence_paths(entry.get(field_name), field_name))
+            if not _verdict_is_pass(entry.get("collision_check_verdict")):
+                issues.append(f"{key}: flowchart structural figure collision_check_verdict must be pass")
+            if not _verdict_is_pass(entry.get("source_to_inserted_geometry_verdict")):
+                issues.append(f"{key}: flowchart structural figure source_to_inserted_geometry_verdict must be pass")
+            if not _status_is_pass_or_inserted(entry.get("rendered_page_status")):
+                issues.append(f"{key}: flowchart structural figure rendered_page_status must be pass")
+            if not _status_is_pass_or_inserted(entry.get("insertion_status")):
+                issues.append(f"{key}: flowchart structural figure insertion_status must be pass/inserted")
         if family not in {"er", "flowchart"} and drawio is not None and drawio.exists():
             issues.extend(f"{key}: {issue}" for issue in drawio_structural_geometry_issues(drawio, family=family or "structure"))
         if family == "er" and drawio is not None and drawio.exists():
@@ -3887,6 +4678,8 @@ def validate_figure_manifest(
             summary["has_structural_signals"]
             and not diagrams
             and not source_preserved_figure_surfaces
+            and not manifest_entries_are_source_preserved(figures, diagrams)
+            and not manifest_entries_are_mechanical_cad(figures)
             and not authorized_display_extent_resize
         ):
             issues.append(

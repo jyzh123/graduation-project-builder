@@ -69,12 +69,21 @@ DOCX_ENGINE_MARKERS = (
     "pgNumType",
     "w:pStyle",
     "w:rPr",
-    "zipfile",
-    "ZipFile",
     "JSZip",
     "PizZip",
     "adm-zip",
     "docxtemplater",
+)
+DOCX_PACKAGE_SURFACE_MARKERS = (
+    ".docx",
+    "word/document.xml",
+    "word/footer",
+    "word/header",
+    "[Content_Types].xml",
+    "sectPr",
+    "pgNumType",
+    "w:pStyle",
+    "w:rPr",
 )
 DESTRUCTIVE_PARAGRAPH_MARKERS = (
     "paragraph.clear(",
@@ -139,8 +148,6 @@ ZIP_XML_REWRITE_MARKERS = (
     "word/header",
     "[Content_Types].xml",
     "writestr(",
-    "ZipFile",
-    "zipfile",
     "JSZip",
     "PizZip",
     "adm-zip",
@@ -228,10 +235,32 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="replace")
 
 
-def iter_candidate_scripts(project_root: Path) -> list[Path]:
+def is_in_ignored_graduation_archive(path: Path, project_root: Path, active_run_dir: Path | None) -> bool:
+    try:
+        relative_parts = path.relative_to(project_root).parts
+    except ValueError:
+        return False
+    if len(relative_parts) < 3:
+        return False
+    if relative_parts[0].lower() != ".codex":
+        return False
+    if relative_parts[1].lower() != "graduation-project-builder":
+        return False
+    if active_run_dir is None:
+        return False
+    try:
+        path.relative_to(active_run_dir)
+        return False
+    except ValueError:
+        return True
+
+
+def iter_candidate_scripts(project_root: Path, active_run_dir: Path | None = None) -> list[Path]:
     candidates: list[Path] = []
     generated_run_stage = (project_root / "records" / "local-thesis-adapter.json").exists()
     for path in project_root.rglob("*"):
+        if is_in_ignored_graduation_archive(path, project_root, active_run_dir):
+            continue
         if generated_run_stage:
             try:
                 relative_parts = path.relative_to(project_root).parts
@@ -249,9 +278,11 @@ def iter_candidate_scripts(project_root: Path) -> list[Path]:
     return sorted(candidates)
 
 
-def iter_candidate_adapter_manifests(project_root: Path) -> list[Path]:
+def iter_candidate_adapter_manifests(project_root: Path, active_run_dir: Path | None = None) -> list[Path]:
     candidates: list[Path] = []
     for path in project_root.rglob("*"):
+        if is_in_ignored_graduation_archive(path, project_root, active_run_dir):
+            continue
         lowered_parts = [part.lower() for part in path.parts]
         if any(part in SKIP_DIR_NAMES for part in lowered_parts):
             continue
@@ -356,13 +387,14 @@ def classify_script(path: Path, text: str) -> ScriptRisk | None:
         return None
 
     reasons: list[str] = []
+    docx_package_surface = contains_any(text, DOCX_PACKAGE_SURFACE_MARKERS)
     docx_engine = contains_any(text, DOCX_ENGINE_MARKERS)
     destructive_paragraph = contains_any(text, DESTRUCTIVE_PARAGRAPH_MARKERS)
     hardcoded_paragraph_index = is_hardcoded_docx_paragraph_index(text)
     protected_surface_count = count_any(text, PROTECTED_SURFACE_MARKERS)
     power_com = contains_any(text, POWERPOINT_WORD_COM_MARKERS)
     libreoffice_index = count_any(text, LIBREOFFICE_INDEX_MARKERS) >= 2
-    zip_xml_surface_access = count_any(text, ZIP_XML_REWRITE_MARKERS) >= 2
+    zip_xml_surface_access = docx_package_surface and count_any(text, ZIP_XML_REWRITE_MARKERS) >= 2
     zip_xml_write_primitive = contains_any(text, ZIP_WRITE_MARKERS)
     zip_xml_rewrite = zip_xml_surface_access and zip_xml_write_primitive
     local_drawing = contains_any(text, LOCAL_DRAWING_MARKERS)
@@ -400,12 +432,13 @@ def classify_script(path: Path, text: str) -> ScriptRisk | None:
     return None
 
 
-def scan_project_local_helper_scripts(project_root: Path) -> list[ScriptRisk]:
+def scan_project_local_helper_scripts(project_root: Path, active_run_dir: Path | None = None) -> list[ScriptRisk]:
     root = project_root.resolve()
+    active = active_run_dir.resolve() if active_run_dir else None
     risks: list[ScriptRisk] = []
     if not root.exists():
         return risks
-    for path in iter_candidate_scripts(root):
+    for path in iter_candidate_scripts(root, active_run_dir=active):
         try:
             text = read_text(path)
         except OSError:
@@ -414,7 +447,7 @@ def scan_project_local_helper_scripts(project_root: Path) -> list[ScriptRisk]:
         if risk is not None:
             risks.append(risk)
     skill_root = Path(__file__).resolve().parents[1]
-    for path in iter_candidate_adapter_manifests(root):
+    for path in iter_candidate_adapter_manifests(root, active_run_dir=active):
         issues = validate_adapter_file(path, skill_root=skill_root)
         if issues:
             risks.append(ScriptRisk(path=path.resolve(), reasons=tuple(issues)))
@@ -431,6 +464,7 @@ def render_report(
     project_root: Path,
     risks: list[ScriptRisk],
     *,
+    active_run_dir: Path | None = None,
     command: str = "",
     exit_status: int | None = None,
 ) -> str:
@@ -445,6 +479,7 @@ def render_report(
         f"- generated at UTC: {generated_at.isoformat().replace('+00:00', 'Z')}",
         f"- generated at unix: {generated_at.timestamp():.6f}",
         f"- project root: {resolved_root}",
+        f"- active run dir: {active_run_dir.resolve() if active_run_dir else 'not specified'}",
         f"- summary: {risk_summary(risks)}",
         f"- risky script count: {len(risks)}",
         "- scanner: scripts/scan_project_local_thesis_helpers.py",
@@ -472,12 +507,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project-root", required=True, help="Project directory to scan")
     parser.add_argument("--report-out", help="Optional markdown report path")
+    parser.add_argument(
+        "--active-run-dir",
+        help="Optional current graduation-project-builder run directory; sibling historical run directories under .codex/graduation-project-builder are treated as archives.",
+    )
     parser.add_argument("--json", action="store_true", help="Print JSON instead of markdown")
     parser.add_argument("--fail-on-risk", action="store_true", help="Return non-zero when risky scripts are found")
     args = parser.parse_args()
 
     project_root = Path(args.project_root).resolve()
-    risks = scan_project_local_helper_scripts(project_root)
+    active_run_dir = Path(args.active_run_dir).resolve() if args.active_run_dir else None
+    risks = scan_project_local_helper_scripts(project_root, active_run_dir=active_run_dir)
     exit_status = 2 if args.fail_on_risk and risks else 0
     command = " ".join(
         shlex.quote(part)
@@ -486,6 +526,7 @@ def main() -> int:
             "--project-root",
             str(project_root),
             *(["--fail-on-risk"] if args.fail_on_risk else []),
+            *(["--active-run-dir", str(active_run_dir)] if active_run_dir else []),
             *(["--json"] if args.json else []),
             *(["--report-out", str(Path(args.report_out).resolve())] if args.report_out else []),
         ]
@@ -494,7 +535,7 @@ def main() -> int:
         report_path = Path(args.report_out)
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(
-            render_report(project_root, risks, command=command, exit_status=exit_status),
+            render_report(project_root, risks, active_run_dir=active_run_dir, command=command, exit_status=exit_status),
             encoding="utf-8",
         )
 
@@ -511,6 +552,7 @@ def main() -> int:
                 "generated_at_utc": generated_at.isoformat().replace("+00:00", "Z"),
                 "generated_at_unix": generated_at.timestamp(),
                 "project_root": str(project_root),
+                "active_run_dir": str(active_run_dir) if active_run_dir else None,
                 "summary": risk_summary(risks),
                 "risky_script_count": len(risks),
                 "scanner": "scripts/scan_project_local_thesis_helpers.py",
@@ -518,11 +560,11 @@ def main() -> int:
                 "scanner_exit_status": exit_status,
                 "risks": [risk.as_dict(project_root) for risk in risks],
             },
-            ensure_ascii=False,
+            ensure_ascii=True,
             indent=2,
         ))
     else:
-        print(render_report(project_root, risks, command=command, exit_status=exit_status))
+        print(render_report(project_root, risks, active_run_dir=active_run_dir, command=command, exit_status=exit_status))
     return exit_status
 
 
