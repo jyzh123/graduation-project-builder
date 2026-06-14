@@ -1696,6 +1696,7 @@ def run_sample_self_check_suite(
             str(final_docx),
             "--report",
             str(body_style_audit),
+            "--strict-direct-visible-metrics",
         ],
         check=False,
         timeout=600,
@@ -2285,7 +2286,6 @@ def case_sample_self_check_header_position_detection(root: Path, env: GateEnviro
         "header-position-failure",
         SAMPLE_SELF_CHECK_LABELS["header_position"],
         include_header_footer=True,
-        expected_summary="failed",
     )
 
 

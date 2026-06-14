@@ -9,6 +9,7 @@ Apply the thesis figure rule set in all thesis-related modes:
 - `program-plus-thesis`
 - `thesis-only`
 - `format-repair-only` when figure or table work is involved
+- `skill-maintenance` when the figure or mechanical-drawing rules, validators, templates, or gates are being changed
 
 ## Default Rule
 
@@ -47,6 +48,8 @@ Thesis figure generation is not optional polish. If the thesis topic, template, 
   - `geometry-and-layout.md`
   - `workflow-and-checklists.md`
 - For a runtime screenshot-only task, load `baseline-and-sourcing.md` and `review-gates.md` first, then add other child files only if the task expands into structural-figure repair.
+- For mechanical CAD, drawing-package, source-linework, CAD color-family differentiation, redraw/different-from-baseline, official-CAD-command requirements, CAD open-view structural coherence complaints, teacher/reference drawing alignment, CAD text mojibake/missing-glyph boxes, upside-down/mirrored CAD text, text/entity overlap, orphan/free-floating CAD text, unbound scattered labels, external CAD case references including jixie5-style same-type drawing pages, or PDF-only-change complaints, load `baseline-and-sourcing.md` before CAD mutation and route `CORE-FIGURE-010` through `CORE-FIGURE-018` as applicable. In particular, `CORE-FIGURE-013` / CAD Source Linework Differentiation requires a source-linework differentiation audit, PDF-only change rejection, minor-entity-move-only rejection, and source-to-render derivation evidence; `CORE-FIGURE-018` requires annotation ownership evidence for leaders, dimensions, balloons, note labels, and any dimension-like or scattered text.
+- For mechanical CAD, drawing-package, source-linework, CAD color-family differentiation, redraw/different-from-baseline, official-CAD-command requirements, CAD open-view structural coherence complaints, teacher/reference drawing alignment, CAD text mojibake/missing-glyph boxes, upside-down/mirrored CAD text, external CAD case references including jixie5-style same-type drawing pages, or PDF-only-change complaints, load `baseline-and-sourcing.md` before CAD mutation and route `CORE-FIGURE-010` through `CORE-FIGURE-017` as applicable. In particular, `CORE-FIGURE-013` / CAD Source Linework Differentiation requires a source-linework differentiation audit, PDF-only change rejection, minor-entity-move-only rejection, and source-to-render derivation evidence.
 
 ## Parent Boundary
 

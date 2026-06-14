@@ -58,7 +58,10 @@ def heading_level(text: str) -> int | None:
     if "\u2026" in stripped or "\t" in stripped:
         return None
     sep = r"[\s\u25a1]+"
-    if re.match(rf"^\d{{1,2}}{sep}\S", stripped):
+    if re.match(r"^\u7b2c\s*[0-9\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341]{1,3}\s*\u7ae0", stripped):
+        return 1
+    first_level_number = re.match(rf"^(\d{{1,2}}){sep}\S", stripped)
+    if first_level_number and 1 <= int(first_level_number.group(1)) <= 20:
         return 1
     if re.match(rf"^\d{{1,2}}\.\d{{1,2}}{sep}\S", stripped):
         return 2
@@ -68,6 +71,9 @@ def heading_level(text: str) -> int | None:
 
 
 def is_toc_heading(text: str) -> bool:
+    compact = compact_text(text).lower()
+    if compact in {compact_text("\u76ee\u5f55").lower(), "contents", "tableofcontents"}:
+        return True
     return compact_text(text).lower() in {compact_text("目录").lower(), "contents", "tableofcontents"}
 
 
@@ -90,6 +96,9 @@ def looks_like_toc_entry(text: str) -> bool:
 
 
 def is_reference_heading(text: str) -> bool:
+    compact = compact_text(text).lower()
+    if compact in {compact_text("\u53c2\u8003\u6587\u732e").lower(), "references", "bibliography"}:
+        return True
     return compact_text(text).lower() in {compact_text("参考文献").lower(), "references", "bibliography"}
 
 
@@ -241,7 +250,13 @@ def references_different_figure(current_caption: str, next_text: str) -> bool:
     return any(ref != current for ref in refs)
 
 
-def repair_document(root: ET.Element, styles: dict[str, str]) -> dict[str, object]:
+def repair_document(
+    root: ET.Element,
+    styles: dict[str, str],
+    *,
+    repair_figure_followups: bool = True,
+    repair_chapter_pagination: bool = True,
+) -> dict[str, object]:
     body = root.find("./w:body", NS)
     if body is None:
         raise RuntimeError("word/document.xml has no w:body")
@@ -249,76 +264,78 @@ def repair_document(root: ET.Element, styles: dict[str, str]) -> dict[str, objec
     inserted_followups: list[dict[str, object]] = []
     removed_empty_after_caption: list[int] = []
 
-    idx = 0
-    children = list(body)
-    body_started = False
-    while idx < len(children):
-        child = children[idx]
-        if child.tag != qn("p"):
-            idx += 1
-            continue
-        text = paragraph_text(child).strip()
-        if heading_level(text) == 1:
-            body_started = True
-        if not body_started or is_reference_heading(text) or not is_figure_caption(text):
-            idx += 1
-            continue
+    if repair_figure_followups:
+        idx = 0
+        children = list(body)
+        body_started = False
+        while idx < len(children):
+            child = children[idx]
+            if child.tag != qn("p"):
+                idx += 1
+                continue
+            text = paragraph_text(child).strip()
+            if heading_level(text) == 1:
+                body_started = True
+            if not body_started or is_reference_heading(text) or not is_figure_caption(text):
+                idx += 1
+                continue
 
-        next_idx = idx + 1
-        if next_idx < len(children):
-            next_child = children[next_idx]
-            next_text = paragraph_text(next_child).strip() if next_child.tag == qn("p") else ""
-            if next_child.tag == qn("p") and not next_text and not has_image(next_child) and not has_section_break(next_child):
-                body.remove(next_child)
-                removed_empty_after_caption.append(next_idx)
-                children.pop(next_idx)
+            next_idx = idx + 1
+            if next_idx < len(children):
+                next_child = children[next_idx]
+                next_text = paragraph_text(next_child).strip() if next_child.tag == qn("p") else ""
+                if next_child.tag == qn("p") and not next_text and not has_image(next_child) and not has_section_break(next_child):
+                    body.remove(next_child)
+                    removed_empty_after_caption.append(next_idx)
+                    children.pop(next_idx)
 
-        next_child = children[next_idx] if next_idx < len(children) else None
-        next_text = paragraph_text(next_child).strip() if next_child is not None and next_child.tag == qn("p") else ""
-        next_style_name = styles.get(paragraph_style_id(next_child), "") if next_child is not None and next_child.tag == qn("p") else ""
-        needs_followup = (
-            next_child is None
-            or next_child.tag != qn("p")
-            or not next_text
-            or has_image(next_child)
-            or is_figure_caption(next_text)
-            or is_table_caption(next_text)
-            or heading_level(next_text) is not None
-            or next_style_name.lower().startswith("heading")
-            or next_style_name.lower().startswith("toc")
-            or references_different_figure(text, next_text)
-        )
-        if needs_followup:
-            followup = make_text_paragraph(followup_text_for_caption(text), donor_ppr, donor_rpr)
-            body.insert(next_idx, followup)
-            children.insert(next_idx, followup)
-            inserted_followups.append({"caption": text, "inserted_after_body_child_index": idx + 1})
+            next_child = children[next_idx] if next_idx < len(children) else None
+            next_text = paragraph_text(next_child).strip() if next_child is not None and next_child.tag == qn("p") else ""
+            next_style_name = styles.get(paragraph_style_id(next_child), "") if next_child is not None and next_child.tag == qn("p") else ""
+            needs_followup = (
+                next_child is None
+                or next_child.tag != qn("p")
+                or not next_text
+                or has_image(next_child)
+                or is_figure_caption(next_text)
+                or is_table_caption(next_text)
+                or heading_level(next_text) is not None
+                or next_style_name.lower().startswith("heading")
+                or next_style_name.lower().startswith("toc")
+                or references_different_figure(text, next_text)
+            )
+            if needs_followup:
+                followup = make_text_paragraph(followup_text_for_caption(text), donor_ppr, donor_rpr)
+                body.insert(next_idx, followup)
+                children.insert(next_idx, followup)
+                inserted_followups.append({"caption": text, "inserted_after_body_child_index": idx + 1})
+                idx += 1
             idx += 1
-        idx += 1
 
-    children = list(body)
-    toc_seen = False
     chapter_headings: list[tuple[int, ET.Element, str]] = []
-    for idx, child in enumerate(children):
-        if child.tag != qn("p"):
-            continue
-        text = paragraph_text(child).strip()
-        style_name = styles.get(paragraph_style_id(child), "")
-        if is_toc_heading(text):
-            toc_seen = True
-            continue
-        if not toc_seen:
-            continue
-        if "\t" in text or style_name.lower().startswith("toc") or looks_like_toc_entry(text):
-            continue
-        if is_reference_heading(text):
-            break
-        if heading_level(text) == 1:
-            chapter_headings.append((idx, child, text))
-
     added_page_break_before: list[str] = []
     removed_empty_before_chapter: list[int] = []
-    for idx, paragraph, text in chapter_headings[1:]:
+    if repair_chapter_pagination:
+        children = list(body)
+        toc_seen = False
+        for idx, child in enumerate(children):
+            if child.tag != qn("p"):
+                continue
+            text = paragraph_text(child).strip()
+            style_name = styles.get(paragraph_style_id(child), "")
+            if is_toc_heading(text):
+                toc_seen = True
+                continue
+            if not toc_seen:
+                continue
+            if "\t" in text or style_name.lower().startswith("toc") or looks_like_toc_entry(text):
+                continue
+            if is_reference_heading(text):
+                break
+            if heading_level(text) == 1:
+                chapter_headings.append((idx, child, text))
+
+    for idx, paragraph, text in chapter_headings:
         while idx > 0:
             previous = next((node for node in reversed(children[:idx]) if node.tag == qn("p")), None)
             if previous is None:
@@ -368,6 +385,7 @@ def main() -> int:
     parser.add_argument("--input-docx", required=True)
     parser.add_argument("--output-docx", required=True)
     parser.add_argument("--report", required=True)
+    parser.add_argument("--chapter-pagination-only", action="store_true")
     args = parser.parse_args()
 
     input_docx = Path(args.input_docx)
@@ -376,7 +394,12 @@ def main() -> int:
     with zipfile.ZipFile(input_docx, "r") as zf:
         root = ET.fromstring(zf.read("word/document.xml"))
         styles = paragraph_style_map(zf)
-    changes = repair_document(root, styles)
+    changes = repair_document(
+        root,
+        styles,
+        repair_figure_followups=not args.chapter_pagination_only,
+        repair_chapter_pagination=True,
+    )
     xml_bytes = ET.tostring(root, encoding="utf-8", xml_declaration=True)
     write_docx_with_document_xml(input_docx, output_docx, xml_bytes)
     payload = {
@@ -386,6 +409,7 @@ def main() -> int:
         "input_docx_sha256": sha256_file(input_docx),
         "output_docx": str(output_docx),
         "output_docx_sha256": sha256_file(output_docx),
+        "chapter_pagination_only": bool(args.chapter_pagination_only),
         **changes,
     }
     report.parent.mkdir(parents=True, exist_ok=True)

@@ -127,6 +127,180 @@ def remove_blank_paragraphs_between_visible_thesis_paragraphs(body: ET.Element) 
     return len(doomed)
 
 
+def ensure_keep_lines_for_paragraphs(body: ET.Element, needles: list[str]) -> dict[str, object]:
+    targets = [needle for needle in needles if str(needle or "").strip()]
+    if not targets:
+        return {"status": "skipped", "requested": 0, "matched": 0, "changed": 0, "unmatched": []}
+    matched: set[str] = set()
+    changed = 0
+    for paragraph in body_paragraphs(body):
+        text = paragraph_text(paragraph)
+        matched_needles = [needle for needle in targets if needle in text]
+        if not matched_needles:
+            continue
+        matched.update(matched_needles)
+        ppr = paragraph.find("./w:pPr", NS)
+        if ppr is None:
+            ppr = ET.Element(qn("w:pPr"))
+            paragraph.insert(0, ppr)
+        if ppr.find("./w:keepLines", NS) is None:
+            style = ppr.find("./w:pStyle", NS)
+            keep_lines = ET.Element(qn("w:keepLines"))
+            if style is not None:
+                children = list(ppr)
+                ppr.insert(children.index(style) + 1, keep_lines)
+            else:
+                ppr.insert(0, keep_lines)
+            changed += 1
+    unmatched = [needle for needle in targets if needle not in matched]
+    return {
+        "status": "passed" if not unmatched else "failed",
+        "requested": len(targets),
+        "matched": len(matched),
+        "changed": changed,
+        "unmatched": unmatched,
+    }
+
+
+def ensure_page_break_before_paragraphs(body: ET.Element, needles: list[str]) -> dict[str, object]:
+    targets = [needle for needle in needles if str(needle or "").strip()]
+    if not targets:
+        return {"status": "skipped", "requested": 0, "matched": 0, "changed": 0, "unmatched": []}
+    matched: set[str] = set()
+    changed = 0
+    for paragraph in body_paragraphs(body):
+        text = paragraph_text(paragraph)
+        matched_needles = [needle for needle in targets if needle in text]
+        if not matched_needles:
+            continue
+        matched.update(matched_needles)
+        ppr = paragraph.find("./w:pPr", NS)
+        if ppr is None:
+            ppr = ET.Element(qn("w:pPr"))
+            paragraph.insert(0, ppr)
+        if ppr.find("./w:pageBreakBefore", NS) is None:
+            style = ppr.find("./w:pStyle", NS)
+            page_break_before = ET.Element(qn("w:pageBreakBefore"))
+            if style is not None:
+                children = list(ppr)
+                ppr.insert(children.index(style) + 1, page_break_before)
+            else:
+                ppr.insert(0, page_break_before)
+            changed += 1
+    unmatched = [needle for needle in targets if needle not in matched]
+    return {
+        "status": "passed" if not unmatched else "failed",
+        "requested": len(targets),
+        "matched": len(matched),
+        "changed": changed,
+        "unmatched": unmatched,
+    }
+
+
+def remove_page_break_after_paragraphs(body: ET.Element, needles: list[str]) -> dict[str, object]:
+    targets = [needle for needle in needles if str(needle or "").strip()]
+    if not targets:
+        return {"status": "skipped", "requested": 0, "matched": 0, "removed": 0, "unmatched": []}
+    matched: set[str] = set()
+    removed = 0
+    children = list(body)
+    for child in list(children):
+        if child.tag != qn("w:p"):
+            continue
+        text = paragraph_text(child)
+        matched_needles = [needle for needle in targets if needle in text]
+        if not matched_needles:
+            continue
+        matched.update(matched_needles)
+        current_children = list(body)
+        try:
+            index = current_children.index(child)
+        except ValueError:
+            continue
+        if index + 1 >= len(current_children):
+            continue
+        next_child = current_children[index + 1]
+        if next_child.tag != qn("w:p"):
+            continue
+        if paragraph_text(next_child).strip():
+            continue
+        if has_image(next_child) or has_section_break(next_child):
+            continue
+        if not has_page_break(next_child):
+            continue
+        body.remove(next_child)
+        removed += 1
+    unmatched = [needle for needle in targets if needle not in matched]
+    return {
+        "status": "passed" if not unmatched else "failed",
+        "requested": len(targets),
+        "matched": len(matched),
+        "removed": removed,
+        "unmatched": unmatched,
+    }
+
+
+def has_cover_title_label(text: str) -> bool:
+    return bool(re.search(r"(?:^|[\s\u3000])(?:\u8bba\s*\u6587\s*)?\u9898\s*\u76ee\s*[:\uff1a]", text or ""))
+
+
+def is_front_matter_boundary(text: str) -> bool:
+    compact = compact_text(text)
+    return compact in {
+        "\u6458\u8981",
+        "abstract",
+        "\u76ee\u5f55",
+        "\u5b66\u4f4d\u8bba\u6587\u539f\u521b\u6027\u58f0\u660e",
+        "\u5b66\u4f4d\u8bba\u6587\u7248\u6743\u4f7f\u7528\u6388\u6743\u4e66",
+    } or heading_level(text) == 1
+
+
+def is_likely_cover_title(text: str) -> bool:
+    stripped = (text or "").strip()
+    compact = compact_text(stripped)
+    if len(compact) < 12:
+        return False
+    if has_cover_title_label(stripped):
+        return False
+    blocked_fragments = (
+        "\u5b66\u58eb\u5b66\u4f4d\u8bba\u6587",
+        "\u6bd5\u4e1a\u8bbe\u8ba1",
+        "\u4f5c\u8005\u59d3\u540d",
+        "\u5b66\u751f\u59d3\u540d",
+        "\u5b66\u53f7",
+        "\u5b66\u9662",
+        "\u9662\u7cfb",
+        "\u4e13\u4e1a",
+        "\u6307\u5bfc\u6559\u5e08",
+    )
+    if any(fragment in compact for fragment in blocked_fragments):
+        return False
+    cjk_count = sum(1 for char in stripped if "\u4e00" <= char <= "\u9fff")
+    return cjk_count >= 8
+
+
+def prefix_cover_title_label(body: ET.Element) -> dict[str, object]:
+    paragraphs = body_paragraphs(body)
+    for paragraph in paragraphs[:40]:
+        text = paragraph_text(paragraph)
+        if is_front_matter_boundary(text):
+            break
+        if has_cover_title_label(text):
+            return {"status": "already-present", "matched": 1, "changed": 0, "paragraph_text": text[:120]}
+    for paragraph in paragraphs[:25]:
+        text = paragraph_text(paragraph)
+        if is_front_matter_boundary(text):
+            break
+        if not is_likely_cover_title(text):
+            continue
+        text_node = paragraph.find(".//w:t", NS)
+        if text_node is None:
+            return {"status": "failed", "matched": 1, "changed": 0, "issue": "cover title paragraph has no text node"}
+        text_node.text = "\u9898\u76ee\uff1a" + (text_node.text or "")
+        return {"status": "passed", "matched": 1, "changed": 1, "paragraph_text_before": text[:120]}
+    return {"status": "failed", "matched": 0, "changed": 0, "issue": "cover title paragraph not found before front matter boundary"}
+
+
 def body_paragraphs(body: ET.Element) -> list[ET.Element]:
     return [child for child in list(body) if child.tag == qn("w:p")]
 
@@ -690,12 +864,31 @@ def patch_document_xml(
     *,
     empty_paragraphs_only: bool = False,
     tail_plan: dict[str, object] | None = None,
+    keep_lines_containing: list[str] | None = None,
+    page_break_before_containing: list[str] | None = None,
+    remove_page_break_after_containing: list[str] | None = None,
+    no_blank_removal: bool = False,
+    prefix_cover_title: bool = False,
 ) -> tuple[bytes, dict[str, object]]:
     root = ET.fromstring(xml_bytes)
     body = root.find("w:body", NS)
     if body is None:
         raise RuntimeError("word/document.xml has no w:body")
-    removed_blank_paragraphs = remove_blank_paragraphs_between_visible_thesis_paragraphs(body)
+    removed_blank_paragraphs = 0 if no_blank_removal else remove_blank_paragraphs_between_visible_thesis_paragraphs(body)
+    keep_lines_report = ensure_keep_lines_for_paragraphs(body, keep_lines_containing or [])
+    page_break_before_report = ensure_page_break_before_paragraphs(
+        body,
+        page_break_before_containing or [],
+    )
+    removed_page_break_after_report = remove_page_break_after_paragraphs(
+        body,
+        remove_page_break_after_containing or [],
+    )
+    cover_title_label_report = (
+        prefix_cover_title_label(body)
+        if prefix_cover_title
+        else {"status": "skipped", "matched": 0, "changed": 0}
+    )
     if empty_paragraphs_only:
         report = {
             "square_placeholder_text_nodes_changed": 0,
@@ -703,6 +896,10 @@ def patch_document_xml(
             "live_toc_fields_added": 0,
             "results_tables_added": 0,
             "blank_between_visible_paragraphs_removed": removed_blank_paragraphs,
+            "keep_lines_containing": keep_lines_report,
+            "page_break_before_containing": page_break_before_report,
+            "remove_page_break_after_containing": removed_page_break_after_report,
+            "cover_title_label": cover_title_label_report,
             "tail_content_plan": apply_tail_content_plan(root, body, tail_plan),
         }
         return ET.tostring(root, encoding="utf-8", xml_declaration=True), report
@@ -712,6 +909,10 @@ def patch_document_xml(
         "live_toc_fields_added": add_live_toc_field(body),
         "results_tables_added": add_results_table(body),
         "blank_between_visible_paragraphs_removed": removed_blank_paragraphs,
+        "keep_lines_containing": keep_lines_report,
+        "page_break_before_containing": page_break_before_report,
+        "remove_page_break_after_containing": removed_page_break_after_report,
+        "cover_title_label": cover_title_label_report,
         "tail_content_plan": apply_tail_content_plan(root, body, tail_plan),
     }
     return ET.tostring(root, encoding="utf-8", xml_declaration=True), report
@@ -723,6 +924,11 @@ def repair_docx(
     *,
     empty_paragraphs_only: bool = False,
     tail_plan_json: Path | None = None,
+    keep_lines_containing: list[str] | None = None,
+    page_break_before_containing: list[str] | None = None,
+    remove_page_break_after_containing: list[str] | None = None,
+    no_blank_removal: bool = False,
+    prefix_cover_title: bool = False,
 ) -> dict[str, object]:
     if not input_docx.exists():
         raise FileNotFoundError(input_docx)
@@ -745,6 +951,11 @@ def repair_docx(
                     payload,
                     empty_paragraphs_only=empty_paragraphs_only,
                     tail_plan=tail_plan,
+                    keep_lines_containing=keep_lines_containing or [],
+                    page_break_before_containing=page_break_before_containing or [],
+                    remove_page_break_after_containing=remove_page_break_after_containing or [],
+                    no_blank_removal=no_blank_removal,
+                    prefix_cover_title=prefix_cover_title,
                 )
                 changed_parts.append(item.filename)
             zout.writestr(item, payload)
@@ -760,6 +971,8 @@ def repair_docx(
         "repair_mode": "empty-paragraphs-only" if empty_paragraphs_only else "default",
         "tail_plan_json": str(tail_plan_json) if tail_plan_json is not None else None,
         "tail_plan_sha256": sha256(tail_plan_json) if tail_plan_json is not None else None,
+        "no_blank_removal": no_blank_removal,
+        "prefix_cover_title": prefix_cover_title,
         "changed_parts": changed_parts,
         **patch_report,
         "verdict": "pass",
@@ -780,12 +993,45 @@ def main() -> int:
         "--tail-plan-json",
         help="Optional controlled plan for acknowledgement, extra references, body citation append, and literal placeholder replacements.",
     )
+    parser.add_argument(
+        "--keep-lines-containing",
+        action="append",
+        default=[],
+        help="Add w:keepLines to body paragraphs containing this exact text; repeat for multiple anchors.",
+    )
+    parser.add_argument(
+        "--page-break-before-containing",
+        action="append",
+        default=[],
+        help="Add w:pageBreakBefore to paragraphs containing this exact text; repeat for multiple anchors.",
+    )
+    parser.add_argument(
+        "--remove-page-break-after-containing",
+        action="append",
+        default=[],
+        help="Remove an immediately following empty manual page-break paragraph after a paragraph containing this exact text.",
+    )
+    parser.add_argument(
+        "--no-blank-removal",
+        action="store_true",
+        help="Do not remove blank paragraphs; use when applying only explicit anchor repairs.",
+    )
+    parser.add_argument(
+        "--prefix-cover-title-label",
+        action="store_true",
+        help="Prefix the first cover title paragraph with the required label `\u9898\u76ee\uff1a` when missing.",
+    )
     args = parser.parse_args()
     report = repair_docx(
         Path(args.input_docx).resolve(),
         Path(args.output_docx).resolve(),
         empty_paragraphs_only=args.empty_paragraphs_only,
         tail_plan_json=Path(args.tail_plan_json).resolve() if args.tail_plan_json else None,
+        keep_lines_containing=args.keep_lines_containing,
+        page_break_before_containing=args.page_break_before_containing,
+        remove_page_break_after_containing=args.remove_page_break_after_containing,
+        no_blank_removal=args.no_blank_removal,
+        prefix_cover_title=args.prefix_cover_title_label,
     )
     report_path = Path(args.report_json).resolve()
     report_path.parent.mkdir(parents=True, exist_ok=True)

@@ -39,7 +39,9 @@ HEADING_RE = re.compile(
     r"^(?:\d+(?:\.\d+){0,3}\s+\S.*|"
     r"\u7b2c[0-9\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341]+[\u7ae0\u8282]\s*\S*)$"
 )
-BIBLIOGRAPHY_VISIBLE_NUMBER_RE = re.compile(r"^\s*\[\s*\d+\s*\]")
+BIBLIOGRAPHY_VISIBLE_NUMBER_RE = re.compile(r"^\s*(?:\[\s*\d+\s*\]|\d+\.)")
+BIBLIOGRAPHY_VISIBLE_LABEL_RE = re.compile(r"^\s*(?:\[\s*\d+\s*\]|\d+[\.\u3001])")
+MIN_BIBLIOGRAPHY_ENTRY_CONTENT_CHARS = 8
 
 ERROR_CODES = {
     "order": "BODY_CITATION_ORDER",
@@ -54,7 +56,10 @@ ERROR_CODES = {
     "coverage": "UNCITED_BIBLIOGRAPHY_ITEMS",
     "out_of_range": "BODY_CITATION_OUT_OF_RANGE",
     "bibliography_numbering": "BIBLIOGRAPHY_MANUAL_AND_AUTO_NUMBERING",
+    "bibliography_empty_entry": "BIBLIOGRAPHY_ENTRY_CONTENT_MISSING",
     "anchor_leak": "BODY_CITATION_ANCHOR_LEAK",
+    "citation_distribution": "BODY_CITATION_DISTRIBUTION_ABNORMAL",
+    "bibliography_visible_label": "BIBLIOGRAPHY_VISIBLE_LABEL_MISSING",
 }
 
 
@@ -84,8 +89,33 @@ class CitationRecord:
     text: str
 
 
+@dataclass(frozen=True)
+class TextUnit:
+    char: str
+    run: ET.Element
+    hyperlink_anchor: str
+
+
+@dataclass(frozen=True)
+class CitationMarkerOccurrence:
+    number: int
+    text: str
+    units: tuple[TextUnit, ...]
+
+    @property
+    def common_hyperlink_anchor(self) -> str:
+        anchors = {unit.hyperlink_anchor for unit in self.units}
+        if len(anchors) == 1:
+            return next(iter(anchors))
+        return ""
+
+
 @dataclass
 class AuditResult:
+    schema: str
+    generator: str
+    docx_path: str
+    docx_sha256: str
     passed: bool
     error_codes: list[str]
     body_citation_paragraph_count: int
@@ -105,6 +135,9 @@ class AuditResult:
     multi_number_marker_hits: list[str]
     punctuation_failures: list[str]
     bibliography_numbering_conflicts: list[str]
+    bibliography_empty_entry_hits: list[str]
+    citation_distribution_failures: list[str]
+    bibliography_visible_label_failures: list[str]
     visible_anchor_leaks: list[str]
     citation_records: list[CitationRecord]
 
@@ -156,6 +189,55 @@ def collect_bookmark_locations(paragraphs: list[ParagraphRecord]) -> dict[str, i
             if name and name not in locations:
                 locations[name] = record.index
     return locations
+
+
+def record_compact_text(record: ParagraphRecord) -> str:
+    return re.sub(r"\s+", "", record.text or "")
+
+
+def is_bibliography_heading(record: ParagraphRecord) -> bool:
+    return record_compact_text(record) == BIBLIO_HEADING_NORMALIZED
+
+
+def is_tail_heading(record: ParagraphRecord) -> bool:
+    return record_compact_text(record).lower() in TAIL_HEADINGS_NORMALIZED
+
+
+def paragraph_has_citation_bookmark(paragraph: ET.Element) -> bool:
+    for bookmark in paragraph.findall(".//w:bookmarkStart", NS):
+        name = bookmark.attrib.get(f"{W}name", "")
+        if re.fullmatch(r"cite_ref_\d+", name or ""):
+            return True
+    return False
+
+
+def is_bibliography_entry(record: ParagraphRecord) -> bool:
+    if not record.text:
+        return False
+    return bool(
+        record.has_numbering
+        or BIBLIOGRAPHY_VISIBLE_NUMBER_RE.search(record.text)
+        or paragraph_has_citation_bookmark(record.xml)
+    )
+
+
+def bibliography_entry_content_text(record: ParagraphRecord) -> str:
+    text = BIBLIOGRAPHY_VISIBLE_LABEL_RE.sub("", record.text or "", count=1)
+    text = re.sub(r"^\s*[\.\u3001\u3002\]\)）:：,，;；-]+", "", text)
+    return re.sub(r"\s+", "", text)
+
+
+def is_bibliography_number_only_record(record: ParagraphRecord) -> bool:
+    if not record.text:
+        return False
+    has_entry_signal = bool(
+        record.has_numbering
+        or BIBLIOGRAPHY_VISIBLE_LABEL_RE.search(record.text)
+        or paragraph_has_citation_bookmark(record.xml)
+    )
+    if not has_entry_signal:
+        return False
+    return len(bibliography_entry_content_text(record)) < MIN_BIBLIOGRAPHY_ENTRY_CONTENT_CHARS
 
 
 def load_style_map(docx_path: Path) -> dict[str, str]:
@@ -211,24 +293,37 @@ def looks_like_heading(text: str) -> bool:
 
 
 def find_bibliography_range(paragraphs: list[ParagraphRecord]) -> tuple[int, int]:
-    start = next(
-        (p.index for p in paragraphs if re.sub(r"\s+", "", p.text) == BIBLIO_HEADING_NORMALIZED),
-        -1,
-    )
-    if start < 0:
+    heading_indexes = [record.index for record in paragraphs if is_bibliography_heading(record)]
+    if not heading_indexes:
         raise ValueError(f"Could not find bibliography heading '{BIBLIO_HEADING}'.")
 
-    end = len(paragraphs)
-    for record in paragraphs[start + 1 :]:
-        lowered = record.text.lower()
-        compact = re.sub(r"\s+", "", lowered)
-        if compact in TAIL_HEADINGS_NORMALIZED:
-            end = record.index
-            break
-        if looks_like_heading(record.text) and not record.has_numbering:
-            end = record.index
-            break
-    return start, end
+    for heading_index in heading_indexes:
+        cursor = heading_index + 1
+        active_heading_index = heading_index
+        while cursor < len(paragraphs):
+            record = paragraphs[cursor]
+            if not record.text:
+                cursor += 1
+                continue
+            if is_bibliography_heading(record):
+                active_heading_index = record.index
+                cursor += 1
+                continue
+            if is_bibliography_entry(record):
+                end = len(paragraphs)
+                for tail in paragraphs[cursor + 1 :]:
+                    if is_tail_heading(tail):
+                        end = tail.index
+                        break
+                    if looks_like_heading(tail.text) and not tail.has_numbering and not is_bibliography_entry(tail):
+                        end = tail.index
+                        break
+                return active_heading_index, end
+            if looks_like_heading(record.text) and not record.has_numbering:
+                break
+            cursor += 1
+
+    raise ValueError(f"Could not find bibliography entries after heading '{BIBLIO_HEADING}'.")
 
 
 def classify_surface(record: ParagraphRecord) -> str:
@@ -250,41 +345,94 @@ def extract_citation_numbers(text: str) -> list[int]:
     return [int(match) for match in re.findall(r"\[(\d+)\]", text)]
 
 
+def run_text(run: ET.Element) -> str:
+    return "".join((node.text or "") for node in run.iterfind(".//w:t", NS))
+
+
+def paragraph_text_units(paragraph: ParagraphRecord) -> list[TextUnit]:
+    units: list[TextUnit] = []
+
+    def walk(element: ET.Element, hyperlink_anchor: str = "") -> None:
+        if element.tag == f"{W}hyperlink":
+            hyperlink_anchor = element.attrib.get(f"{W}anchor", "")
+        if element.tag == f"{W}r":
+            for text_node in element.iterfind(".//w:t", NS):
+                for char in text_node.text or "":
+                    units.append(TextUnit(char=char, run=element, hyperlink_anchor=hyperlink_anchor))
+            return
+        for child in list(element):
+            walk(child, hyperlink_anchor)
+
+    walk(paragraph.xml)
+    return units
+
+
+def citation_marker_occurrences(paragraph: ParagraphRecord, number: int | None = None) -> list[CitationMarkerOccurrence]:
+    units = paragraph_text_units(paragraph)
+    visible_text = "".join(unit.char for unit in units)
+    occurrences: list[CitationMarkerOccurrence] = []
+    for match in re.finditer(r"\[(\d+)\]", visible_text):
+        marker_number = int(match.group(1))
+        if number is not None and marker_number != number:
+            continue
+        occurrences.append(
+            CitationMarkerOccurrence(
+                number=marker_number,
+                text=match.group(0),
+                units=tuple(units[match.start() : match.end()]),
+            )
+        )
+    return occurrences
+
+
+def occurrence_runs(occurrence: CitationMarkerOccurrence) -> list[ET.Element]:
+    runs: list[ET.Element] = []
+    seen: set[int] = set()
+    for unit in occurrence.units:
+        marker = id(unit.run)
+        if marker in seen:
+            continue
+        seen.add(marker)
+        runs.append(unit.run)
+    return runs
+
+
+def run_is_superscript(run: ET.Element) -> bool:
+    vert = run.find("./w:rPr/w:vertAlign", NS)
+    return vert is not None and vert.attrib.get(f"{W}val") == "superscript"
+
+
+def occurrence_uses_marker_only_runs(occurrence: CitationMarkerOccurrence) -> bool:
+    for run in occurrence_runs(occurrence):
+        compact_run_text = re.sub(r"\s+", "", run_text(run))
+        if not compact_run_text:
+            continue
+        if compact_run_text not in occurrence.text:
+            return False
+    return True
+
+
 def citation_marker_count(paragraph: ParagraphRecord, number: int) -> int:
-    target = f"[{number}]"
-    return sum(
-        1
-        for run in paragraph.xml.findall(".//w:r", NS)
-        if "".join((node.text or "") for node in run.iterfind(".//w:t", NS)) == target
-    )
+    return len(citation_marker_occurrences(paragraph, number))
 
 
 def run_has_superscript_citation(paragraph: ParagraphRecord, number: int) -> bool:
-    target = f"[{number}]"
-    matched = 0
-    for run in paragraph.xml.findall(".//w:r", NS):
-        text = "".join((node.text or "") for node in run.iterfind(".//w:t", NS))
-        if text != target:
-            continue
-        matched += 1
-        vert = run.find("./w:rPr/w:vertAlign", NS)
-        if vert is None or vert.attrib.get(f"{W}val") != "superscript":
+    occurrences = citation_marker_occurrences(paragraph, number)
+    if not occurrences:
+        return False
+    for occurrence in occurrences:
+        if not occurrence_uses_marker_only_runs(occurrence):
             return False
-    return matched > 0
+        if any(not run_is_superscript(run) for run in occurrence_runs(occurrence)):
+            return False
+    return True
 
 
 def run_has_hyperlink_citation(paragraph: ParagraphRecord, number: int) -> bool:
-    target = f"[{number}]"
-    matched = 0
-    for hyperlink in paragraph.xml.findall(".//w:hyperlink", NS):
-        anchor = hyperlink.attrib.get(f"{W}anchor", "")
-        if not anchor:
-            continue
-        for run in hyperlink.findall(".//w:r", NS):
-            text = "".join((node.text or "") for node in run.iterfind(".//w:t", NS))
-            if text == target:
-                matched += 1
-    return matched == citation_marker_count(paragraph, number) and matched > 0
+    occurrences = citation_marker_occurrences(paragraph, number)
+    if not occurrences:
+        return False
+    return all(bool(occurrence.common_hyperlink_anchor) for occurrence in occurrences)
 
 
 def run_has_bibliography_target(
@@ -295,29 +443,25 @@ def run_has_bibliography_target(
     bibliography_start: int,
     bibliography_end: int,
 ) -> bool:
-    target = f"[{number}]"
     anchor = f"cite_ref_{number}"
-    target_count = citation_marker_count(paragraph, number)
-    matched = 0
-    for hyperlink in paragraph.xml.findall(".//w:hyperlink", NS):
-        if hyperlink.attrib.get(f"{W}anchor", "") != anchor:
-            continue
-        target_index = bookmark_locations.get(anchor)
-        if target_index is None or not (bibliography_start < target_index < bibliography_end):
-            continue
-        for run in hyperlink.findall(".//w:r", NS):
-            text = "".join((node.text or "") for node in run.iterfind(".//w:t", NS))
-            if text == target:
-                matched += 1
-    return matched == target_count and matched > 0
+    target_index = bookmark_locations.get(anchor)
+    if target_index is None or not (bibliography_start < target_index < bibliography_end):
+        return False
+    occurrences = citation_marker_occurrences(paragraph, number)
+    if not occurrences:
+        return False
+    return all(occurrence.common_hyperlink_anchor == anchor for occurrence in occurrences)
 
 
 def citation_runs(paragraph: ParagraphRecord, number: int) -> list[ET.Element]:
-    target = f"[{number}]"
     matched: list[ET.Element] = []
-    for run in paragraph.xml.findall(".//w:r", NS):
-        text = "".join((node.text or "") for node in run.iterfind(".//w:t", NS))
-        if text == target:
+    seen: set[int] = set()
+    for occurrence in citation_marker_occurrences(paragraph, number):
+        for run in occurrence_runs(occurrence):
+            marker = id(run)
+            if marker in seen:
+                continue
+            seen.add(marker)
             matched.append(run)
     return matched
 
@@ -357,11 +501,19 @@ def citation_is_before_punctuation(text: str, number: int) -> bool:
     return bool(re.search(rf"\[{number}\]\s*[\u3002\uff01\uff1f\uff1b\uff0c\.,;!?]", text))
 
 
+NUMERIC_CITATION_MARKER_RE = re.compile(
+    r"\[\s*\d+(?:\s*(?:,|，|;|；|-|–|—|~|～)\s*\d+)*\s*\]"
+)
+
+
 def sentence_marker_rule_violations(text: str) -> tuple[list[str], list[str]]:
     multi_marker_hits: list[str] = []
     multi_number_hits: list[str] = []
     for sentence in split_sentences(text):
-        markers = re.findall(r"\[([^\]]+)\]", sentence)
+        markers = [
+            match.group(0)[1:-1]
+            for match in NUMERIC_CITATION_MARKER_RE.finditer(sentence)
+        ]
         if not markers:
             continue
         if len(markers) > 1:
@@ -374,7 +526,7 @@ def sentence_marker_rule_violations(text: str) -> tuple[list[str], list[str]]:
 
 def extract_bibliography_entries(paragraphs: list[ParagraphRecord]) -> list[ParagraphRecord]:
     start, end = find_bibliography_range(paragraphs)
-    return [record for record in paragraphs[start + 1 : end] if record.text]
+    return [record for record in paragraphs[start + 1 : end] if is_bibliography_entry(record)]
 
 
 def find_bibliography_numbering_conflicts(bibliography: list[ParagraphRecord]) -> list[str]:
@@ -387,7 +539,47 @@ def find_bibliography_numbering_conflicts(bibliography: list[ParagraphRecord]) -
     return conflicts
 
 
-VISIBLE_ANCHOR_LEAK_RE = re.compile(r"\b(?:cite_ref|ref_anchor|bookmark)_\d+\b", re.IGNORECASE)
+def find_bibliography_empty_entry_hits(bibliography: list[ParagraphRecord]) -> list[str]:
+    hits: list[str] = []
+    for record in bibliography:
+        if is_bibliography_number_only_record(record):
+            content_len = len(bibliography_entry_content_text(record))
+            hits.append(
+                f"paragraph {record.index + 1} bibliography entry has only a label/bookmark "
+                f"or too little substantive content ({content_len} chars): {record.text}"
+            )
+    return hits
+
+
+def find_bibliography_visible_label_failures(bibliography: list[ParagraphRecord]) -> list[str]:
+    failures: list[str] = []
+    for offset, record in enumerate(bibliography, start=1):
+        # Word automatic numbering renders the label outside w:t, so a numbered
+        # bibliography paragraph does not need a manual [n] text prefix.
+        if record.has_numbering:
+            continue
+        if not BIBLIOGRAPHY_VISIBLE_LABEL_RE.match(record.text):
+            failures.append(
+                f"bibliography entry {offset} at paragraph {record.index + 1} lacks a visible reference label: {record.text}"
+            )
+    return failures
+
+
+VISIBLE_ANCHOR_LEAK_RE = re.compile(
+    r"\b(?:cite_ref|ref_anchor|bookmark)_(?:[A-Za-z0-9][A-Za-z0-9_.:-]*)?\b"
+    r"|\b(?:cite_ref|ref_anchor|bookmark)_",
+    re.IGNORECASE,
+)
+FIELD_HYPERLINK_ANCHOR_RE = re.compile(r'HYPERLINK\s+\\l\s+"([^"]+)"', re.IGNORECASE)
+
+
+def field_hyperlink_anchors(paragraph: ParagraphRecord) -> list[str]:
+    anchors: list[str] = []
+    for instr in paragraph.xml.findall(".//w:instrText", NS):
+        match = FIELD_HYPERLINK_ANCHOR_RE.search(instr.text or "")
+        if match:
+            anchors.append(match.group(1))
+    return anchors
 
 
 def visible_anchor_leak_hits(record: ParagraphRecord) -> list[str]:
@@ -414,6 +606,10 @@ def audit_docx(docx_path: Path, *, allow_uncited_bibliography: bool = False) -> 
     punctuation_failures: list[str] = []
     citation_records: list[CitationRecord] = []
     bibliography_numbering_conflicts = find_bibliography_numbering_conflicts(bibliography)
+    bibliography_empty_entry_hits = find_bibliography_empty_entry_hits(bibliography)
+    bibliography_visible_label_failures = find_bibliography_visible_label_failures(bibliography)
+    citation_number_counts: dict[int, int] = {}
+    citation_distribution_failures: list[str] = []
     visible_anchor_leaks: list[str] = []
 
     for record in body_records:
@@ -504,6 +700,7 @@ def audit_docx(docx_path: Path, *, allow_uncited_bibliography: bool = False) -> 
             continue
 
         for number in numbers:
+            citation_number_counts[number] = citation_number_counts.get(number, 0) + citation_marker_count(record, number)
             if number in seen:
                 continue
             expected = len(seen) + 1
@@ -547,10 +744,28 @@ def audit_docx(docx_path: Path, *, allow_uncited_bibliography: bool = False) -> 
         error_codes.add(ERROR_CODES["out_of_range"])
     if bibliography_numbering_conflicts:
         error_codes.add(ERROR_CODES["bibliography_numbering"])
+    if bibliography_empty_entry_hits:
+        error_codes.add(ERROR_CODES["bibliography_empty_entry"])
+    if bibliography_visible_label_failures:
+        error_codes.add(ERROR_CODES["bibliography_visible_label"])
+    total_citation_markers = sum(citation_number_counts.values())
+    if total_citation_markers and citation_number_counts:
+        dominant_number, dominant_count = max(citation_number_counts.items(), key=lambda item: item[1])
+        dominant_ratio = dominant_count / max(total_citation_markers, 1)
+        if bibliography_count >= 20 and dominant_count >= 20 and dominant_ratio > 0.35:
+            citation_distribution_failures.append(
+                f"citation [{dominant_number}] appears {dominant_count}/{total_citation_markers} times; dominant ratio {dominant_ratio:.2%} indicates filler or stale citation distribution"
+            )
+    if citation_distribution_failures:
+        error_codes.add(ERROR_CODES["citation_distribution"])
     if visible_anchor_leaks:
         error_codes.add(ERROR_CODES["anchor_leak"])
 
     return AuditResult(
+        schema="graduation-project-builder.thesis-citation-audit.v2",
+        generator="scripts/audit_thesis_citations.py",
+        docx_path=str(docx_path),
+        docx_sha256=sha256_file(docx_path),
         passed=not error_codes,
         error_codes=sorted(error_codes),
         body_citation_paragraph_count=len(citation_records),
@@ -570,6 +785,9 @@ def audit_docx(docx_path: Path, *, allow_uncited_bibliography: bool = False) -> 
         multi_number_marker_hits=multi_number_marker_hits,
         punctuation_failures=punctuation_failures,
         bibliography_numbering_conflicts=bibliography_numbering_conflicts,
+        bibliography_empty_entry_hits=bibliography_empty_entry_hits,
+        citation_distribution_failures=citation_distribution_failures,
+        bibliography_visible_label_failures=bibliography_visible_label_failures,
         visible_anchor_leaks=visible_anchor_leaks,
         citation_records=citation_records,
     )
@@ -590,6 +808,9 @@ def build_report(result: AuditResult, docx_path: Path) -> str:
         f"- missing bibliography numbers: {result.missing_bibliography_numbers if result.missing_bibliography_numbers else 'none'}",
         f"- extra body citation numbers: {result.extra_body_citation_numbers if result.extra_body_citation_numbers else 'none'}",
         f"- bibliography numbering conflicts: {len(result.bibliography_numbering_conflicts)}",
+        f"- bibliography empty/content-missing entries: {len(result.bibliography_empty_entry_hits)}",
+        f"- citation distribution failures: {len(result.citation_distribution_failures)}",
+        f"- bibliography visible-label failures: {len(result.bibliography_visible_label_failures)}",
         f"- error codes: {', '.join(result.error_codes) if result.error_codes else 'none'}",
         f"- result: {'pass' if result.passed else 'fail'}",
         "",
@@ -629,6 +850,9 @@ def build_report(result: AuditResult, docx_path: Path) -> str:
         ("multi-number marker hits", result.multi_number_marker_hits),
         ("punctuation failures", result.punctuation_failures),
         ("bibliography numbering conflicts", result.bibliography_numbering_conflicts),
+        ("bibliography empty/content-missing entries", result.bibliography_empty_entry_hits),
+        ("citation distribution failures", result.citation_distribution_failures),
+        ("bibliography visible-label failures", result.bibliography_visible_label_failures),
         ("visible anchor leaks", result.visible_anchor_leaks),
     ]
     any_findings = False
@@ -685,6 +909,11 @@ def run_cli(argv: list[str]) -> int:
         print(
             f"- bibliography numbering conflicts: {len(result.bibliography_numbering_conflicts)}"
         )
+        print(
+            f"- bibliography empty/content-missing entries: {len(result.bibliography_empty_entry_hits)}"
+        )
+        print(f"- citation distribution failures: {len(result.citation_distribution_failures)}")
+        print(f"- bibliography visible-label failures: {len(result.bibliography_visible_label_failures)}")
         print(f"- error codes: {', '.join(result.error_codes) if result.error_codes else 'none'}")
         if args.report:
             print(f"- report: {Path(args.report).resolve()}")

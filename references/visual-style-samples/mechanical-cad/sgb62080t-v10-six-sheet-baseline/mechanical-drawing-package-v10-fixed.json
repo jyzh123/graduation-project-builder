@@ -1,0 +1,1360 @@
+{
+  "schema": "graduation-project-builder.mechanical-drawing-package-audit.v5",
+  "package_path": "D:\\项目\\刮板输送机\\最终交付\\SGB620-80T刮板输送机图纸包_PDF-DWG-DXF_参考强化v10版.zip",
+  "package_sha256": "4127CE2213A4A56371DA34639AF754B352EB394C521B949E8741B0BF5E8FCDD0",
+  "reference_paths": [],
+  "passed": true,
+  "issues": [],
+  "warnings": [
+    "dimensioned DXF distribution requirement clamped to available required sheet count: 8 -> 6"
+  ],
+  "candidate": {
+    "path": "D:\\项目\\刮板输送机\\最终交付\\SGB620-80T刮板输送机图纸包_PDF-DWG-DXF_参考强化v10版.zip",
+    "path_type": "zip",
+    "sha256": "4127CE2213A4A56371DA34639AF754B352EB394C521B949E8741B0BF5E8FCDD0",
+    "file_count": 27,
+    "total_bytes": 22214879,
+    "extension_counts": {
+      ".dwg": 6,
+      ".dxf": 6,
+      ".json": 2,
+      ".pdf": 7,
+      ".png": 6
+    },
+    "dwg_count": 6,
+    "dwg_total_bytes": 1333451,
+    "dwg_header_failures": [],
+    "dxf_count": 6,
+    "dxf": {
+      "aggregate_entities": {
+        "ARC": 84,
+        "BLOCK": 18,
+        "CIRCLE": 862,
+        "DIMENSION": 207,
+        "ENDBLK": 18,
+        "HATCH": 44262,
+        "INSERT": 20,
+        "LEADER": 330,
+        "LINE": 50150,
+        "POLYLINE": 338,
+        "SEQEND": 338,
+        "TEXT": 2404,
+        "VERTEX": 5765
+      },
+      "aggregate_structure_tokens": {
+        "BLOCKS": 6,
+        "DIMSTYLE": 18,
+        "LAYER": 114,
+        "LTYPE": 36,
+        "STYLE": 18,
+        "TABLES": 6
+      },
+      "per_file": [
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-00_A0_SGB620-80T刮板输送机总装配图_参考强化v10版.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 2927566,
+          "acadver": "AC1015",
+          "codepage": "ANSI_936",
+          "section_count": 6,
+          "entities": {
+            "ARC": 28,
+            "BLOCK": 3,
+            "CIRCLE": 177,
+            "DIMENSION": 33,
+            "ENDBLK": 3,
+            "HATCH": 15619,
+            "INSERT": 8,
+            "LEADER": 67,
+            "LINE": 16519,
+            "POLYLINE": 84,
+            "SEQEND": 84,
+            "TEXT": 353,
+            "VERTEX": 2592
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 3,
+            "LAYER": 19,
+            "LTYPE": 6,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        },
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-01_A1_机头传动部装配图_参考强化v10版.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 1141649,
+          "acadver": "AC1015",
+          "codepage": "ANSI_936",
+          "section_count": 6,
+          "entities": {
+            "ARC": 28,
+            "BLOCK": 3,
+            "CIRCLE": 144,
+            "DIMENSION": 33,
+            "ENDBLK": 3,
+            "HATCH": 3463,
+            "INSERT": 7,
+            "LEADER": 52,
+            "LINE": 4944,
+            "POLYLINE": 55,
+            "SEQEND": 55,
+            "TEXT": 496,
+            "VERTEX": 263
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 3,
+            "LAYER": 19,
+            "LTYPE": 6,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        },
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-02_A1_中部槽装配图_参考强化v10版.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 1721720,
+          "acadver": "AC1015",
+          "codepage": "ANSI_936",
+          "section_count": 6,
+          "entities": {
+            "BLOCK": 3,
+            "CIRCLE": 187,
+            "DIMENSION": 68,
+            "ENDBLK": 3,
+            "HATCH": 5476,
+            "LEADER": 61,
+            "LINE": 6620,
+            "POLYLINE": 62,
+            "SEQEND": 62,
+            "TEXT": 529,
+            "VERTEX": 1628
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 3,
+            "LAYER": 19,
+            "LTYPE": 6,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        },
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-03_A1_机尾张紧部装配图_参考强化v10版.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 2679534,
+          "acadver": "AC1015",
+          "codepage": "ANSI_936",
+          "section_count": 6,
+          "entities": {
+            "ARC": 28,
+            "BLOCK": 3,
+            "CIRCLE": 207,
+            "DIMENSION": 25,
+            "ENDBLK": 3,
+            "HATCH": 12178,
+            "LEADER": 49,
+            "LINE": 12888,
+            "POLYLINE": 63,
+            "SEQEND": 63,
+            "TEXT": 373,
+            "VERTEX": 300
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 3,
+            "LAYER": 19,
+            "LTYPE": 6,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        },
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-04_A2_刮板零件图_参考强化v10版.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 597406,
+          "acadver": "AC1015",
+          "codepage": "ANSI_936",
+          "section_count": 6,
+          "entities": {
+            "BLOCK": 3,
+            "CIRCLE": 30,
+            "DIMENSION": 11,
+            "ENDBLK": 3,
+            "HATCH": 3541,
+            "LEADER": 19,
+            "LINE": 3763,
+            "POLYLINE": 13,
+            "SEQEND": 13,
+            "TEXT": 173,
+            "VERTEX": 53
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 3,
+            "LAYER": 19,
+            "LTYPE": 6,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        },
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-05_A2_链轮轴组件零件图_参考强化v10版.dxf",
+          "encoding": "gb18030",
+          "decode_loss": false,
+          "size": 1338987,
+          "acadver": "AC1015",
+          "codepage": "ANSI_936",
+          "section_count": 6,
+          "entities": {
+            "BLOCK": 3,
+            "CIRCLE": 117,
+            "DIMENSION": 37,
+            "ENDBLK": 3,
+            "HATCH": 3985,
+            "INSERT": 5,
+            "LEADER": 82,
+            "LINE": 5416,
+            "POLYLINE": 61,
+            "SEQEND": 61,
+            "TEXT": 480,
+            "VERTEX": 929
+          },
+          "structure_tokens": {
+            "BLOCKS": 1,
+            "DIMSTYLE": 3,
+            "LAYER": 19,
+            "LTYPE": 6,
+            "STYLE": 3,
+            "TABLES": 1
+          }
+        }
+      ],
+      "mojibake_hits": []
+    },
+    "pdf": {
+      "count": 7,
+      "total_bytes": 9514455,
+      "header_failures": [],
+      "fitz_available": true,
+      "estimated_a0_equivalent_workload": 3.0,
+      "per_file": [
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-00_A0_SGB620-80T刮板输送机总装配图_参考强化v10版.pdf",
+          "size": 836834,
+          "page_count": 1,
+          "a0_equivalent": 1.0,
+          "drawing_objects": 18934,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 1189.0,
+              "height_mm": 841.0,
+              "sheet_class": "A0",
+              "a0_equivalent": 1.0
+            }
+          ]
+        },
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-01_A1_机头传动部装配图_参考强化v10版.pdf",
+          "size": 948741,
+          "page_count": 1,
+          "a0_equivalent": 0.5,
+          "drawing_objects": 6931,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 841.0,
+              "height_mm": 594.0,
+              "sheet_class": "A1",
+              "a0_equivalent": 0.5
+            }
+          ]
+        },
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-02_A1_中部槽装配图_参考强化v10版.pdf",
+          "size": 969194,
+          "page_count": 1,
+          "a0_equivalent": 0.5,
+          "drawing_objects": 7838,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 841.0,
+              "height_mm": 594.0,
+              "sheet_class": "A1",
+              "a0_equivalent": 0.5
+            }
+          ]
+        },
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-03_A1_机尾张紧部装配图_参考强化v10版.pdf",
+          "size": 834720,
+          "page_count": 1,
+          "a0_equivalent": 0.5,
+          "drawing_objects": 14401,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 841.0,
+              "height_mm": 594.0,
+              "sheet_class": "A1",
+              "a0_equivalent": 0.5
+            }
+          ]
+        },
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-04_A2_刮板零件图_参考强化v10版.pdf",
+          "size": 272051,
+          "page_count": 1,
+          "a0_equivalent": 0.25,
+          "drawing_objects": 4160,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 594.0,
+              "height_mm": 420.0,
+              "sheet_class": "A2",
+              "a0_equivalent": 0.25
+            }
+          ]
+        },
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-05_A2_链轮轴组件零件图_参考强化v10版.pdf",
+          "size": 897056,
+          "page_count": 1,
+          "a0_equivalent": 0.25,
+          "drawing_objects": 6231,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 594.0,
+              "height_mm": 420.0,
+              "sheet_class": "A2",
+              "a0_equivalent": 0.25
+            }
+          ]
+        },
+        {
+          "file": "SGB620-80T刮板输送机六图参考强化v10版_合并版.pdf",
+          "size": 4755859,
+          "page_count": 6,
+          "a0_equivalent": 3.0,
+          "drawing_objects": 58495,
+          "pages": [
+            {
+              "index": 1,
+              "width_mm": 1189.0,
+              "height_mm": 841.0,
+              "sheet_class": "A0",
+              "a0_equivalent": 1.0
+            },
+            {
+              "index": 2,
+              "width_mm": 841.0,
+              "height_mm": 594.0,
+              "sheet_class": "A1",
+              "a0_equivalent": 0.5
+            },
+            {
+              "index": 3,
+              "width_mm": 841.0,
+              "height_mm": 594.0,
+              "sheet_class": "A1",
+              "a0_equivalent": 0.5
+            },
+            {
+              "index": 4,
+              "width_mm": 841.0,
+              "height_mm": 594.0,
+              "sheet_class": "A1",
+              "a0_equivalent": 0.5
+            },
+            {
+              "index": 5,
+              "width_mm": 594.0,
+              "height_mm": 420.0,
+              "sheet_class": "A2",
+              "a0_equivalent": 0.25
+            },
+            {
+              "index": 6,
+              "width_mm": 594.0,
+              "height_mm": 420.0,
+              "sheet_class": "A2",
+              "a0_equivalent": 0.25
+            }
+          ]
+        }
+      ]
+    },
+    "json_manifest": {
+      "manifests": [
+        {
+          "file": "DXF-PDF-PNG/rendered-review-v10.json",
+          "top_level_type": "dict",
+          "entry_count": 4
+        },
+        {
+          "file": "DXF-PDF-PNG/rendered_review_manifest.json",
+          "top_level_type": "dict",
+          "entry_count": 1
+        }
+      ],
+      "failures": [],
+      "mojibake_hits": []
+    },
+    "formal_cad_source_provenance": {
+      "passed": true,
+      "cad_source_suffixes": [
+        ".dwg",
+        ".dxf"
+      ],
+      "editable_cad_source_count": 12,
+      "dwg_source_count": 6,
+      "dxf_source_count": 6,
+      "pdf_drawing_count": 7,
+      "cad_source_files": [
+        "DXF-PDF-PNG/SGB62080T-00_A0_SGB620-80T刮板输送机总装配图_参考强化v10版.dxf",
+        "DXF-PDF-PNG/SGB62080T-01_A1_机头传动部装配图_参考强化v10版.dxf",
+        "DXF-PDF-PNG/SGB62080T-02_A1_中部槽装配图_参考强化v10版.dxf",
+        "DXF-PDF-PNG/SGB62080T-03_A1_机尾张紧部装配图_参考强化v10版.dxf",
+        "DXF-PDF-PNG/SGB62080T-04_A2_刮板零件图_参考强化v10版.dxf",
+        "DXF-PDF-PNG/SGB62080T-05_A2_链轮轴组件零件图_参考强化v10版.dxf",
+        "DWG/SGB62080T-00_A0_SGB620-80T刮板输送机总装配图_参考强化v10版.dwg",
+        "DWG/SGB62080T-01_A1_机头传动部装配图_参考强化v10版.dwg",
+        "DWG/SGB62080T-02_A1_中部槽装配图_参考强化v10版.dwg",
+        "DWG/SGB62080T-03_A1_机尾张紧部装配图_参考强化v10版.dwg",
+        "DWG/SGB62080T-04_A2_刮板零件图_参考强化v10版.dwg",
+        "DWG/SGB62080T-05_A2_链轮轴组件零件图_参考强化v10版.dwg"
+      ],
+      "pdf_drawing_files": [
+        "DXF-PDF-PNG/SGB62080T-00_A0_SGB620-80T刮板输送机总装配图_参考强化v10版.pdf",
+        "DXF-PDF-PNG/SGB62080T-01_A1_机头传动部装配图_参考强化v10版.pdf",
+        "DXF-PDF-PNG/SGB62080T-02_A1_中部槽装配图_参考强化v10版.pdf",
+        "DXF-PDF-PNG/SGB62080T-03_A1_机尾张紧部装配图_参考强化v10版.pdf",
+        "DXF-PDF-PNG/SGB62080T-04_A2_刮板零件图_参考强化v10版.pdf",
+        "DXF-PDF-PNG/SGB62080T-05_A2_链轮轴组件零件图_参考强化v10版.pdf",
+        "SGB620-80T刮板输送机六图参考强化v10版_合并版.pdf"
+      ],
+      "schematic_substitute_hits": [],
+      "schematic_substitute_rejection_verdict": "pass"
+    },
+    "rendered_review": {
+      "required_schema": "rendered_review",
+      "passed": true,
+      "review_count": 2,
+      "accepted_review_count": 1,
+      "reviews": [
+        {
+          "file": "DXF-PDF-PNG/rendered-review-v10.json",
+          "location": "$.rendered_review",
+          "passed": true,
+          "preview_paths": [
+            "DXF-PDF-PNG/SGB62080T-00_A0_SGB620-80T刮板输送机总装配图_参考强化v10版.png",
+            "DXF-PDF-PNG/SGB62080T-01_A1_机头传动部装配图_参考强化v10版.png",
+            "DXF-PDF-PNG/SGB62080T-02_A1_中部槽装配图_参考强化v10版.png",
+            "DXF-PDF-PNG/SGB62080T-03_A1_机尾张紧部装配图_参考强化v10版.png",
+            "DXF-PDF-PNG/SGB62080T-04_A2_刮板零件图_参考强化v10版.png",
+            "DXF-PDF-PNG/SGB62080T-05_A2_链轮轴组件零件图_参考强化v10版.png"
+          ],
+          "per_sheet_count": 6,
+          "machine_overlap_audit": {
+            "present": true,
+            "passed": true,
+            "per_sheet_count": 6,
+            "audit_method": "bbox-and-rendered-zone-machine",
+            "overlap_count": 0,
+            "text_entity_overlap_count": 0,
+            "reserved_zone_collision_count": 0,
+            "title_block_table_note_collision_count": 0,
+            "annotation_collision_count": 0,
+            "frame_clearance_violation_count": 0,
+            "min_clearance_mm": 4.0,
+            "max_local_ink_density": 0.62
+          },
+          "content_overlap_audit": {
+            "present": true,
+            "passed": true,
+            "per_sheet_count": 6,
+            "audit_method": "content-bbox-pairwise-machine",
+            "registered_bbox_count": 72,
+            "checked_pair_count": 396,
+            "min_clearance_mm": 4.0,
+            "content_overlap_count": 0,
+            "view_view_overlap_count": 0,
+            "detail_frame_main_view_overlap_count": 0,
+            "table_text_grid_collision_count": 0,
+            "dimension_line_view_table_crossing_count": 0,
+            "leader_line_view_table_crossing_count": 0,
+            "balloon_geometry_collision_count": 0,
+            "bbox_helper_envelope_escape_count": 0,
+            "stale_rendered_preview_count": 0
+          },
+          "outside_frame_ink_audit": {
+            "present": true,
+            "passed": true,
+            "per_sheet_count": 6,
+            "audit_method": "png-rendered-outer-frame-connected-component-machine",
+            "frame_detection_method": "iso-a-series-outer-frame-margin-machine",
+            "rendered_source_formats": [
+              "png"
+            ],
+            "sheet_frame_bbox_count": 6,
+            "max_outside_component_area_px": 0.0,
+            "outside_frame_independent_ink_component_count": 0,
+            "outside_frame_text_component_count": 0,
+            "outside_frame_leader_component_count": 0,
+            "outside_frame_hatch_section_component_count": 0,
+            "outside_frame_table_title_block_component_count": 0
+          },
+          "cell_containment_audit": {
+            "present": true,
+            "passed": true,
+            "per_sheet_count": 6,
+            "audit_method": "title-bom-cell-containment-machine",
+            "table_cell_text_count": 180,
+            "outside_cell_count": 0,
+            "border_touch_count": 0,
+            "unowned_table_text_count": 0,
+            "clipped_overflow_count": 0
+          },
+          "annotation_ownership_audit": {
+            "present": true,
+            "passed": true,
+            "per_sheet_count": 6,
+            "audit_method": "annotation-owner-zone-machine",
+            "annotation_text_count": 360,
+            "boxed_callout_count": 24,
+            "symbol_or_title_text_count": 72,
+            "unowned_free_text_count": 0,
+            "unsupported_floating_text_count": 0
+          },
+          "reserved_zone_intrusion_audit": {
+            "present": true,
+            "passed": true,
+            "per_sheet_count": 6,
+            "audit_method": "protected-table-zone-intrusion-machine",
+            "intrusion_count": 0,
+            "geometry_title_block_intrusion_count": 0,
+            "dimension_line_table_zone_intrusion_count": 0,
+            "dimension_text_table_zone_intrusion_count": 0,
+            "leader_table_zone_intrusion_count": 0,
+            "view_geometry_reserved_zone_intrusion_count": 0,
+            "bom_table_intrusion_count": 0,
+            "technical_requirement_intrusion_count": 0
+          },
+          "text_legibility_audit": {
+            "present": true,
+            "passed": true,
+            "audit_method": "cad-text-height-and-preview-pixel-machine",
+            "preview_dpi": 240.0,
+            "min_cad_text_height_mm": 3.8,
+            "min_required_cad_text_height_mm": 3.8,
+            "min_rendered_text_height_px": 42.0,
+            "min_required_rendered_text_height_px": 40.0,
+            "median_rendered_text_height_px": 48.0,
+            "per_sheet_count": 6
+          },
+          "manufacturing_complexity_audit": {
+            "present": true,
+            "passed": true,
+            "audit_method": "manufacturing-feature-family-machine",
+            "min_feature_family_count": 8,
+            "uses_dense_filler_as_primary_depth": false,
+            "per_sheet_count": 6
+          },
+          "hatch_clip_audit": {
+            "present": true,
+            "passed": true,
+            "per_sheet_count": 6,
+            "audit_method": "hatch-boundary-ownership-machine",
+            "section_fill_region_count": 44256,
+            "hatch_clip_violation_count": 0,
+            "entity_boundary_escape_count": 0,
+            "adjacent_view_crossing_count": 0,
+            "dimension_line_crossing_count": 0,
+            "title_block_table_bom_frame_crossing_count": 0,
+            "blank_background_leak_count": 0
+          },
+          "failures": [],
+          "no_overlap_verdict": "pass",
+          "boundary_clearance_verdict": "pass",
+          "detail_density_verdict": "pass",
+          "text_legibility_verdict": "pass",
+          "title_block_table_notes_isolation_verdict": "pass",
+          "title_block_cell_containment_verdict": "pass",
+          "annotation_margin_clearance_verdict": "pass",
+          "local_crowding_verdict": "pass",
+          "sheet_layout_verdict": "pass",
+          "manufacturing_view_depth_verdict": "pass",
+          "layout_collision_verdict": "pass",
+          "content_overlap_verdict": "pass",
+          "outside_frame_ink_verdict": "pass",
+          "hatch_section_fill_clipping_verdict": "pass",
+          "entity_count_only_verdict": "not-used"
+        },
+        {
+          "file": "DXF-PDF-PNG/rendered_review_manifest.json",
+          "location": "$.rendered_review",
+          "passed": false,
+          "preview_paths": [
+            "DXF-PDF-PNG/SGB62080T-00_A0_SGB620-80T刮板输送机总装配图_六图重做版.png",
+            "DXF-PDF-PNG/SGB62080T-01_A1_机头传动部装配图_六图重做版.png",
+            "DXF-PDF-PNG/SGB62080T-02_A1_中部槽装配图_六图重做版.png",
+            "DXF-PDF-PNG/SGB62080T-03_A1_机尾张紧部装配图_六图重做版.png",
+            "DXF-PDF-PNG/SGB62080T-04_A2_刮板零件图_六图重做版.png",
+            "DXF-PDF-PNG/SGB62080T-05_A2_链轮轴组件零件图_六图重做版.png"
+          ],
+          "per_sheet_count": 6,
+          "machine_overlap_audit": {
+            "present": true,
+            "passed": true,
+            "per_sheet_count": 6,
+            "audit_method": "bbox-and-rendered-zone-machine",
+            "overlap_count": 0,
+            "text_entity_overlap_count": 0,
+            "reserved_zone_collision_count": 0,
+            "title_block_table_note_collision_count": 0,
+            "annotation_collision_count": 0,
+            "frame_clearance_violation_count": 0,
+            "min_clearance_mm": 4.0,
+            "max_local_ink_density": 0.62
+          },
+          "content_overlap_audit": {
+            "present": true,
+            "passed": true,
+            "per_sheet_count": 6,
+            "audit_method": "content-bbox-pairwise-machine",
+            "registered_bbox_count": 72,
+            "checked_pair_count": 396,
+            "min_clearance_mm": 4.0,
+            "content_overlap_count": 0,
+            "view_view_overlap_count": 0,
+            "detail_frame_main_view_overlap_count": 0,
+            "table_text_grid_collision_count": 0,
+            "dimension_line_view_table_crossing_count": 0,
+            "leader_line_view_table_crossing_count": 0,
+            "balloon_geometry_collision_count": 0,
+            "bbox_helper_envelope_escape_count": 0,
+            "stale_rendered_preview_count": 0
+          },
+          "outside_frame_ink_audit": {
+            "present": true,
+            "passed": true,
+            "per_sheet_count": 6,
+            "audit_method": "png-rendered-outer-frame-connected-component-machine",
+            "frame_detection_method": "iso-a-series-outer-frame-margin-machine",
+            "rendered_source_formats": [
+              "png"
+            ],
+            "sheet_frame_bbox_count": 6,
+            "max_outside_component_area_px": 0.0,
+            "outside_frame_independent_ink_component_count": 0,
+            "outside_frame_text_component_count": 0,
+            "outside_frame_leader_component_count": 0,
+            "outside_frame_hatch_section_component_count": 0,
+            "outside_frame_table_title_block_component_count": 0
+          },
+          "cell_containment_audit": {
+            "present": true,
+            "passed": true,
+            "per_sheet_count": 6,
+            "audit_method": "title-bom-cell-containment-machine",
+            "table_cell_text_count": 180,
+            "outside_cell_count": 0,
+            "border_touch_count": 0,
+            "unowned_table_text_count": 0,
+            "clipped_overflow_count": 0
+          },
+          "annotation_ownership_audit": {
+            "present": true,
+            "passed": true,
+            "per_sheet_count": 6,
+            "audit_method": "annotation-owner-zone-machine",
+            "annotation_text_count": 360,
+            "boxed_callout_count": 24,
+            "symbol_or_title_text_count": 72,
+            "unowned_free_text_count": 0,
+            "unsupported_floating_text_count": 0
+          },
+          "reserved_zone_intrusion_audit": {
+            "present": true,
+            "passed": true,
+            "per_sheet_count": 6,
+            "audit_method": "protected-table-zone-intrusion-machine",
+            "intrusion_count": 0,
+            "geometry_title_block_intrusion_count": 0,
+            "dimension_line_table_zone_intrusion_count": 0,
+            "dimension_text_table_zone_intrusion_count": 0,
+            "leader_table_zone_intrusion_count": 0,
+            "view_geometry_reserved_zone_intrusion_count": 0,
+            "bom_table_intrusion_count": 0,
+            "technical_requirement_intrusion_count": 0
+          },
+          "text_legibility_audit": {
+            "present": true,
+            "passed": true,
+            "audit_method": "cad-text-height-and-preview-pixel-machine",
+            "preview_dpi": 240.0,
+            "min_cad_text_height_mm": 3.8,
+            "min_required_cad_text_height_mm": 3.8,
+            "min_rendered_text_height_px": 42.0,
+            "min_required_rendered_text_height_px": 40.0,
+            "median_rendered_text_height_px": 48.0,
+            "per_sheet_count": 6
+          },
+          "manufacturing_complexity_audit": {
+            "present": true,
+            "passed": true,
+            "audit_method": "manufacturing-feature-family-machine",
+            "min_feature_family_count": 8,
+            "uses_dense_filler_as_primary_depth": false,
+            "per_sheet_count": 6
+          },
+          "hatch_clip_audit": {
+            "present": true,
+            "passed": true,
+            "per_sheet_count": 6,
+            "audit_method": "hatch-boundary-ownership-machine",
+            "section_fill_region_count": 44256,
+            "hatch_clip_violation_count": 0,
+            "entity_boundary_escape_count": 0,
+            "adjacent_view_crossing_count": 0,
+            "dimension_line_crossing_count": 0,
+            "title_block_table_bom_frame_crossing_count": 0,
+            "blank_background_leak_count": 0
+          },
+          "failures": [
+            "rendered preview paths are not present in the package or filesystem: DXF-PDF-PNG/SGB62080T-00_A0_SGB620-80T刮板输送机总装配图_六图重做版.png, DXF-PDF-PNG/SGB62080T-01_A1_机头传动部装配图_六图重做版.png, DXF-PDF-PNG/SGB62080T-02_A1_中部槽装配图_六图重做版.png, DXF-PDF-PNG/SGB62080T-03_A1_机尾张紧部装配图_六图重做版.png, DXF-PDF-PNG/SGB62080T-04_A2_刮板零件图_六图重做版.png, DXF-PDF-PNG/SGB62080T-05_A2_链轮轴组件零件图_六图重做版.png"
+          ],
+          "no_overlap_verdict": "pass",
+          "boundary_clearance_verdict": "pass",
+          "detail_density_verdict": "pass",
+          "text_legibility_verdict": "pass",
+          "title_block_table_notes_isolation_verdict": "pass",
+          "title_block_cell_containment_verdict": "pass",
+          "annotation_margin_clearance_verdict": "pass",
+          "local_crowding_verdict": "pass",
+          "sheet_layout_verdict": "pass",
+          "manufacturing_view_depth_verdict": "pass",
+          "layout_collision_verdict": "pass",
+          "content_overlap_verdict": "pass",
+          "outside_frame_ink_verdict": "pass",
+          "hatch_section_fill_clipping_verdict": "pass",
+          "entity_count_only_verdict": "not-used"
+        }
+      ],
+      "failures": [
+        {
+          "file": "DXF-PDF-PNG/rendered_review_manifest.json",
+          "location": "$.rendered_review",
+          "reason": "rendered preview paths are not present in the package or filesystem: DXF-PDF-PNG/SGB62080T-00_A0_SGB620-80T刮板输送机总装配图_六图重做版.png, DXF-PDF-PNG/SGB62080T-01_A1_机头传动部装配图_六图重做版.png, DXF-PDF-PNG/SGB62080T-02_A1_中部槽装配图_六图重做版.png, DXF-PDF-PNG/SGB62080T-03_A1_机尾张紧部装配图_六图重做版.png, DXF-PDF-PNG/SGB62080T-04_A2_刮板零件图_六图重做版.png, DXF-PDF-PNG/SGB62080T-05_A2_链轮轴组件零件图_六图重做版.png"
+        }
+      ],
+      "no_overlap_verdict": "pass",
+      "boundary_clearance_verdict": "pass",
+      "detail_density_verdict": "pass",
+      "text_legibility_verdict": "pass",
+      "title_block_table_notes_isolation_verdict": "pass",
+      "title_block_cell_containment_verdict": "pass",
+      "annotation_margin_clearance_verdict": "pass",
+      "local_crowding_verdict": "pass",
+      "sheet_layout_verdict": "pass",
+      "manufacturing_view_depth_verdict": "pass",
+      "layout_collision_verdict": "pass",
+      "content_overlap_verdict": "pass",
+      "outside_frame_ink_verdict": "pass",
+      "hatch_section_fill_clipping_verdict": "pass",
+      "entity_count_only_verdict": "not-used",
+      "preview_paths": [
+        "DXF-PDF-PNG/SGB62080T-00_A0_SGB620-80T刮板输送机总装配图_参考强化v10版.png",
+        "DXF-PDF-PNG/SGB62080T-01_A1_机头传动部装配图_参考强化v10版.png",
+        "DXF-PDF-PNG/SGB62080T-02_A1_中部槽装配图_参考强化v10版.png",
+        "DXF-PDF-PNG/SGB62080T-03_A1_机尾张紧部装配图_参考强化v10版.png",
+        "DXF-PDF-PNG/SGB62080T-04_A2_刮板零件图_参考强化v10版.png",
+        "DXF-PDF-PNG/SGB62080T-05_A2_链轮轴组件零件图_参考强化v10版.png"
+      ],
+      "per_sheet_count": 6,
+      "machine_overlap_audit": {
+        "present": true,
+        "passed": true,
+        "per_sheet_count": 6,
+        "audit_method": "bbox-and-rendered-zone-machine",
+        "overlap_count": 0,
+        "text_entity_overlap_count": 0,
+        "reserved_zone_collision_count": 0,
+        "title_block_table_note_collision_count": 0,
+        "annotation_collision_count": 0,
+        "frame_clearance_violation_count": 0,
+        "min_clearance_mm": 4.0,
+        "max_local_ink_density": 0.62
+      },
+      "content_overlap_audit": {
+        "present": true,
+        "passed": true,
+        "per_sheet_count": 6,
+        "audit_method": "content-bbox-pairwise-machine",
+        "registered_bbox_count": 72,
+        "checked_pair_count": 396,
+        "min_clearance_mm": 4.0,
+        "content_overlap_count": 0,
+        "view_view_overlap_count": 0,
+        "detail_frame_main_view_overlap_count": 0,
+        "table_text_grid_collision_count": 0,
+        "dimension_line_view_table_crossing_count": 0,
+        "leader_line_view_table_crossing_count": 0,
+        "balloon_geometry_collision_count": 0,
+        "bbox_helper_envelope_escape_count": 0,
+        "stale_rendered_preview_count": 0
+      },
+      "outside_frame_ink_audit": {
+        "present": true,
+        "passed": true,
+        "per_sheet_count": 6,
+        "audit_method": "png-rendered-outer-frame-connected-component-machine",
+        "frame_detection_method": "iso-a-series-outer-frame-margin-machine",
+        "rendered_source_formats": [
+          "png"
+        ],
+        "sheet_frame_bbox_count": 6,
+        "max_outside_component_area_px": 0.0,
+        "outside_frame_independent_ink_component_count": 0,
+        "outside_frame_text_component_count": 0,
+        "outside_frame_leader_component_count": 0,
+        "outside_frame_hatch_section_component_count": 0,
+        "outside_frame_table_title_block_component_count": 0
+      },
+      "cell_containment_audit": {
+        "present": true,
+        "passed": true,
+        "per_sheet_count": 6,
+        "audit_method": "title-bom-cell-containment-machine",
+        "table_cell_text_count": 180,
+        "outside_cell_count": 0,
+        "border_touch_count": 0,
+        "unowned_table_text_count": 0,
+        "clipped_overflow_count": 0
+      },
+      "annotation_ownership_audit": {
+        "present": true,
+        "passed": true,
+        "per_sheet_count": 6,
+        "audit_method": "annotation-owner-zone-machine",
+        "annotation_text_count": 360,
+        "boxed_callout_count": 24,
+        "symbol_or_title_text_count": 72,
+        "unowned_free_text_count": 0,
+        "unsupported_floating_text_count": 0
+      },
+      "reserved_zone_intrusion_audit": {
+        "present": true,
+        "passed": true,
+        "per_sheet_count": 6,
+        "audit_method": "protected-table-zone-intrusion-machine",
+        "intrusion_count": 0,
+        "geometry_title_block_intrusion_count": 0,
+        "dimension_line_table_zone_intrusion_count": 0,
+        "dimension_text_table_zone_intrusion_count": 0,
+        "leader_table_zone_intrusion_count": 0,
+        "view_geometry_reserved_zone_intrusion_count": 0,
+        "bom_table_intrusion_count": 0,
+        "technical_requirement_intrusion_count": 0
+      },
+      "text_legibility_audit": {
+        "present": true,
+        "passed": true,
+        "audit_method": "cad-text-height-and-preview-pixel-machine",
+        "preview_dpi": 240.0,
+        "min_cad_text_height_mm": 3.8,
+        "min_required_cad_text_height_mm": 3.8,
+        "min_rendered_text_height_px": 42.0,
+        "min_required_rendered_text_height_px": 40.0,
+        "median_rendered_text_height_px": 48.0,
+        "per_sheet_count": 6
+      },
+      "manufacturing_complexity_audit": {
+        "present": true,
+        "passed": true,
+        "audit_method": "manufacturing-feature-family-machine",
+        "min_feature_family_count": 8,
+        "uses_dense_filler_as_primary_depth": false,
+        "per_sheet_count": 6
+      },
+      "hatch_clip_audit": {
+        "present": true,
+        "passed": true,
+        "per_sheet_count": 6,
+        "audit_method": "hatch-boundary-ownership-machine",
+        "section_fill_region_count": 44256,
+        "hatch_clip_violation_count": 0,
+        "entity_boundary_escape_count": 0,
+        "adjacent_view_crossing_count": 0,
+        "dimension_line_crossing_count": 0,
+        "title_block_table_bom_frame_crossing_count": 0,
+        "blank_background_leak_count": 0
+      }
+    },
+    "rendered_frame_overflow": {
+      "audit_method": "png-rendered-outer-frame-connected-component-machine",
+      "passed": true,
+      "png_sheet_count": 6,
+      "outside_frame_component_count": 0,
+      "outside_frame_pixel_count": 0,
+      "max_outside_component_area_px": 0,
+      "component_min_area_px": 18,
+      "frame_line_tolerance_px": 3,
+      "outer_margin_mm": 10.0,
+      "per_sheet": [
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-00_A0_SGB620-80T刮板输送机总装配图_参考强化v10版.png",
+          "passed": true,
+          "sheet_guess": "A-series-landscape",
+          "image_size_px": [
+            5617,
+            3973
+          ],
+          "outer_frame_bbox_px": [
+            47,
+            47,
+            5570,
+            3926
+          ],
+          "outer_margin_mm": 10.0,
+          "frame_line_tolerance_px": 3,
+          "outside_frame_component_count": 0,
+          "outside_frame_pixel_count": 0,
+          "max_outside_component_area_px": 0,
+          "outside_components": []
+        },
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-01_A1_机头传动部装配图_参考强化v10版.png",
+          "passed": true,
+          "sheet_guess": "A-series-landscape",
+          "image_size_px": [
+            3973,
+            2806
+          ],
+          "outer_frame_bbox_px": [
+            33,
+            33,
+            3940,
+            2773
+          ],
+          "outer_margin_mm": 10.0,
+          "frame_line_tolerance_px": 3,
+          "outside_frame_component_count": 0,
+          "outside_frame_pixel_count": 0,
+          "max_outside_component_area_px": 0,
+          "outside_components": []
+        },
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-02_A1_中部槽装配图_参考强化v10版.png",
+          "passed": true,
+          "sheet_guess": "A-series-landscape",
+          "image_size_px": [
+            3973,
+            2806
+          ],
+          "outer_frame_bbox_px": [
+            33,
+            33,
+            3940,
+            2773
+          ],
+          "outer_margin_mm": 10.0,
+          "frame_line_tolerance_px": 3,
+          "outside_frame_component_count": 0,
+          "outside_frame_pixel_count": 0,
+          "max_outside_component_area_px": 0,
+          "outside_components": []
+        },
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-03_A1_机尾张紧部装配图_参考强化v10版.png",
+          "passed": true,
+          "sheet_guess": "A-series-landscape",
+          "image_size_px": [
+            3973,
+            2806
+          ],
+          "outer_frame_bbox_px": [
+            33,
+            33,
+            3940,
+            2773
+          ],
+          "outer_margin_mm": 10.0,
+          "frame_line_tolerance_px": 3,
+          "outside_frame_component_count": 0,
+          "outside_frame_pixel_count": 0,
+          "max_outside_component_area_px": 0,
+          "outside_components": []
+        },
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-04_A2_刮板零件图_参考强化v10版.png",
+          "passed": true,
+          "sheet_guess": "A-series-landscape",
+          "image_size_px": [
+            2806,
+            1984
+          ],
+          "outer_frame_bbox_px": [
+            24,
+            24,
+            2782,
+            1960
+          ],
+          "outer_margin_mm": 10.0,
+          "frame_line_tolerance_px": 3,
+          "outside_frame_component_count": 0,
+          "outside_frame_pixel_count": 0,
+          "max_outside_component_area_px": 0,
+          "outside_components": []
+        },
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-05_A2_链轮轴组件零件图_参考强化v10版.png",
+          "passed": true,
+          "sheet_guess": "A-series-landscape",
+          "image_size_px": [
+            2806,
+            1984
+          ],
+          "outer_frame_bbox_px": [
+            24,
+            24,
+            2782,
+            1960
+          ],
+          "outer_margin_mm": 10.0,
+          "frame_line_tolerance_px": 3,
+          "outside_frame_component_count": 0,
+          "outside_frame_pixel_count": 0,
+          "max_outside_component_area_px": 0,
+          "outside_components": []
+        }
+      ],
+      "failures": []
+    },
+    "rendered_ink_contrast": {
+      "audit_method": "png-rendered-ink-contrast-machine",
+      "passed": true,
+      "png_sheet_count": 6,
+      "min_readable_ink_ratio": 0.78,
+      "min_ink_pixel_ratio": 0.0015,
+      "worst_readable_ink_ratio": 1.0,
+      "worst_ink_pixel_ratio": 0.035046,
+      "per_sheet": [
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-00_A0_SGB620-80T刮板输送机总装配图_参考强化v10版.png",
+          "passed": true,
+          "image_size_px": [
+            5617,
+            3973
+          ],
+          "ink_pixel_count": 984273,
+          "readable_ink_pixel_count": 984273,
+          "ink_pixel_ratio": 0.044105,
+          "readable_ink_ratio": 1.0,
+          "average_ink_luminance": 0.0,
+          "nonwhite_distance_threshold": 15.0,
+          "readable_distance_threshold": 80.0,
+          "min_readable_ink_ratio": 0.78,
+          "min_ink_pixel_ratio": 0.0015
+        },
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-01_A1_机头传动部装配图_参考强化v10版.png",
+          "passed": true,
+          "image_size_px": [
+            3973,
+            2806
+          ],
+          "ink_pixel_count": 390706,
+          "readable_ink_pixel_count": 390706,
+          "ink_pixel_ratio": 0.035046,
+          "readable_ink_ratio": 1.0,
+          "average_ink_luminance": 0.0,
+          "nonwhite_distance_threshold": 15.0,
+          "readable_distance_threshold": 80.0,
+          "min_readable_ink_ratio": 0.78,
+          "min_ink_pixel_ratio": 0.0015
+        },
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-02_A1_中部槽装配图_参考强化v10版.png",
+          "passed": true,
+          "image_size_px": [
+            3973,
+            2806
+          ],
+          "ink_pixel_count": 448563,
+          "readable_ink_pixel_count": 448563,
+          "ink_pixel_ratio": 0.040236,
+          "readable_ink_ratio": 1.0,
+          "average_ink_luminance": 0.0,
+          "nonwhite_distance_threshold": 15.0,
+          "readable_distance_threshold": 80.0,
+          "min_readable_ink_ratio": 0.78,
+          "min_ink_pixel_ratio": 0.0015
+        },
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-03_A1_机尾张紧部装配图_参考强化v10版.png",
+          "passed": true,
+          "image_size_px": [
+            3973,
+            2806
+          ],
+          "ink_pixel_count": 541362,
+          "readable_ink_pixel_count": 541362,
+          "ink_pixel_ratio": 0.04856,
+          "readable_ink_ratio": 1.0,
+          "average_ink_luminance": 0.0,
+          "nonwhite_distance_threshold": 15.0,
+          "readable_distance_threshold": 80.0,
+          "min_readable_ink_ratio": 0.78,
+          "min_ink_pixel_ratio": 0.0015
+        },
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-04_A2_刮板零件图_参考强化v10版.png",
+          "passed": true,
+          "image_size_px": [
+            2806,
+            1984
+          ],
+          "ink_pixel_count": 236485,
+          "readable_ink_pixel_count": 236485,
+          "ink_pixel_ratio": 0.042479,
+          "readable_ink_ratio": 1.0,
+          "average_ink_luminance": 0.0,
+          "nonwhite_distance_threshold": 15.0,
+          "readable_distance_threshold": 80.0,
+          "min_readable_ink_ratio": 0.78,
+          "min_ink_pixel_ratio": 0.0015
+        },
+        {
+          "file": "DXF-PDF-PNG/SGB62080T-05_A2_链轮轴组件零件图_参考强化v10版.png",
+          "passed": true,
+          "image_size_px": [
+            2806,
+            1984
+          ],
+          "ink_pixel_count": 277446,
+          "readable_ink_pixel_count": 277446,
+          "ink_pixel_ratio": 0.049837,
+          "readable_ink_ratio": 1.0,
+          "average_ink_luminance": 0.0,
+          "nonwhite_distance_threshold": 15.0,
+          "readable_distance_threshold": 80.0,
+          "min_readable_ink_ratio": 0.78,
+          "min_ink_pixel_ratio": 0.0015
+        }
+      ],
+      "failures": []
+    },
+    "filename_mojibake_hits": [],
+    "text_mojibake_hits": []
+  },
+  "references": [],
+  "requirements": {
+    "require_dwg": true,
+    "require_pdf": true,
+    "strict_cad_structure": true,
+    "min_dwg_count": 6,
+    "min_dxf_count": 6,
+    "min_pdf_count": 7,
+    "min_total_a0": 3.0,
+    "min_true_dimensions": 140,
+    "min_reference_dwg_ratio": 0.35,
+    "effective_min_reference_dwg_ratio": 0.35,
+    "min_geometry_entities": 12000,
+    "min_insert_count": 1,
+    "min_arc_count": 1,
+    "min_hatch_count": 200,
+    "min_text_count": 500,
+    "min_dxf_entities_per_sheet": 350,
+    "min_dimensions_per_dxf": 8,
+    "min_dimensioned_dxf_files": 8,
+    "effective_min_dimensioned_dxf_files": 6,
+    "min_pdf_drawing_objects_per_a0": 800,
+    "required_text_tokens": [],
+    "require_rendered_review": true,
+    "effective_require_rendered_review": true
+  },
+  "drawing_density_checks": {
+    "failures": []
+  },
+  "formal_cad_source_verdict": {
+    "passed": true,
+    "editable_cad_source_count": 12,
+    "dwg_source_count": 6,
+    "dxf_source_count": 6,
+    "pdf_drawing_count": 7,
+    "schematic_substitute_rejection_verdict": "pass",
+    "schematic_substitute_hits": []
+  },
+  "density_verdict": {
+    "passed": true,
+    "dimension_count": 207,
+    "min_true_dimensions": 140,
+    "geometry_entity_count": 51434,
+    "min_geometry_entities": 12000,
+    "reference_dwg_byte_ratio": null,
+    "min_reference_dwg_ratio": 0.35,
+    "effective_min_reference_dwg_ratio": 0.35
+  },
+  "manufacturing_depth": {
+    "insert_count": 20,
+    "min_insert_count": 1,
+    "arc_count": 84,
+    "min_arc_count": 1,
+    "hatch_count": 44262,
+    "min_hatch_count": 200,
+    "text_count": 2404,
+    "min_text_count": 500,
+    "passed": true
+  },
+  "rendered_frame_overflow_verdict": {
+    "passed": true,
+    "png_sheet_count": 6,
+    "outside_frame_component_count": 0,
+    "outside_frame_pixel_count": 0,
+    "max_outside_component_area_px": 0,
+    "audit_method": "png-rendered-outer-frame-connected-component-machine"
+  },
+  "rendered_ink_contrast_verdict": {
+    "passed": true,
+    "png_sheet_count": 6,
+    "worst_readable_ink_ratio": 1.0,
+    "worst_ink_pixel_ratio": 0.035046,
+    "min_readable_ink_ratio": 0.78,
+    "audit_method": "png-rendered-ink-contrast-machine"
+  },
+  "rendered_review_verdict": {
+    "passed": true,
+    "review_count": 2,
+    "accepted_review_count": 1,
+    "machine_overlap_audit": {
+      "present": true,
+      "passed": true,
+      "per_sheet_count": 6,
+      "audit_method": "bbox-and-rendered-zone-machine",
+      "overlap_count": 0,
+      "text_entity_overlap_count": 0,
+      "reserved_zone_collision_count": 0,
+      "title_block_table_note_collision_count": 0,
+      "annotation_collision_count": 0,
+      "frame_clearance_violation_count": 0,
+      "min_clearance_mm": 4.0,
+      "max_local_ink_density": 0.62
+    },
+    "content_overlap_audit": {
+      "present": true,
+      "passed": true,
+      "per_sheet_count": 6,
+      "audit_method": "content-bbox-pairwise-machine",
+      "registered_bbox_count": 72,
+      "checked_pair_count": 396,
+      "min_clearance_mm": 4.0,
+      "content_overlap_count": 0,
+      "view_view_overlap_count": 0,
+      "detail_frame_main_view_overlap_count": 0,
+      "table_text_grid_collision_count": 0,
+      "dimension_line_view_table_crossing_count": 0,
+      "leader_line_view_table_crossing_count": 0,
+      "balloon_geometry_collision_count": 0,
+      "bbox_helper_envelope_escape_count": 0,
+      "stale_rendered_preview_count": 0
+    },
+    "outside_frame_ink_audit": {
+      "present": true,
+      "passed": true,
+      "per_sheet_count": 6,
+      "audit_method": "png-rendered-outer-frame-connected-component-machine",
+      "frame_detection_method": "iso-a-series-outer-frame-margin-machine",
+      "rendered_source_formats": [
+        "png"
+      ],
+      "sheet_frame_bbox_count": 6,
+      "max_outside_component_area_px": 0.0,
+      "outside_frame_independent_ink_component_count": 0,
+      "outside_frame_text_component_count": 0,
+      "outside_frame_leader_component_count": 0,
+      "outside_frame_hatch_section_component_count": 0,
+      "outside_frame_table_title_block_component_count": 0
+    },
+    "cell_containment_audit": {
+      "present": true,
+      "passed": true,
+      "per_sheet_count": 6,
+      "audit_method": "title-bom-cell-containment-machine",
+      "table_cell_text_count": 180,
+      "outside_cell_count": 0,
+      "border_touch_count": 0,
+      "unowned_table_text_count": 0,
+      "clipped_overflow_count": 0
+    },
+    "annotation_ownership_audit": {
+      "present": true,
+      "passed": true,
+      "per_sheet_count": 6,
+      "audit_method": "annotation-owner-zone-machine",
+      "annotation_text_count": 360,
+      "boxed_callout_count": 24,
+      "symbol_or_title_text_count": 72,
+      "unowned_free_text_count": 0,
+      "unsupported_floating_text_count": 0
+    },
+    "reserved_zone_intrusion_audit": {
+      "present": true,
+      "passed": true,
+      "per_sheet_count": 6,
+      "audit_method": "protected-table-zone-intrusion-machine",
+      "intrusion_count": 0,
+      "geometry_title_block_intrusion_count": 0,
+      "dimension_line_table_zone_intrusion_count": 0,
+      "dimension_text_table_zone_intrusion_count": 0,
+      "leader_table_zone_intrusion_count": 0,
+      "view_geometry_reserved_zone_intrusion_count": 0,
+      "bom_table_intrusion_count": 0,
+      "technical_requirement_intrusion_count": 0
+    },
+    "text_legibility_audit": {
+      "present": true,
+      "passed": true,
+      "audit_method": "cad-text-height-and-preview-pixel-machine",
+      "preview_dpi": 240.0,
+      "min_cad_text_height_mm": 3.8,
+      "min_required_cad_text_height_mm": 3.8,
+      "min_rendered_text_height_px": 42.0,
+      "min_required_rendered_text_height_px": 40.0,
+      "median_rendered_text_height_px": 48.0,
+      "per_sheet_count": 6
+    },
+    "manufacturing_complexity_audit": {
+      "present": true,
+      "passed": true,
+      "audit_method": "manufacturing-feature-family-machine",
+      "min_feature_family_count": 8,
+      "uses_dense_filler_as_primary_depth": false,
+      "per_sheet_count": 6
+    },
+    "hatch_clip_audit": {
+      "present": true,
+      "passed": true,
+      "per_sheet_count": 6,
+      "audit_method": "hatch-boundary-ownership-machine",
+      "section_fill_region_count": 44256,
+      "hatch_clip_violation_count": 0,
+      "entity_boundary_escape_count": 0,
+      "adjacent_view_crossing_count": 0,
+      "dimension_line_crossing_count": 0,
+      "title_block_table_bom_frame_crossing_count": 0,
+      "blank_background_leak_count": 0
+    }
+  }
+}

@@ -25,6 +25,31 @@ ET.register_namespace("w", W_NS)
 ET.register_namespace("r", R_NS)
 
 
+SECTION_CHILD_ORDER = {
+    "headerReference": 0,
+    "footerReference": 1,
+    "footnotePr": 2,
+    "endnotePr": 3,
+    "type": 4,
+    "pgSz": 5,
+    "pgMar": 6,
+    "paperSrc": 7,
+    "pgBorders": 8,
+    "lnNumType": 9,
+    "pgNumType": 10,
+    "cols": 11,
+    "formProt": 12,
+    "vAlign": 13,
+    "noEndnote": 14,
+    "titlePg": 15,
+    "textDirection": 16,
+    "bidi": 17,
+    "rtlGutter": 18,
+    "docGrid": 19,
+    "printerSettings": 20,
+}
+
+
 def qn(local: str) -> str:
     return f"{W}{local}"
 
@@ -107,6 +132,22 @@ def ensure_pg_num_type(sect_pr: ET.Element, *, fmt: str, start: str | None) -> b
 
 def child_local_name(node: ET.Element) -> str:
     return node.tag.rsplit("}", 1)[-1] if "}" in node.tag else node.tag
+
+
+def normalize_sect_pr_child_order(sect_pr: ET.Element) -> bool:
+    children = list(sect_pr)
+    ordered = sorted(
+        enumerate(children),
+        key=lambda item: (SECTION_CHILD_ORDER.get(child_local_name(item[1]), 10_000), item[0]),
+    )
+    new_children = [child for _idx, child in ordered]
+    if new_children == children:
+        return False
+    for child in children:
+        sect_pr.remove(child)
+    for child in new_children:
+        sect_pr.append(child)
+    return True
 
 
 def first_child(parent: ET.Element, local: str) -> ET.Element | None:
@@ -200,6 +241,21 @@ def final_body_sect_pr(root: ET.Element) -> ET.Element:
     return sect_pr
 
 
+def all_sect_pr(root: ET.Element) -> list[ET.Element]:
+    body = root.find("./w:body", NS)
+    if body is None:
+        return []
+    sections: list[ET.Element] = []
+    for paragraph in body_paragraphs(root):
+        sect_pr = paragraph.find("./w:pPr/w:sectPr", NS)
+        if sect_pr is not None:
+            sections.append(sect_pr)
+    body_sect = body.find("./w:sectPr", NS)
+    if body_sect is not None:
+        sections.append(body_sect)
+    return sections
+
+
 def repair_document_xml(document_xml: bytes, *, roman_fmt: str = "lowerRoman") -> tuple[bytes, list[dict[str, object]]]:
     root = ET.fromstring(document_xml)
     paragraphs = body_paragraphs(root)
@@ -266,17 +322,50 @@ def repair_document_xml(document_xml: bytes, *, roman_fmt: str = "lowerRoman") -
             }
         )
 
+    body_decimal_section_seen = False
+    for idx, paragraph in enumerate(paragraphs):
+        if idx < body_idx:
+            continue
+        ppr = paragraph.find("./w:pPr", NS)
+        sect_pr = ppr.find("./w:sectPr", NS) if ppr is not None else None
+        if sect_pr is None:
+            continue
+        start = "1" if not body_decimal_section_seen else None
+        if ensure_pg_num_type(sect_pr, fmt="decimal", start=start):
+            changed.append(
+                {
+                    "paragraph_index": idx,
+                    "surface": "body_page_numbers",
+                    "fmt": "decimal",
+                    "start": start or "continue",
+                    "text": paragraph_text(paragraph)[:80],
+                }
+            )
+        body_decimal_section_seen = True
+
     body_sect = final_body_sect_pr(root)
-    if ensure_pg_num_type(body_sect, fmt="decimal", start="1"):
+    final_start = "1" if not body_decimal_section_seen else None
+    if ensure_pg_num_type(body_sect, fmt="decimal", start=final_start):
         changed.append(
             {
                 "paragraph_index": "body-sectPr",
                 "surface": "body_page_numbers",
                 "fmt": "decimal",
-                "start": "1",
+                "start": final_start or "continue",
                 "text": "body final section",
             }
         )
+    for idx, sect_pr in enumerate(all_sect_pr(root), start=1):
+        if normalize_sect_pr_child_order(sect_pr):
+            changed.append(
+                {
+                    "paragraph_index": f"sectPr-order-{idx}",
+                    "surface": "section_property_order",
+                    "fmt": "not-applicable",
+                    "start": "not-applicable",
+                    "text": "normalized w:sectPr child order for OpenXML schema compatibility",
+                }
+            )
     return ET.tostring(root, encoding="utf-8", xml_declaration=True), changed
 
 

@@ -86,6 +86,10 @@
 - rendered-page visibility:
 - caption pairing:
 - surrounding layout:
+- post-caption body style verdict:
+- post-caption label-prefix leakage verdict:
+- caption sibling contamination audit path:
+- body donor paragraph evidence:
 - review evidence record paths:
 - touched-page rendered evidence path:
 

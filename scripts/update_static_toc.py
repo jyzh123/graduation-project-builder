@@ -15,7 +15,57 @@ from docx.oxml.ns import qn
 
 
 ALLOWED_PACKAGE_DRIFT = {"word/document.xml"}
-REQUIRED_TAIL_TOC_LABELS = {"\u53c2\u8003\u6587\u732e", "\u81f4\u8c22"}
+REQUIRED_TAIL_TOC_LABELS: set[str] = set()
+
+
+PPR_CHILD_ORDER = {
+    qn("w:pStyle"): 0,
+    qn("w:keepNext"): 1,
+    qn("w:keepLines"): 2,
+    qn("w:pageBreakBefore"): 3,
+    qn("w:framePr"): 4,
+    qn("w:widowControl"): 5,
+    qn("w:numPr"): 6,
+    qn("w:suppressLineNumbers"): 7,
+    qn("w:pBdr"): 8,
+    qn("w:shd"): 9,
+    qn("w:tabs"): 10,
+    qn("w:suppressAutoHyphens"): 11,
+    qn("w:kinsoku"): 12,
+    qn("w:wordWrap"): 13,
+    qn("w:overflowPunct"): 14,
+    qn("w:topLinePunct"): 15,
+    qn("w:autoSpaceDE"): 16,
+    qn("w:autoSpaceDN"): 17,
+    qn("w:bidi"): 18,
+    qn("w:adjustRightInd"): 19,
+    qn("w:snapToGrid"): 20,
+    qn("w:spacing"): 21,
+    qn("w:ind"): 22,
+    qn("w:contextualSpacing"): 23,
+    qn("w:mirrorIndents"): 24,
+    qn("w:suppressOverlap"): 25,
+    qn("w:jc"): 26,
+    qn("w:textDirection"): 27,
+    qn("w:textAlignment"): 28,
+    qn("w:textboxTightWrap"): 29,
+    qn("w:outlineLvl"): 30,
+    qn("w:divId"): 31,
+    qn("w:cnfStyle"): 32,
+    qn("w:rPr"): 33,
+    qn("w:sectPr"): 34,
+    qn("w:pPrChange"): 35,
+}
+
+
+def insert_ppr_child_ordered(ppr, child) -> None:
+    """Insert a paragraph property child in schema-valid WordprocessingML order."""
+    child_order = PPR_CHILD_ORDER.get(child.tag, 10_000)
+    for index, existing in enumerate(list(ppr)):
+        if PPR_CHILD_ORDER.get(existing.tag, 10_000) > child_order:
+            ppr.insert(index, child)
+            return
+    ppr.append(child)
 
 
 def package_part_hashes(path: Path) -> dict[str, str]:
@@ -62,6 +112,69 @@ def replace_body_paragraph(parent_body, old_paragraph, new_paragraph) -> None:
     parent_body.insert(child_index, deepcopy(new_paragraph))
 
 
+def page_text_nodes_after_tab(paragraph) -> list:
+    nodes = []
+    seen_tab = False
+    for run in paragraph.findall(".//" + qn("w:r")):
+        for child in list(run):
+            if child.tag == qn("w:tab"):
+                seen_tab = True
+                continue
+            if child.tag == qn("w:t") and seen_tab:
+                nodes.append(child)
+    return nodes
+
+
+def copy_toc_page_number_text_only(original_paragraph, updated_paragraph) -> bool:
+    updated_nodes = page_text_nodes_after_tab(updated_paragraph)
+    if not updated_nodes:
+        return False
+    copy_toc_direct_tabs(original_paragraph, updated_paragraph)
+    copy_toc_paragraph_run_properties(original_paragraph, updated_paragraph)
+    original_nodes = page_text_nodes_after_tab(original_paragraph)
+    if not original_nodes:
+        raise RuntimeError("static TOC entry has updated page text but original paragraph has no page-number text node")
+    updated_values = [node.text or "" for node in updated_nodes]
+    for index, node in enumerate(original_nodes):
+        value = updated_values[index] if index < len(updated_values) else ""
+        set_text_node(node, value)
+    return True
+
+
+def copy_toc_paragraph_run_properties(original_paragraph, updated_paragraph) -> None:
+    updated_ppr = updated_paragraph.find(qn("w:pPr"))
+    if updated_ppr is None:
+        return
+    updated_rpr = updated_ppr.find(qn("w:rPr"))
+    if updated_rpr is None:
+        return
+    original_ppr = original_paragraph.find(qn("w:pPr"))
+    if original_ppr is None:
+        original_ppr = OxmlElement("w:pPr")
+        original_paragraph.insert(0, original_ppr)
+    existing_rpr = original_ppr.find(qn("w:rPr"))
+    if existing_rpr is not None:
+        original_ppr.remove(existing_rpr)
+    insert_ppr_child_ordered(original_ppr, deepcopy(updated_rpr))
+
+
+def copy_toc_direct_tabs(original_paragraph, updated_paragraph) -> None:
+    updated_ppr = updated_paragraph.find(qn("w:pPr"))
+    if updated_ppr is None:
+        return
+    updated_tabs = updated_ppr.find(qn("w:tabs"))
+    if updated_tabs is None:
+        return
+    original_ppr = original_paragraph.find(qn("w:pPr"))
+    if original_ppr is None:
+        original_ppr = OxmlElement("w:pPr")
+        original_paragraph.insert(0, original_ppr)
+    existing_tabs = original_ppr.find(qn("w:tabs"))
+    if existing_tabs is not None:
+        original_ppr.remove(existing_tabs)
+    insert_ppr_child_ordered(original_ppr, deepcopy(updated_tabs))
+
+
 def keep_only_toc_document_xml_delta(before_path: Path, after_path: Path, toc_indexes: set[int]) -> None:
     temp_path = after_path.with_suffix(after_path.suffix + ".tmp")
     with zipfile.ZipFile(after_path, "r") as after_zf:
@@ -83,9 +196,8 @@ def keep_only_toc_document_xml_delta(before_path: Path, after_path: Path, toc_in
     for idx in sorted(toc_indexes):
         if idx < 0 or idx >= len(original_paragraphs):
             raise RuntimeError(f"static TOC paragraph index out of range after save: {idx}")
-        replace_body_paragraph(original_body, original_paragraphs[idx], updated_paragraphs[idx])
-        original_paragraphs[idx] = updated_paragraphs[idx]
-    patched_document_xml = serialize_xml(original_root)
+        copy_toc_page_number_text_only(original_paragraphs[idx], updated_paragraphs[idx])
+    patched_document_xml = serialize_xml(original_root, original_document_xml)
     with zipfile.ZipFile(before_path, "r") as before_zf, zipfile.ZipFile(temp_path, "w", compression=zipfile.ZIP_DEFLATED) as out_zf:
         for info in before_zf.infolist():
             data = patched_document_xml if info.filename == "word/document.xml" else before_zf.read(info.filename)
@@ -99,10 +211,36 @@ def etree_from_bytes(payload: bytes):
     return ET.fromstring(payload)
 
 
-def serialize_xml(root) -> bytes:
+def root_namespace_declarations(document_xml: bytes) -> dict[str, str]:
+    match = re.search(rb"<w:document\b(?P<attrs>[^>]*)>", document_xml[:12000], flags=re.S)
+    if not match:
+        return {}
+    attrs = match.group("attrs")
+    return {
+        prefix.decode("ascii", errors="ignore"): uri.decode("utf-8", errors="ignore")
+        for prefix, uri in re.findall(rb'\sxmlns:([A-Za-z0-9]+)="([^"]+)"', attrs)
+    }
+
+
+def serialize_xml(root, original_document_xml: bytes | None = None) -> bytes:
     from xml.etree import ElementTree as ET
 
-    return ET.tostring(root, encoding="utf-8", xml_declaration=True)
+    payload = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+    if original_document_xml is None:
+        return payload
+    declarations = root_namespace_declarations(original_document_xml)
+    root_match = re.search(rb"<[^!?][^>\s]*:document\b[^>]*>", payload[:12000], flags=re.S)
+    if not root_match:
+        return payload
+    root_start = root_match.start()
+    root_end = root_match.end() - 1
+    root_tag = payload[root_start:root_end]
+    additions: list[bytes] = []
+    for prefix, uri in declarations.items():
+        token = f"xmlns:{prefix}=".encode("ascii")
+        if token not in root_tag:
+            additions.append(f' xmlns:{prefix}="{uri}"'.encode("utf-8"))
+    return payload[:root_end] + b"".join(additions) + payload[root_end:]
 
 
 def normalize(text: str) -> str:
@@ -295,7 +433,11 @@ def direct_toc_tab_stops(paragraph):
     return list(tabs.findall(qn("w:tab")))
 
 
-def normalize_toc_right_tab_positions(doc: Document, allowed_toc_indexes: set[int]) -> int:
+def normalize_toc_right_tab_positions(
+    doc: Document,
+    allowed_toc_indexes: set[int],
+    preferred_positions_by_level: dict[int, str] | None = None,
+) -> int:
     positions: Counter[str] = Counter()
     tab_elements = []
     for para_idx, paragraph in enumerate(doc.paragraphs):
@@ -317,11 +459,85 @@ def normalize_toc_right_tab_positions(doc: Document, allowed_toc_indexes: set[in
         return 0
     preferred_pos = positions.most_common(1)[0][0]
     changed = 0
-    for tab in tab_elements:
-        if (tab.get(qn("w:pos")) or "") != preferred_pos:
-            tab.set(qn("w:pos"), preferred_pos)
-            changed += 1
+    for para_idx, paragraph in enumerate(doc.paragraphs):
+        if para_idx not in allowed_toc_indexes:
+            continue
+        if not paragraph_has_run_tab(paragraph) and not is_toc_leader_entry(paragraph.text):
+            continue
+        level = toc_entry_level(paragraph)
+        paragraph_preferred_pos = (
+            (preferred_positions_by_level or {}).get(level or 0)
+            or preferred_pos
+        )
+        for tab in direct_toc_tab_stops(paragraph):
+            if (tab.get(qn("w:val")) or "left") != "right":
+                continue
+            if (tab.get(qn("w:leader")) or "none") != "dot":
+                continue
+            if (tab.get(qn("w:pos")) or "") != paragraph_preferred_pos:
+                tab.set(qn("w:pos"), paragraph_preferred_pos)
+                changed += 1
     return changed
+
+
+def collect_toc_right_tab_positions(reference_docx: Path) -> dict[int, str]:
+    positions_by_level: dict[int, str] = {}
+    doc = Document(reference_docx)
+    toc_started = False
+    for para in doc.paragraphs:
+        text = para.text.strip()
+        if is_toc_heading_text(text):
+            toc_started = True
+            continue
+        if not toc_started:
+            continue
+        if is_front_matter_toc_label(text):
+            continue
+        if not paragraph_has_run_tab(para) and not is_toc_leader_entry(para.text):
+            if heading_level(text) == 1:
+                break
+            continue
+        level = toc_entry_level(para)
+        if level is None or level in positions_by_level:
+            continue
+        for tab in direct_toc_tab_stops(para):
+            if (tab.get(qn("w:val")) or "left") != "right":
+                continue
+            if (tab.get(qn("w:leader")) or "none") != "dot":
+                continue
+            pos = tab.get(qn("w:pos")) or ""
+            if pos:
+                positions_by_level[level] = pos
+                break
+    if len(positions_by_level) < 3:
+        for level, pos in collect_toc_style_right_tab_positions(doc).items():
+            positions_by_level.setdefault(level, pos)
+    return positions_by_level
+
+
+def collect_toc_style_right_tab_positions(doc: Document) -> dict[int, str]:
+    positions_by_level: dict[int, str] = {}
+    for style_element in doc.styles.element.findall(qn("w:style")):
+        style_id = style_element.attrib.get(qn("w:styleId"), "")
+        match = re.fullmatch(r"TOC([1-3])", style_id, re.I)
+        if not match:
+            continue
+        ppr = style_element.find(qn("w:pPr"))
+        if ppr is None:
+            continue
+        tabs = ppr.find(qn("w:tabs"))
+        if tabs is None:
+            continue
+        for tab in tabs.findall(qn("w:tab")):
+            if (tab.get(qn("w:val")) or "left") != "right":
+                continue
+            if (tab.get(qn("w:leader")) or "none") != "dot":
+                continue
+            pos = tab.get(qn("w:pos")) or ""
+            if pos:
+                positions_by_level[int(match.group(1))] = pos
+                break
+    return positions_by_level
 
 
 def normalize_toc_entry_paragraph_spacing(doc: Document, allowed_toc_indexes: set[int]) -> int:
@@ -339,16 +555,37 @@ def normalize_toc_entry_paragraph_spacing(doc: Document, allowed_toc_indexes: se
         spacing = ppr.find(qn("w:spacing"))
         if spacing is None:
             spacing = OxmlElement("w:spacing")
-            ppr.append(spacing)
+            insert_ppr_child_ordered(ppr, spacing)
         expected = {
             qn("w:before"): "0",
             qn("w:after"): "0",
-            qn("w:lineRule"): "auto",
-            qn("w:line"): "360",
+            qn("w:lineRule"): "exact",
+            qn("w:line"): "400",
         }
         for attr_name, value in expected.items():
             if spacing.get(attr_name) != value:
                 spacing.set(attr_name, value)
+                changed += 1
+    return changed
+
+
+def normalize_toc_entry_effective_size(doc: Document, allowed_toc_indexes: set[int]) -> int:
+    changed = 0
+    for para_idx, paragraph in enumerate(doc.paragraphs):
+        if para_idx not in allowed_toc_indexes:
+            continue
+        ppr = paragraph._p.get_or_add_pPr()
+        rpr = ppr.find(qn("w:rPr"))
+        if rpr is None:
+            rpr = OxmlElement("w:rPr")
+            insert_ppr_child_ordered(ppr, rpr)
+        for tag_name in ("w:sz", "w:szCs"):
+            node = rpr.find(qn(tag_name))
+            if node is None:
+                node = OxmlElement(tag_name)
+                rpr.append(node)
+            if node.get(qn("w:val")) != "22":
+                node.set(qn("w:val"), "22")
                 changed += 1
     return changed
 
@@ -385,12 +622,31 @@ def toc_paragraph_indexes(doc: Document) -> set[int]:
     return indexes
 
 
-def require_mapped_tail_entries_present(doc: Document, allowed_toc_indexes: set[int], page_map: dict[str, str]) -> None:
+def require_mapped_tail_entries_present(
+    doc: Document,
+    allowed_toc_indexes: set[int],
+    page_map: dict[str, str],
+    mapped_rows: list[dict[str, object]] | None = None,
+) -> None:
     present = {
         normalize(toc_visible_label(paragraph.text))
         for para_idx, paragraph in enumerate(doc.paragraphs)
         if para_idx in allowed_toc_indexes
     }
+    missing_headings = []
+    for row in mapped_rows or []:
+        label = str(row.get("text") or "")
+        if heading_level(label) not in {1, 2, 3}:
+            continue
+        key = normalize(heading_key(label))
+        if key and key not in present:
+            missing_headings.append(label)
+    if missing_headings:
+        raise RuntimeError(
+            "static TOC update cannot patch missing mapped body heading entries; "
+            "rebuild the TOC cache before page-number synchronization: "
+            + ", ".join(missing_headings[:12])
+        )
     missing = [
         label
         for label in sorted(REQUIRED_TAIL_TOC_LABELS)
@@ -718,8 +974,9 @@ def main() -> int:
     doc = Document(input_path)
     toc_font_baselines = collect_toc_font_baselines(reference_toc) if reference_toc.exists() else {}
     toc_rpr_baselines = collect_toc_rpr_baselines(reference_toc) if reference_toc.exists() else {}
+    toc_tab_positions = collect_toc_right_tab_positions(reference_toc) if reference_toc.exists() else {}
     allowed_toc_indexes = toc_paragraph_indexes(doc)
-    require_mapped_tail_entries_present(doc, allowed_toc_indexes, page_map)
+    require_mapped_tail_entries_present(doc, allowed_toc_indexes, page_map, numeric_rows)
     for para_idx, para in enumerate(doc.paragraphs):
         if para_idx not in allowed_toc_indexes:
             continue
@@ -735,8 +992,9 @@ def main() -> int:
         restore_toc_entry_run_fonts(para, toc_font_baselines)
         restore_toc_entry_run_rpr(para, toc_rpr_baselines)
         unhide_static_toc_page_runs(para)
-    normalize_toc_right_tab_positions(doc, allowed_toc_indexes)
+    normalize_toc_right_tab_positions(doc, allowed_toc_indexes, toc_tab_positions)
     normalize_toc_entry_paragraph_spacing(doc, allowed_toc_indexes)
+    normalize_toc_entry_effective_size(doc, allowed_toc_indexes)
 
     doc.save(output_path)
     keep_only_toc_document_xml_delta(input_path, output_path, allowed_toc_indexes)

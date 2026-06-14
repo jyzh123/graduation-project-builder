@@ -72,6 +72,24 @@
 - project_local_helper_disposition:
 - canonical_source_restart_required:
 - contaminated_baseline_disposition:
+- table_surface_inventory_path:
+- table_manifest_path:
+- table_manifest_contract_verdict:
+- table_authority_owner_lane:
+- table_audit_owner_lane:
+- table_exact_page_rendered_review_paths:
+- table_per_table_evidence_rows:
+- table_exact_output_docx_binding_evidence_path:
+- table_final_docx_sha256_binding:
+- flowchart_semantic_trigger_inventory_path:
+- flowchart_manifest_entries:
+- flowchart_drawio_source_evidence_paths:
+- flowchart_svg_export_evidence_paths:
+- flowchart_raster_fallback_evidence_paths:
+- flowchart_geometry_report_paths:
+- flowchart_rendered_page_evidence_paths:
+- flowchart_final_docx_relationship_evidence_paths:
+- flowchart_manifest_contract_verdict:
 - protected_surface_contract_path:
 - source_review_artifact_inventory_path:
 - final_review_artifact_diff_path:
@@ -112,7 +130,8 @@
 - controller:
 - worker:
 - audit:
-- format lane: before any thesis-format mutation, record project template discovery root, discovered candidates, active template path, active template fingerprint, active template profile path, protected-surface contract path, canonical protected surface ids in scope, protected-surface owner map, protected-surface evidence map, all-surface paragraph-and-typography evidence paths/verdict, TOC visual-geometry evidence paths/verdict and TOC paragraph-and-typography evidence paths/verdict when TOC is present or user-reported, whole-document pagination evidence path/verdict, mandatory thesis surface inventory path, front/end matter coverage matrix paths, high-risk thesis format surface matrix path, touched surfaces, sibling surfaces, blast-radius pages, stale audits, rerender targets, reviewed output sha256, and template-alignment evidence in this card.
+- format lane: before any thesis-format mutation, record project template discovery root, discovered candidates, active template path, active template fingerprint, active template profile path, protected-surface contract path, canonical protected surface ids in scope, protected-surface owner map, protected-surface evidence map, all-surface paragraph-and-typography evidence paths/verdict, TOC visual-geometry evidence paths/verdict and TOC paragraph-and-typography evidence paths/verdict when TOC is present or user-reported, table surface inventory path, table manifest path, table manifest contract verdict, per-table evidence rows, whole-document pagination evidence path/verdict, mandatory thesis surface inventory path, front/end matter coverage matrix paths, high-risk thesis format surface matrix path, touched surfaces, sibling surfaces, blast-radius pages, stale audits, rerender targets, reviewed output sha256, and template-alignment evidence in this card.
+- figure lane: before any thesis figure mutation, record flowchart semantic trigger inventory, manifest entries, draw.io source paths, SVG export paths, raster fallback paths, geometry report paths, rendered-page evidence, final DOCX relationship evidence, and flowchart manifest contract verdict for every workflow/process/step/chain figure.
 
 ## Audit Evidence Requirements
 - reviewed_artifacts:

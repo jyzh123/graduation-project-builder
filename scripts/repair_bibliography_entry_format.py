@@ -98,7 +98,7 @@ def local_bibliography_entry_paragraphs(root: ET.Element) -> list[tuple[int, ET.
             break
         if not text:
             continue
-        if paragraph_num_id(child) or re.match(r"^\s*\[\d{1,3}\]", text):
+        if paragraph_num_id(child) or re.match(r"^\s*(?:\[\d{1,3}\]|\d{1,3}[\.\u3001])\s*\S", text):
             entries.append((body_index, child))
             continue
         if looks_like_reference_entry(text):
@@ -124,7 +124,10 @@ def looks_like_reference_entry(text: str) -> bool:
     }:
         return False
     return bool(
-        re.search(r"\[[JMCDEB/OL]{1,8}\]", stripped)
+        re.match(r"^\s*(?:\[\d{1,3}\]|\d{1,3}[\.\u3001])\s*\S", stripped)
+        or re.search(r"\[[SJNMCDEB/OL]{1,8}\]", stripped)
+        or re.search(r"\[[A-Z]+(?:/[A-Z]+)?\]", stripped)
+        or re.search(r"\[[JMCDEB/OL]{1,8}\]", stripped)
         or re.search(r"\[EB/OL\]", stripped)
         or re.search(r"\[C\]//", stripped)
         or re.search(r"https?://", stripped, re.IGNORECASE)
@@ -156,12 +159,52 @@ def references_title_paragraph(root: ET.Element) -> tuple[int, ET.Element]:
     return matches[-1]
 
 
+def style_by_id(styles_root: ET.Element | None, style_id: str) -> ET.Element | None:
+    if styles_root is None:
+        return None
+    for style in styles_root.findall("./w:style", NS):
+        if style.get(w("styleId")) == style_id:
+            return style
+    return None
+
+
+def style_run_rpr(styles_root: ET.Element | None, style_id: str) -> ET.Element | None:
+    style = style_by_id(styles_root, style_id)
+    if style is None:
+        return None
+    rpr = style.find("./w:rPr", NS)
+    return copy.deepcopy(rpr) if rpr is not None else None
+
+
+def set_run_rpr(run: ET.Element, donor_rpr: ET.Element | None) -> bool:
+    if donor_rpr is None:
+        return False
+    existing = run.find("./w:rPr", NS)
+    donor_clone = copy.deepcopy(donor_rpr)
+    if existing is not None and ET.tostring(existing, encoding="utf-8") == ET.tostring(donor_clone, encoding="utf-8"):
+        return False
+    if existing is not None:
+        run.remove(existing)
+    run.insert(0, donor_clone)
+    return True
+
+
 def remove_child(parent: ET.Element | None, tag: str) -> None:
     if parent is None:
         return
     for child in list(parent):
         if child.tag == w(tag):
             parent.remove(child)
+
+
+def remove_ppr_numbering(ppr: ET.Element | None) -> bool:
+    if ppr is None:
+        return False
+    removed = False
+    for num_pr in list(ppr.findall("./w:numPr", NS)):
+        ppr.remove(num_pr)
+        removed = True
+    return removed
 
 
 def remove_direct_emphasis(rpr: ET.Element | None) -> None:
@@ -201,24 +244,50 @@ def has_nontext_payload(paragraph: ET.Element) -> bool:
     return any(paragraph.find(f".//w:{tag}", NS) is not None for tag in ("drawing", "pict", "object", "fldChar", "instrText"))
 
 
-def repair_references_title(root: ET.Element, template_docx: Path) -> dict[str, object]:
+def paragraph_max_size_half_points(paragraph: ET.Element) -> int:
+    values: list[int] = []
+    for node in paragraph.findall(".//w:sz", NS) + paragraph.findall(".//w:szCs", NS):
+        raw = node.get(w("val"), "")
+        if raw.isdigit():
+            values.append(int(raw))
+    return max(values, default=0)
+
+
+def title_layer_is_already_locked(paragraph: ET.Element) -> bool:
+    style_id = paragraph_style_id(paragraph)
+    return style_id in {"Heading1", "Title"} or paragraph_max_size_half_points(paragraph) >= 30
+
+
+def repair_references_title(
+    root: ET.Element,
+    template_docx: Path,
+    source_docx: Path,
+    *,
+    force_template_title_format: bool = False,
+) -> dict[str, object]:
     template_root = load_document_xml(template_docx)
+    source_styles_root = load_xml_part(source_docx, "word/styles.xml")
+    template_styles_root = load_xml_part(template_docx, "word/styles.xml")
     template_index, template_title = references_title_paragraph(template_root)
     actual_index, actual_title = references_title_paragraph(root)
     actual_text = paragraph_text(actual_title)
+    actual_style_before = paragraph_style_id(actual_title)
+    actual_title_layer_locked = title_layer_is_already_locked(actual_title)
     template_ppr = copy.deepcopy(template_title.find("./w:pPr", NS))
-    if template_ppr is not None:
+    template_ppr_replayed = False
+    if template_ppr is not None and (force_template_title_format or not actual_title_layer_locked):
         existing_ppr = actual_title.find("./w:pPr", NS)
         if existing_ppr is not None:
             actual_title.remove(existing_ppr)
         actual_title.insert(0, template_ppr)
+        template_ppr_replayed = True
     template_rpr = None
     for run in template_title.findall("./w:r", NS):
         if paragraph_text(run).strip():
             template_rpr = copy.deepcopy(run.find("./w:rPr", NS)) if run.find("./w:rPr", NS) is not None else ET.Element(w("rPr"))
             break
     changed_runs = 0
-    if template_rpr is not None:
+    if template_rpr is not None and (force_template_title_format or not actual_title_layer_locked):
         for run in actual_title.findall("./w:r", NS):
             if not paragraph_text(run):
                 continue
@@ -227,6 +296,21 @@ def repair_references_title(root: ET.Element, template_docx: Path) -> dict[str, 
                 run.remove(existing)
             run.insert(0, copy.deepcopy(template_rpr))
             changed_runs += 1
+    title_style_id = paragraph_style_id(actual_title) or paragraph_style_id(template_title) or "Heading1"
+    title_style_rpr = style_run_rpr(source_styles_root, title_style_id)
+    if title_style_rpr is None and title_style_id != "Heading1":
+        title_style_rpr = style_run_rpr(source_styles_root, "Heading1")
+    if title_style_rpr is None:
+        title_style_rpr = style_run_rpr(template_styles_root, title_style_id)
+    if title_style_rpr is None and title_style_id != "Heading1":
+        title_style_rpr = style_run_rpr(template_styles_root, "Heading1")
+    style_rpr_runs_materialized = 0
+    if title_style_rpr is not None and (force_template_title_format or not actual_title_layer_locked):
+        for run in actual_title.findall("./w:r", NS):
+            if not paragraph_text(run).strip():
+                continue
+            if set_run_rpr(run, title_style_rpr):
+                style_rpr_runs_materialized += 1
     body = root.find(".//w:body", NS)
     removed_preceding_break = False
     if body is not None:
@@ -247,7 +331,14 @@ def repair_references_title(root: ET.Element, template_docx: Path) -> dict[str, 
     return {
         "template_title_body_child_index": template_index,
         "actual_title_body_child_index_before": actual_index,
+        "actual_title_style_before": actual_style_before,
+        "actual_title_layer_locked_before": actual_title_layer_locked,
+        "force_template_title_format": force_template_title_format,
+        "template_ppr_replayed": template_ppr_replayed,
         "title_run_count_reformatted": changed_runs,
+        "title_style_id": title_style_id,
+        "title_style_rpr_runs_materialized": style_rpr_runs_materialized,
+        "title_max_size_half_points_after": paragraph_max_size_half_points(actual_title),
         "preceding_explicit_page_break_removed": removed_preceding_break,
     }
 
@@ -415,7 +506,12 @@ def ensure_rpr_child(rpr: ET.Element, tag: str) -> ET.Element:
     return child
 
 
-def ensure_direct_font_policy(rpr: ET.Element | None, policy: dict[str, str]) -> None:
+def ensure_direct_font_policy(
+    rpr: ET.Element | None,
+    policy: dict[str, str],
+    *,
+    override_existing: bool = False,
+) -> None:
     if rpr is None:
         return
     east_asia = policy.get("eastAsia", "")
@@ -423,12 +519,12 @@ def ensure_direct_font_policy(rpr: ET.Element | None, policy: dict[str, str]) ->
     if not east_asia and not latin:
         return
     fonts = ensure_rpr_child(rpr, "rFonts")
-    if east_asia and not fonts.get(w("eastAsia")):
+    if east_asia and (override_existing or not fonts.get(w("eastAsia"))):
         fonts.set(w("eastAsia"), east_asia)
         fonts.attrib.pop(w("eastAsiaTheme"), None)
     if latin:
         for key in ("ascii", "hAnsi", "cs"):
-            if not fonts.get(w(key)):
+            if override_existing or not fonts.get(w(key)):
                 fonts.set(w(key), latin)
             fonts.attrib.pop(w(f"{key}Theme"), None)
 
@@ -513,6 +609,18 @@ def first_nonempty_entry_template(
                 break
         if fallback_rpr is None:
             continue
+        if cjk_rpr is None and not font_policy.get("eastAsia"):
+            last_error = (
+                f"bibliography donor paragraph has no Chinese run model; "
+                f"continuing search in template: {template_docx}"
+            )
+            continue
+        if latin_rpr is None and not font_policy.get("latin"):
+            last_error = (
+                f"bibliography donor paragraph has no Western run model; "
+                f"continuing search in template: {template_docx}"
+            )
+            continue
         ppr_model = copy.deepcopy(ppr) if ppr is not None else ET.Element(w("pPr"))
         latin_model = copy.deepcopy(latin_rpr if latin_rpr is not None else fallback_rpr)
         cjk_model = copy.deepcopy(cjk_rpr if cjk_rpr is not None else fallback_rpr)
@@ -522,9 +630,9 @@ def first_nonempty_entry_template(
         force_size_pair(ppr_model.find(".//w:rPr", NS), policy_size_half_points)
         force_size_pair(latin_model, policy_size_half_points)
         force_size_pair(cjk_model, policy_size_half_points)
-        ensure_direct_font_policy(ppr_model.find(".//w:rPr", NS), font_policy)
-        ensure_direct_font_policy(latin_model, font_policy)
-        ensure_direct_font_policy(cjk_model, font_policy)
+        ensure_direct_font_policy(ppr_model.find(".//w:rPr", NS), font_policy, override_existing=True)
+        ensure_direct_font_policy(latin_model, font_policy, override_existing=True)
+        ensure_direct_font_policy(cjk_model, font_policy, override_existing=True)
         if not has_required_reference_fonts(latin_model, cjk_model):
             last_error = f"bibliography donor lacks locked direct font families and no usable instruction policy was found in template: {template_docx}"
             continue
@@ -534,8 +642,8 @@ def first_nonempty_entry_template(
         cjk_model = ET.Element(w("rPr"))
         force_size_pair(latin_model, policy_size_half_points)
         force_size_pair(cjk_model, policy_size_half_points)
-        ensure_direct_font_policy(latin_model, font_policy)
-        ensure_direct_font_policy(cjk_model, font_policy)
+        ensure_direct_font_policy(latin_model, font_policy, override_existing=True)
+        ensure_direct_font_policy(cjk_model, font_policy, override_existing=True)
         if not has_required_reference_fonts(latin_model, cjk_model):
             raise RuntimeError(
                 f"bibliography instruction policy lacks usable direct font families: {template_docx}"
@@ -589,17 +697,30 @@ def next_non_neutral(chars: list[str], start: int) -> str | None:
     return None
 
 
+VISIBLE_REFERENCE_LABEL_RE = re.compile(r"^\s*(?:\[(?P<bracket>[0-9]+)\]|(?P<dot>[0-9]+)[.．、])\s*")
+
+
+def visible_reference_label_number(text: str) -> int | None:
+    match = VISIBLE_REFERENCE_LABEL_RE.match(text)
+    if not match:
+        return None
+    value = match.group("bracket") or match.group("dot")
+    return int(value) if value else None
+
+
+def strip_visible_reference_label(text: str) -> str:
+    return VISIBLE_REFERENCE_LABEL_RE.sub("", text, count=1)
+
+
 def split_entry_text(text: str, *, strip_visible_number: bool = False) -> list[tuple[str, str]]:
     segments: list[tuple[str, str]] = []
-    number_match = re.match(r"^\[[0-9]+\]", text)
+    number_match = VISIBLE_REFERENCE_LABEL_RE.match(text)
     offset = 0
     if number_match and not strip_visible_number:
         segments.append(("latin", number_match.group(0)))
         offset = number_match.end()
     elif number_match and strip_visible_number:
         offset = number_match.end()
-        if offset < len(text) and text[offset].isspace():
-            offset += 1
 
     chars = list(text[offset:])
     current_class: str | None = None
@@ -643,6 +764,14 @@ def direct_bookmarks(paragraph: ET.Element) -> tuple[list[ET.Element], list[ET.E
     return starts, ends
 
 
+def set_paragraph_pstyle(ppr: ET.Element, style_id: str) -> None:
+    pstyle = ppr.find("./w:pStyle", NS)
+    if pstyle is None:
+        pstyle = ET.Element(w("pStyle"))
+        ppr.insert(0, pstyle)
+    pstyle.set(w("val"), style_id)
+
+
 def replace_entry_runs(
     paragraph: ET.Element,
     *,
@@ -651,17 +780,31 @@ def replace_entry_runs(
     cjk_rpr: ET.Element,
     strip_visible_number: bool = False,
     manual_visible_number: int | None = None,
+    visible_label_family: str = "preserve",
+    label_content_spacing: str = "space",
+    entry_style_id: str | None = None,
 ) -> int:
     original_text = paragraph_text(paragraph)
     text_for_runs = original_text
-    if manual_visible_number is not None and not re.match(r"^\s*\[[0-9]+\]", original_text):
-        text_for_runs = f"[{manual_visible_number}] {original_text}"
-    expected_text = re.sub(r"^\[[0-9]+\]\s*", "", text_for_runs, count=1) if strip_visible_number else text_for_runs
+    existing_number = visible_reference_label_number(original_text)
+    if visible_label_family in {"bracket", "dot"} and not strip_visible_number:
+        label_number = manual_visible_number or existing_number
+        if label_number is None:
+            raise RuntimeError(f"cannot assign bibliography label without an entry number: {original_text[:80]}")
+        label = f"[{label_number}]" if visible_label_family == "bracket" else f"{label_number}."
+        separator = "" if label_content_spacing == "none" else " "
+        text_for_runs = f"{label}{separator}{strip_visible_reference_label(original_text)}"
+    elif manual_visible_number is not None and existing_number is None:
+        separator = "" if label_content_spacing == "none" else " "
+        text_for_runs = f"[{manual_visible_number}]{separator}{original_text}"
+    expected_text = strip_visible_reference_label(text_for_runs) if strip_visible_number else text_for_runs
     starts, ends = direct_bookmarks(paragraph)
     existing_ppr = paragraph.find("./w:pPr", NS)
     paragraph_ppr = copy.deepcopy(ppr_model if ppr_model is not None else existing_ppr)
     if paragraph_ppr is None:
         paragraph_ppr = ET.Element(w("pPr"))
+    if entry_style_id:
+        set_paragraph_pstyle(paragraph_ppr, entry_style_id)
     segments = split_entry_text(text_for_runs, strip_visible_number=strip_visible_number)
     if not segments and text_for_runs and not strip_visible_number:
         raise RuntimeError(f"entry could not be split into multiple bibliography runs: {text_for_runs[:80]}")
@@ -817,8 +960,12 @@ def repair_bibliography(
     expected_size_name: str | None = None,
     use_template_numbering: bool = False,
     add_visible_numbers: bool = False,
+    visible_label_family: str = "preserve",
+    label_content_spacing: str = "space",
     rendered_number_left_twips: str | None = None,
     rendered_number_hanging_twips: str | None = None,
+    force_template_title_format: bool = False,
+    entry_style_id: str | None = None,
 ) -> dict[str, object]:
     if source_docx.resolve() == output_docx.resolve():
         raise RuntimeError("output DOCX must be a fresh review copy, not the source path")
@@ -833,6 +980,7 @@ def repair_bibliography(
     numbering_report: dict[str, object] = {"mode": "manual-visible-numbering"}
     numbering_xml: bytes | None = None
     rendered_outdent_report: dict[str, object] = {"applied": False}
+    manual_mode_ppr_numbering_removed = False
     if use_template_numbering:
         numbered_ppr, template_num_id = first_template_numbered_bibliography_ppr(template_docx)
         ppr_model = numbered_ppr
@@ -865,8 +1013,15 @@ def repair_bibliography(
                 "paragraph_ppr_preserved": True,
                 "numbering_level_changed": numbering_level_changed,
             }
+    else:
+        manual_mode_ppr_numbering_removed = remove_ppr_numbering(ppr_model)
     root = load_document_xml(source_docx)
-    title_report = repair_references_title(root, template_docx)
+    title_report = repair_references_title(
+        root,
+        template_docx,
+        source_docx,
+        force_template_title_format=force_template_title_format,
+    )
     entries = bibliography_entry_paragraphs(root)
     if not entries:
         raise RuntimeError(f"no bibliography entries found in source DOCX: {source_docx}")
@@ -874,9 +1029,14 @@ def repair_bibliography(
     touched: list[dict[str, object]] = []
     visible_number_removed = 0
     visible_number_added = 0
+    manual_mode_source_ppr_numbering_removed = 0
     for entry_ordinal, (paragraph_index, paragraph) in enumerate(entries, start=1):
         before = paragraph_text(paragraph)
+        source_had_numbering = bool(paragraph.find("./w:pPr/w:numPr", NS) is not None)
         manual_visible_number = entry_ordinal if add_visible_numbers and not use_template_numbering else None
+        effective_visible_label_family = visible_label_family
+        if effective_visible_label_family == "preserve" and add_visible_numbers and not use_template_numbering:
+            effective_visible_label_family = "bracket"
         run_count = replace_entry_runs(
             paragraph,
             ppr_model=ppr_model,
@@ -884,21 +1044,28 @@ def repair_bibliography(
             cjk_rpr=cjk_rpr,
             strip_visible_number=use_template_numbering,
             manual_visible_number=manual_visible_number,
+            visible_label_family=effective_visible_label_family,
+            label_content_spacing=label_content_spacing,
+            entry_style_id=entry_style_id,
         )
-        if use_template_numbering and re.match(r"^\[[0-9]+\]", before):
+        if use_template_numbering and VISIBLE_REFERENCE_LABEL_RE.match(before):
             visible_number_removed += 1
-        if manual_visible_number is not None and not re.match(r"^\s*\[[0-9]+\]", before):
+        if manual_visible_number is not None and visible_reference_label_number(before) is None:
             visible_number_added += 1
+        if not use_template_numbering and source_had_numbering and paragraph.find("./w:pPr/w:numPr", NS) is None:
+            manual_mode_source_ppr_numbering_removed += 1
         touched.append(
             {
                 "body_child_index": paragraph_index,
                 "visible_prefix": before[:100],
+                "source_had_word_numbering": source_had_numbering,
                 "run_count_after": run_count,
                 "bookmark_names": [
                     start.get(w("name"), "")
                     for start in paragraph.findall("./w:bookmarkStart", NS)
                     if start.get(w("name"), "")
                 ],
+                "entry_style_id_after": paragraph_style_id(paragraph),
             }
         )
 
@@ -916,7 +1083,7 @@ def repair_bibliography(
         expected_parts.append("word/styles.xml")
     if numbering_xml is not None:
         expected_parts.append("word/numbering.xml")
-    if changed_parts != sorted(expected_parts):
+    if sorted(set(changed_parts) - set(expected_parts)):
         raise RuntimeError(f"unexpected DOCX package drift: {changed_parts}")
 
     return {
@@ -930,7 +1097,12 @@ def repair_bibliography(
         "changed_zip_parts": changed_parts,
         "entry_count": len(entries),
         "template_numbering_replay": use_template_numbering,
+        "visible_label_family": visible_label_family,
+        "label_content_spacing": label_content_spacing,
+        "entry_style_id": entry_style_id or "",
         "template_numbering_model": numbering_report,
+        "manual_visible_numbering_donor_ppr_numPr_removed": manual_mode_ppr_numbering_removed,
+        "manual_visible_numbering_source_ppr_numPr_removed_count": manual_mode_source_ppr_numbering_removed,
         "rendered_number_outdent": rendered_outdent_report,
         "visible_manual_numbers_removed": visible_number_removed,
         "visible_manual_numbers_added": visible_number_added,
@@ -970,12 +1142,33 @@ def main(argv: Iterable[str] | None = None) -> int:
         help="Add manual [n] prefixes when bibliography entries lost visible numbering and no template automatic-numbering model is available.",
     )
     parser.add_argument(
+        "--visible-label-family",
+        choices=("preserve", "bracket", "dot"),
+        default="preserve",
+        help="Normalize manual bibliography labels to the selected family while replaying entry formatting.",
+    )
+    parser.add_argument(
+        "--label-content-spacing",
+        choices=("space", "none"),
+        default="space",
+        help="Spacing between a manual bibliography label and entry content. Use 'none' for strict forms such as [1]内容.",
+    )
+    parser.add_argument(
         "--rendered-number-left-twips",
         help="When using template numbering, force only the numbering-level left indent in twips to match rendered template geometry while preserving entry paragraph pPr.",
     )
     parser.add_argument(
         "--rendered-number-hanging-twips",
         help="When using template numbering, force only the numbering-level hanging indent in twips to match rendered template geometry while preserving entry paragraph pPr.",
+    )
+    parser.add_argument(
+        "--force-template-title-format",
+        action="store_true",
+        help="Replay the template references-title paragraph/run properties even if the current title is styled as a heading.",
+    )
+    parser.add_argument(
+        "--entry-style-id",
+        help="Force bibliography entries onto this non-heading paragraph style id after replaying entry formatting.",
     )
     args = parser.parse_args(list(argv) if argv is not None else None)
 
@@ -1002,12 +1195,16 @@ def main(argv: Iterable[str] | None = None) -> int:
         expected_size_name=args.bibliography_size_name or font_size_name_for_half_points(expected_size_half_points),
         use_template_numbering=args.use_template_numbering,
         add_visible_numbers=args.add_visible_numbers,
+        visible_label_family=args.visible_label_family,
+        label_content_spacing=args.label_content_spacing,
         rendered_number_left_twips=args.rendered_number_left_twips,
         rendered_number_hanging_twips=args.rendered_number_hanging_twips,
+        force_template_title_format=args.force_template_title_format,
+        entry_style_id=args.entry_style_id,
     )
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({"output_docx": str(output_docx), "entry_count": report["entry_count"], "verdict": "pass"}, ensure_ascii=False))
+    report_path.write_text(json.dumps(report, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps({"output_docx": str(output_docx), "entry_count": report["entry_count"], "verdict": "pass"}, ensure_ascii=True))
     return 0
 
 

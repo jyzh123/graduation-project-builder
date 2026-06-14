@@ -75,6 +75,61 @@ Each named record must expose:
 
 The final transaction verdict can pass only when all named evidence verdicts pass and the `final_docx_sha256` matches the exact DOCX being handed off.
 
+`post_mutation_surface_diff` must be the canonical machine JSON emitted by
+`scripts/audit_docx_protected_surface_diff.py` or an equivalent schema-identical
+record. A transaction validator must parse that JSON, not trust a pass-shaped
+path/verdict line. The JSON must list every canonical protected surface id,
+bind source/final DOCX paths and SHA256 values, expose per-surface diff rows,
+report changed package parts, and fail on unauthorized non-target surface drift,
+style-bearing package part drift, keyword label/content run damage, stale
+evidence, review-artifact drift, or citation-run drift.
+
+`review_artifact_preservation_report` and
+`body_citation_run_preservation_report` must also be rechecked as source-to-final
+reports. A path that exists with `result: pass` is not sufficient when the report
+does not bind to the transaction source/final DOCX files or when recomputed
+comments, bookmarks, fields, hyperlinks, or citation superscript runs differ.
+
+## Render Review Immutability
+
+Rendered review is a transaction step, not a side effect after acceptance.
+
+For every mutating transaction that uses rendered review evidence:
+
+- the visible handoff DOCX must be hashed immediately before rendering
+- rendering/export/field-refresh must operate on a disposable copy, not the visible handoff DOCX path
+- the disposable render-source DOCX path and SHA256 must be recorded
+- the visible handoff DOCX must be hashed again immediately after rendering
+- `final_docx_hash_before_render`, `final_docx_hash_after_render`, and `final_docx_sha256` must match
+- `visible_final_docx_renderer_mutation_verdict` and `render_source_docx_disposable_copy_verdict` must pass
+
+If the visible handoff DOCX hash changes during render/export/refresh, every DOCX-bound evidence record produced before that step is stale. The transaction cannot close by rebinding the changed DOCX; it must restart from a clean source or explicitly open a new mutation transaction that owns the renderer mutation.
+
+## Effective Body Typography Evidence
+
+When body text, body headings, or chapter paragraphs are touched, or when the run promises body/chapter format preservation, `chapter_format_preservation_report` must do more than prove style-name binding.
+
+For body typography or "looks different" complaints, the report must include passing fields for:
+
+- `effective_font_slot_verdict`
+- `strict_direct_visible_metrics_verdict`
+- `rendered_body_typography_comparison_verdict`
+- `neighbor_body_baseline_comparison_verdict`
+
+The evidence must compare direct run properties, style-chain properties, East Asian and Western font slots, size, bold state, paragraph indentation, paragraph spacing, and rendered appearance against nearby normal body paragraphs or the locked template/body donor. A report that only proves direct `w:sz` or `w:b` cleanup cannot close a rendered body-pollution complaint.
+
+## TOC Protected-Sibling Evidence
+
+When `toc_entries`, live TOC fields, front-matter TOC rows, TOC hyperlinks, TOC bookmarks, or TOC page-number columns are target or protected sibling surfaces, the transaction must bind TOC evidence to the same final DOCX SHA256.
+
+Required passing fields are:
+
+- `toc_field_cache_preservation_verdict`
+- `toc_package_diff_verdict`
+- `toc_rendered_sync_verdict`
+
+If the transaction intentionally owns TOC refresh or TOC repair, these fields must prove the authorized refresh result. If TOC is only a protected sibling, they must prove no collateral TOC field/cache/hyperlink/bookmark damage occurred.
+
 ## Write Ownership
 
 - Only one write owner may mutate the target surface during a transaction cycle.

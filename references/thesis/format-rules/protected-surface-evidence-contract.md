@@ -147,6 +147,7 @@ TOC evidence must cover:
 
 - title
 - every used entry level
+- body-heading coverage map from every real level-1/2/3 body heading to its visible TOC cache row
 - dotted leaders and right-tab position
 - page-number column
 - per-entry visible page number vs rendered heading page
@@ -267,10 +268,26 @@ Final acceptance is incomplete if this proof exists only as prose in a rule file
 The evidence record must expose dedicated paragraph-dialog / typography fields, and the gate validator must reject missing, generic, nonnumeric, blocked, or not-checked values.
 For figure/table caption surfaces, absence of a formal caption donor in the template or target is not a pass-shaped exception. The hard-field producer must still expose numeric `template` and `actual` paragraph/typography fields using an explicit surface fallback, or the surface fails closed.
 For direct DOCX metric validation, `body_text` means real body prose only. TOC rows, page-number rows, figure/table captions, image-holder paragraphs, keyword lines, and front-matter abstract surfaces must be excluded from `body_text`; Chinese and English abstract bodies must be detected both as standalone-title blocks and inline label-plus-content forms such as `摘 要：...` and `Abstract: ...`.
+Body-text typography evidence must compare the resolved template/body baseline against every real body-prose run family that was touched or user-reported, including direct `w:sz`/`w:szCs`, paragraph style size, inherited style chain size, and caption/table sibling paragraph metrics. A paragraph whose visible body prose becomes smaller or denser than the body baseline fails even if its style name is `Normal`.
+Final acceptance must bind the body-style audit summaries for style binding, Normal baseline, body family consistency, heading contamination, mixed-script font separation, direct visible metrics, and explicit `result: pass`. Missing mixed-script or direct-visible-metrics summaries are not pass-shaped evidence for `body_text`.
 
 Header evidence additionally requires the structured `header.presence-contract` detector record in the exact `sample_self_check` report used for handoff. The detector must prove section-level effective header references, non-empty header parts, template header-token preservation, and rendered-page header-token visibility on body and tail sample pages. A visible header on one page, a DOCX header part existing somewhere, or a broad `header_ok` Boolean is not enough.
 
 When the template header includes a chapter-number component, the header evidence must also expose `expected full display string`, `expected chapter-number component`, `expected chapter-title component`, `observed rendered full display string`, and `chapter-number preservation verdict` for each chapter page sampled. A header that preserves the title but drops the numbering component fails even if `header.presence-contract`, title consistency, section linkage, or field-code checks otherwise look correct.
+
+Whole-format audit evidence must also expose the protected surface defect hard fields produced by `scripts/audit_docx_whole_format_gate.py` under `surface_checks`. A pass-shaped whole-format report is invalid unless all of these named checks exist and pass: `cover_media`, `front_matter_hard_fields`, `header_full_display_string`, `toc_page_number_right_tab`, `references_entries_font_size`, `acknowledgement_title_style`, and `footer_page_number_font_size`. The validator must fail closed when any field is absent, prose-only, stale, not bound to the exact final DOCX SHA256, or contradicts the DOCX package structure. `cover_media` is required only when the locked template or approved sample proves a cover-zone media surface; when the baseline cover is text-only, the report must bind the template SHA256 and record `required=false` rather than inventing cover media.
+
+Protected-surface review evidence records must carry matching hard fields instead of only general `baseline metrics` prose:
+
+- `cover_style`: `cover media/icon requirement baseline`, `cover media/icon relationship ids baseline/actual`, `cover media/icon package targets baseline/actual`, and `cover media/icon binding verdict`
+- cover/front-matter surfaces: `front-matter hard-field paragraph metrics baseline/actual`, `front-matter hard-field run typography baseline/actual`, and `front-matter hard-field verdict`
+- `header`: `header expected full display string`, `header observed rendered full display string`, and `header full-display string verdict`
+- `toc_dotted_leaders` and `toc_page_number_column`: `TOC right-tab stop semantic baseline/actual`, `TOC page-number column right alignment baseline/actual`, `TOC page-number tab leader ownership baseline/actual`, and `TOC per-entry right-tab/page-number verdict`
+- `references_entries`: `references entries font-size baseline/actual`, `references entries per-entry font-size map`, and `references entries font-size verdict`
+- `acknowledgement_title`: `acknowledgement title style baseline/actual` and `acknowledgement title paragraph style verdict`
+- `footer` and `page_numbers`: `footer page-number font-size baseline/actual`, `footer page-number run path map`, and `footer page-number font-size verdict`
+
+These fields are hard fields. A rendered screenshot, visual statement, section count, font-chain-only audit, citation count, TOC page-number text check, or generic end-matter evidence cannot substitute for them.
 
 ## FMT-EVID-011. Whole-Document Pagination Requires Section/Page/Field Evidence
 
@@ -381,3 +398,17 @@ The following are hard failures:
 - letting the audit lane pass comment-implementation coverage while review artifacts or citation superscripts regressed
 
 If the user explicitly requests a clean copy without comments, create it as a separate preview or no-comments deliverable. The run must still preserve or archive the review-artifact-bearing copy and record the explicit user request in the final acceptance record.
+## FMT-EVID-015. External Format Report Ledgers Must Bind Every Report-Owned Surface
+
+External format reports are protected-surface evidence sources. A report-driven repair must produce a normalized ledger with:
+
+- external report source path, extracted report paths, optional comment-bearing DOCX path, report timestamp, template name, official overview error count, expanded issue-row count, comment-anchor issue count, and stats-page issue count
+- stable row identifiers for paragraph/report/comment rows, surface id, detector id or issue family, actual value, expected value, target text when available, source report file, and blocking/advisory status
+- explicit distinction between official overview totals and expanded cell/paragraph sub-issues
+- exact final DOCX path and SHA256 for every final report-equivalent audit
+- evidence paths for structure order, TOC paragraph spacing, abstract/keyword spacing and alignment, body heading spacing, table cell line rule/alignment, caption typography, reference label spacing, tail-title typography, header/footer/page-number surfaces, and report-comment cleanup when present
+- manual-disposition rows for report reminders that require author judgement, such as abstract word-count reduction
+
+A final handoff is blocked when report-owned rows are left as prose notes, when stats-page structure/header/footer/page-number issues are omitted from the ledger, when a row has no final evidence binding, or when the final audit points to a stale DOCX/PDF hash.
+
+For Fanyu/format-audit packages that include a comment-bearing DOCX, recognizing a comment issue family as supported is not enough. The report-equivalent audit must close each blocking comment/stat family with a concrete verifier row. Page setup families are mandatory hard fields: `页眉内容` must verify the fixed left header text `沈阳科技学院学士学位论文` plus a non-empty right chapter/tail-block title on every header part, and the right title must match the chapter/tail-title set owned by the section that references that header part rather than any arbitrary legal chapter title; `页码` `字号问题` must verify PAGE-field/page-number runs at `小五` (`w:sz=18` and `w:szCs=18`) on every footer part; `空白页问题` must remain failed unless rendered PDF or whole-document pagination evidence proves no blank rendered page. These rows may not be downgraded into ledger summaries.

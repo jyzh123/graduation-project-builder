@@ -54,6 +54,10 @@ Use this file as the routing layer for durable corrections learned whenever `gra
 ## Loading Rule
 
 - Load only the child files relevant to the current subtask instead of bulk-loading every durable correction file.
+- When a thesis-scope task mixes bibliography repair, visible reference label
+  family complaints, or page-flow/page-number complaints, load both
+  `references/user-feedback/citations-and-bibliography.md` and
+  `references/user-feedback/maintenance-and-structure.md` together.
 - When the current user explicitly invokes `graduation-project-builder`, start a fail-closed skill-invocation lock from `assets/skill-invocation-lock-template.md` before mutation or handoff, and route EXEC-MAINT-065 through `references/user-feedback/maintenance-and-structure.md`.
 - If the explicit invocation is recognized but execution would continue without the lock, active checklist, routed references, audit record, and canonical gate path, route EXEC-MAINT-071 through `references/user-feedback/maintenance-and-structure.md`; the lane is audit-only until the bypass risk is cleared.
 - If any project inspection, DOCX inspection, code search, browser check, helper script, smoke check, or handoff text happens before the lock/checklist/audit bootstrap, route EXEC-MAINT-072 through `references/user-feedback/maintenance-and-structure.md`; mark the current run as contaminated/reference-only drift and restart from a fresh lock before mutation or handoff.

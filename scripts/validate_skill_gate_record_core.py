@@ -4,6 +4,7 @@ from __future__ import annotations
 
 __all__ = [
     "check_docx_body_style_audit_report",
+    "check_docx_citation_anchor_pollution_audit_report",
     "check_thesis_citation_audit_report",
     "check_humanizer_evidence_record",
     "validate_gate_single_prefix",
@@ -47,6 +48,10 @@ try:
         split_path_values,
         validate_existing_path,
     )
+    from .audit_docx_citation_anchor_pollution import (
+        SCHEMA as CITATION_ANCHOR_POLLUTION_AUDIT_SCHEMA,
+        audit_docx_citation_anchor_pollution,
+    )
     from .audit_thesis_citations import audit_docx as audit_body_citations, build_report as build_citation_audit_report
 except ImportError:
     from validate_skill_gate_registry_core import BODY_STYLE_AUDIT_SCHEMA, CITATION_AUDIT_SCHEMA, DOCX_FONT_AUDIT_SCHEMA, EXPLICIT_VALUES, FORMAT_REPAIR_TASK_SCHEMA, HUMANIZER_EVIDENCE_SCHEMA, TEXT_EVIDENCE_EXTENSIONS
@@ -70,6 +75,10 @@ except ImportError:
         resolve_record_path,
         split_path_values,
         validate_existing_path,
+    )
+    from audit_docx_citation_anchor_pollution import (
+        SCHEMA as CITATION_ANCHOR_POLLUTION_AUDIT_SCHEMA,
+        audit_docx_citation_anchor_pollution,
     )
     from audit_thesis_citations import audit_docx as audit_body_citations, build_report as build_citation_audit_report
 
@@ -1005,6 +1014,12 @@ def check_docx_font_audit_report(report_path: Path, expected_docx_path: Path | N
     bibliography_checked_run_count = parse_nonnegative_int("- bibliography checked run count:")
     bibliography_content_model_status = values.get("- bibliography content-format model checks:", "")
     bibliography_content_model_source = raw_values.get("- bibliography content-format model source:", "")
+    bibliography_completeness_status = values.get("- bibliography empty-entry/content completeness checks:", "")
+    bibliography_completeness_hits = parse_nonnegative_int("- bibliography empty-entry/content completeness hits:")
+    if bibliography_completeness_status != "pass":
+        issues.append(f"docx font audit report bibliography empty-entry/content completeness is not pass in {report_path}")
+    if bibliography_completeness_hits is not None and bibliography_completeness_hits != 0:
+        issues.append(f"docx font audit report found bibliography entries without substantive content in {report_path}")
     if values.get("- bibliography font-slot checks:") == "pass":
         if bibliography_entry_count is None or bibliography_entry_count <= 0:
             issues.append(f"docx font audit report must record positive bibliography entry coverage in {report_path}")
@@ -1144,6 +1159,15 @@ def check_docx_body_style_audit_report(report_path: Path, expected_final_docx_pa
     heading_contamination_summary = values.get("- body heading contamination summary:", "")
     if heading_contamination_summary and not heading_contamination_summary.startswith("passed"):
         issues.append(f"docx body style audit report indicates body prose heading-style contamination in {report_path}")
+    direct_visible_summary = values.get("- body direct visible metrics summary:", "")
+    if "strict mode disabled" in direct_visible_summary.lower():
+        issues.append(
+            f"docx body style audit report has strict direct visible metrics disabled in {report_path}"
+        )
+    elif not direct_visible_summary.startswith("passed strict"):
+        issues.append(
+            f"docx body style audit report must prove strict direct visible metrics in {report_path}"
+        )
     if expected_final_docx_path is not None and "- final docx path:" in raw_values:
         raw_doc_path = raw_values["- final docx path:"]
         resolved_doc_path = Path(raw_doc_path)
@@ -1254,6 +1278,199 @@ def check_docx_whole_format_gate_report(
                 )
     else:
         issues.append(f"whole-format DOCX gate report lacks counts object in {report_path}")
+
+    surface_checks = payload.get("surface_checks")
+    if not isinstance(surface_checks, dict):
+        issues.append(f"whole-format DOCX gate report lacks surface_checks object in {report_path}")
+    else:
+        required_surface_checks = {
+            "cover_media": "cover media/icon relationship binding",
+            "front_matter_hard_fields": "cover/front-matter paragraph and font hard fields",
+            "header_full_display_string": "header full-display string",
+            "toc_page_number_right_tab": "TOC page-number right-tab semantics",
+            "references_entries_font_size": "references entry font size",
+            "acknowledgement_title_style": "acknowledgement title style",
+            "footer_page_number_font_size": "footer page-number font size",
+        }
+        for key, label in required_surface_checks.items():
+            value = surface_checks.get(key)
+            if not isinstance(value, dict):
+                issues.append(f"whole-format DOCX gate report lacks {label} surface check '{key}' in {report_path}")
+                continue
+            if value.get("passed") is not True:
+                issues.append(f"whole-format DOCX gate report {label} surface check is not pass in {report_path}")
+
+        cover_media = surface_checks.get("cover_media") if isinstance(surface_checks.get("cover_media"), dict) else {}
+        cover_media_required = cover_media.get("required") is not False
+        if cover_media_required:
+            if not cover_media.get("relationship_ids") or not cover_media.get("media_parts"):
+                issues.append(f"whole-format DOCX gate report cover media check must bind relationship ids and media parts in {report_path}")
+            if cover_media.get("media_relationship_bound") is not True:
+                issues.append(f"whole-format DOCX gate report cover media relationships are not fully package-bound in {report_path}")
+        else:
+            baseline = cover_media.get("reference_baseline") if isinstance(cover_media.get("reference_baseline"), dict) else {}
+            if baseline.get("cover_media_required") is not False:
+                issues.append(f"whole-format DOCX gate report cover media optional verdict lacks template no-cover-media baseline in {report_path}")
+            if cover_media.get("media_relationship_bound") is not True:
+                issues.append(f"whole-format DOCX gate report optional cover media verdict must still record a bound/no-media pass in {report_path}")
+
+        def front_surface_has_format_binding(surface: dict[str, object]) -> bool:
+            if surface.get("style_id"):
+                return True
+            indent = surface.get("indent") if isinstance(surface.get("indent"), dict) else {}
+            spacing = surface.get("spacing") if isinstance(surface.get("spacing"), dict) else {}
+            return bool(surface.get("alignment") or any(indent.values()) or any(spacing.values()))
+
+        front_fields = surface_checks.get("front_matter_hard_fields") if isinstance(surface_checks.get("front_matter_hard_fields"), dict) else {}
+        front_surfaces = front_fields.get("surfaces") if isinstance(front_fields.get("surfaces"), dict) else {}
+        for surface_id in ("zh_abstract", "en_abstract", "toc"):
+            surface = front_surfaces.get(surface_id) if isinstance(front_surfaces.get(surface_id), dict) else {}
+            if surface.get("present") is not True:
+                issues.append(f"whole-format DOCX gate report front-matter surface {surface_id} is missing in {report_path}")
+                continue
+            if not front_surface_has_format_binding(surface):
+                issues.append(f"whole-format DOCX gate report front-matter surface {surface_id} lacks style_id or direct paragraph-format binding in {report_path}")
+            font_size = surface.get("font_size") if isinstance(surface.get("font_size"), dict) else {}
+            if font_size.get("has_explicit_size") is not True:
+                issues.append(f"whole-format DOCX gate report front-matter surface {surface_id} lacks explicit font size in {report_path}")
+
+        header_check = surface_checks.get("header_full_display_string") if isinstance(surface_checks.get("header_full_display_string"), dict) else {}
+        if not str(header_check.get("observed_full_display_string") or "").strip():
+            issues.append(f"whole-format DOCX gate report must record observed header full-display string in {report_path}")
+
+        toc_check = surface_checks.get("toc_page_number_right_tab") if isinstance(surface_checks.get("toc_page_number_right_tab"), dict) else {}
+        try:
+            toc_row_count = int(toc_check.get("toc_row_count"))
+            toc_right_tab_count = int(toc_check.get("rows_with_right_tabs"))
+        except (TypeError, ValueError):
+            issues.append(f"whole-format DOCX gate report must record integer TOC row/right-tab counts in {report_path}")
+        else:
+            if toc_row_count > 0 and toc_right_tab_count != toc_row_count:
+                issues.append(f"whole-format DOCX gate report TOC right-tab count does not cover every TOC row in {report_path}")
+
+        references_check = surface_checks.get("references_entries_font_size") if isinstance(surface_checks.get("references_entries_font_size"), dict) else {}
+        try:
+            reference_entry_count = int(references_check.get("entry_count"))
+        except (TypeError, ValueError):
+            issues.append(f"whole-format DOCX gate report must record integer references entry_count in {report_path}")
+        else:
+            if reference_entry_count <= 0:
+                issues.append(f"whole-format DOCX gate report must inspect at least one bibliography entry in {report_path}")
+
+        ack_check = surface_checks.get("acknowledgement_title_style") if isinstance(surface_checks.get("acknowledgement_title_style"), dict) else {}
+        ack_summary = ack_check.get("summary") if isinstance(ack_check.get("summary"), dict) else {}
+        ack_direct_binding = any(
+            ack_summary.get(key) not in (None, "", {}, [])
+            for key in ("alignment", "spacing", "font_size", "run_font")
+        )
+        if ack_summary.get("present") is not True or (not ack_summary.get("style_id") and not ack_direct_binding):
+            issues.append(f"whole-format DOCX gate report must record acknowledgement title style binding in {report_path}")
+
+        footer_check = surface_checks.get("footer_page_number_font_size") if isinstance(surface_checks.get("footer_page_number_font_size"), dict) else {}
+        if not footer_check.get("sizes_half_points"):
+            issues.append(f"whole-format DOCX gate report must record footer page-number font size in half-points in {report_path}")
+
+    body_heading_direct_format = payload.get("body_heading_direct_format")
+    if not isinstance(body_heading_direct_format, dict):
+        issues.append(f"whole-format DOCX gate report lacks body_heading_direct_format object in {report_path}")
+    else:
+        if body_heading_direct_format.get("passed") is not True:
+            issues.append(
+                f"whole-format DOCX gate report body heading indentation residue check is not pass in {report_path}: "
+                f"{body_heading_direct_format.get('issues')}"
+            )
+        rows = body_heading_direct_format.get("rows")
+        if not isinstance(rows, list) or not rows:
+            issues.append(f"whole-format DOCX gate report must include inspected body heading rows in {report_path}")
+        else:
+            for row in rows:
+                if not isinstance(row, dict):
+                    issues.append(f"whole-format DOCX gate report contains a non-object body heading row in {report_path}")
+                    continue
+                effective_indent = row.get("effective_indent")
+                style_chain = row.get("style_chain")
+                if not isinstance(effective_indent, dict):
+                    issues.append(f"whole-format DOCX gate report body heading row lacks effective_indent in {report_path}")
+                if not isinstance(style_chain, list):
+                    issues.append(f"whole-format DOCX gate report body heading row lacks style_chain evidence in {report_path}")
+                try:
+                    level = int(row.get("level"))
+                except (TypeError, ValueError):
+                    issues.append(f"whole-format DOCX gate report body heading row lacks integer level in {report_path}")
+                    continue
+        if level not in {1, 2, 3, 4}:
+            issues.append(f"whole-format DOCX gate report body heading row has unsupported level {level} in {report_path}")
+        reference_contract = body_heading_direct_format.get("reference")
+        if not isinstance(reference_contract, dict) or not reference_contract.get("sample_rows"):
+            issues.append(f"whole-format DOCX gate report must include body heading template baseline rows in {report_path}")
+
+    list_pollution_audit = payload.get("list_pollution_audit")
+    if not isinstance(list_pollution_audit, dict):
+        issues.append(f"whole-format DOCX gate report lacks list_pollution_audit object in {report_path}")
+    elif list_pollution_audit.get("passed") is not True:
+        issues.append(
+            f"whole-format DOCX gate report list_pollution_audit is not pass in {report_path}: "
+            f"{list_pollution_audit.get('issues')}"
+        )
+
+    return issues
+
+
+def check_docx_list_pollution_audit_report(
+    report_path: Path,
+    expected_final_docx_path: Path | None = None,
+) -> list[str]:
+    issues: list[str] = []
+    issues.extend(validate_existing_path(report_path, require_nonempty_file=True))
+    if issues:
+        return issues
+
+    try:
+        payload = json.loads(report_path.read_text(encoding="utf-8-sig"))
+    except Exception as exc:
+        return [f"list-pollution audit report is not valid JSON in {report_path}: {exc}"]
+    if not isinstance(payload, dict):
+        return [f"list-pollution audit report must be a JSON object in {report_path}"]
+
+    if payload.get("schema") != "graduation-project-builder.docx-list-pollution-audit.v1":
+        issues.append(f"list-pollution audit report schema mismatch in {report_path}")
+    if payload.get("passed") is not True:
+        issues.append(f"list-pollution audit report is not pass in {report_path}: {payload.get('issues')}")
+
+    raw_doc_path = str(payload.get("docx_path") or "")
+    resolved_doc_path: Path | None = None
+    if not raw_doc_path:
+        issues.append(f"list-pollution audit report lacks docx_path in {report_path}")
+    else:
+        resolved_doc_path = Path(raw_doc_path)
+        if not resolved_doc_path.is_absolute():
+            resolved_doc_path = (report_path.parent / resolved_doc_path).resolve()
+        else:
+            resolved_doc_path = resolved_doc_path.resolve()
+        if not resolved_doc_path.exists():
+            issues.append(f"list-pollution audit report targets a missing DOCX in {report_path}: {resolved_doc_path}")
+
+    report_sha = str(payload.get("docx_sha256") or "")
+    if not re.fullmatch(r"[0-9a-fA-F]{64}", report_sha):
+        issues.append(f"list-pollution audit report must record a 64-hex docx_sha256 in {report_path}")
+    elif resolved_doc_path is not None and resolved_doc_path.exists():
+        actual_sha = sha256_file(resolved_doc_path)
+        if report_sha.lower() != actual_sha.lower():
+            issues.append(f"list-pollution audit report sha256 does not match audited DOCX in {report_path}")
+
+    if expected_final_docx_path is not None and resolved_doc_path is not None:
+        if resolved_doc_path != expected_final_docx_path.resolve():
+            issues.append(
+                f"list-pollution audit report in {report_path} targets {resolved_doc_path} "
+                f"instead of the exact final DOCX {expected_final_docx_path.resolve()}"
+            )
+        elif re.fullmatch(r"[0-9a-fA-F]{64}", report_sha):
+            expected_sha = sha256_file(expected_final_docx_path)
+            if report_sha.lower() != expected_sha.lower():
+                issues.append(
+                    f"list-pollution audit report sha256 does not match the exact final DOCX "
+                    f"{expected_final_docx_path.resolve()}"
+                )
 
     return issues
 
@@ -1369,6 +1586,7 @@ def check_thesis_citation_audit_report(report_path: Path, expected_docx_path: Pa
     body_citation_paragraph_count = parse_int("- body citation paragraph count:")
     unique_citation_count = parse_int("- unique citation count:")
     bibliography_item_count = parse_int("- bibliography item count:")
+    bibliography_empty_entry_count = parse_int("- bibliography empty/content-missing entries:")
 
     def expected_list_value(items: list[int], *, none_value: str = "[]") -> str:
         return str(items) if items else none_value
@@ -1394,6 +1612,8 @@ def check_thesis_citation_audit_report(report_path: Path, expected_docx_path: Pa
             issues.append(f"citation audit report claims a non-empty bibliography but zero body citation paragraphs in {report_path}")
         if unique_citation_count == 0:
             issues.append(f"citation audit report claims a non-empty bibliography but zero unique citations in {report_path}")
+    if bibliography_empty_entry_count and bibliography_empty_entry_count > 0:
+        issues.append(f"citation audit report found bibliography entries without substantive content in {report_path}")
 
     if expected_docx_path is not None:
         raw_doc_path = raw_values.get("- document path:", "")
@@ -1469,6 +1689,147 @@ def check_thesis_citation_audit_report(report_path: Path, expected_docx_path: Pa
                 issues.append(f"citation audit report body citation records are stale in {report_path}")
             if report_section(lines, "## Findings") != report_section(expected_report_lines, "## Findings"):
                 issues.append(f"citation audit report findings section is stale in {report_path}")
+
+    return issues
+
+
+def check_docx_citation_anchor_pollution_audit_report(
+    report_path: Path,
+    *,
+    expected_docx_path: Path | None = None,
+    expected_pdf_path: Path | None = None,
+) -> list[str]:
+    issues: list[str] = []
+    issues.extend(validate_existing_path(report_path, require_nonempty_file=True))
+    if issues:
+        return issues
+    try:
+        payload = json.loads(report_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return [f"citation anchor pollution audit report is not valid UTF-8 JSON in {report_path}: {exc}"]
+
+    if payload.get("schema") != CITATION_ANCHOR_POLLUTION_AUDIT_SCHEMA:
+        issues.append(f"citation anchor pollution audit report has wrong schema in {report_path}")
+    if payload.get("generator") != "scripts/audit_docx_citation_anchor_pollution.py":
+        issues.append(f"citation anchor pollution audit report has wrong generator in {report_path}")
+    if payload.get("verdict") != "pass":
+        issues.append(f"citation anchor pollution audit report is not pass in {report_path}")
+    if payload.get("error_codes"):
+        issues.append(
+            f"citation anchor pollution audit report carries error codes in {report_path}: {payload.get('error_codes')}"
+        )
+
+    docx_payload = payload.get("docx") if isinstance(payload.get("docx"), dict) else {}
+    pdf_payload = payload.get("pdf") if isinstance(payload.get("pdf"), dict) else None
+    for field in (
+        "visible_anchor_hit_count",
+        "visible_anchor_polluted_paragraph_count",
+        "field_result_anchor_hit_count",
+    ):
+        value = docx_payload.get(field)
+        if value != 0:
+            issues.append(f"citation anchor pollution audit DOCX field must be zero in {report_path}: {field}={value!r}")
+
+    if expected_docx_path is not None:
+        resolved_doc_path = Path(str(docx_payload.get("path", "")))
+        if not resolved_doc_path.is_absolute():
+            resolved_doc_path = (report_path.parent / resolved_doc_path).resolve()
+        else:
+            resolved_doc_path = resolved_doc_path.resolve()
+        if resolved_doc_path != expected_docx_path.resolve():
+            issues.append(
+                f"citation anchor pollution audit in {report_path} targets {resolved_doc_path} "
+                f"instead of the exact final DOCX {expected_docx_path.resolve()}"
+            )
+        expected_sha = sha256_file(expected_docx_path)
+        report_sha = str(docx_payload.get("sha256", ""))
+        if not re.fullmatch(r"[0-9a-fA-F]{64}", report_sha):
+            issues.append(f"citation anchor pollution audit must record a 64-hex DOCX sha256 in {report_path}")
+        elif report_sha.lower() != expected_sha.lower():
+            issues.append(
+                f"citation anchor pollution audit DOCX sha256 in {report_path} does not match "
+                f"{expected_docx_path.resolve()}"
+            )
+
+    if expected_pdf_path is not None:
+        if pdf_payload is None:
+            issues.append(f"citation anchor pollution audit must include rendered PDF scan in {report_path}")
+        else:
+            resolved_pdf_path = Path(str(pdf_payload.get("path", "")))
+            if not resolved_pdf_path.is_absolute():
+                resolved_pdf_path = (report_path.parent / resolved_pdf_path).resolve()
+            else:
+                resolved_pdf_path = resolved_pdf_path.resolve()
+            if resolved_pdf_path != expected_pdf_path.resolve():
+                issues.append(
+                    f"citation anchor pollution audit in {report_path} targets PDF {resolved_pdf_path} "
+                    f"instead of rendered PDF {expected_pdf_path.resolve()}"
+                )
+            expected_pdf_sha = sha256_file(expected_pdf_path)
+            report_pdf_sha = str(pdf_payload.get("sha256", ""))
+            if not re.fullmatch(r"[0-9a-fA-F]{64}", report_pdf_sha):
+                issues.append(f"citation anchor pollution audit must record a 64-hex PDF sha256 in {report_path}")
+            elif report_pdf_sha.lower() != expected_pdf_sha.lower():
+                issues.append(
+                    f"citation anchor pollution audit PDF sha256 in {report_path} does not match "
+                    f"{expected_pdf_path.resolve()}"
+                )
+            for field in ("visible_anchor_hit_count", "polluted_marker_pattern_count"):
+                value = pdf_payload.get(field)
+                if value != 0:
+                    issues.append(
+                        f"citation anchor pollution audit PDF field must be zero in {report_path}: {field}={value!r}"
+                    )
+
+    if expected_docx_path is not None and expected_docx_path.exists():
+        try:
+            recomputed = audit_docx_citation_anchor_pollution(
+                expected_docx_path,
+                rendered_pdf_path=expected_pdf_path if expected_pdf_path and expected_pdf_path.exists() else None,
+            )
+        except Exception as exc:
+            issues.append(f"citation anchor pollution audit could not be recomputed: {exc}")
+        else:
+            if recomputed.get("verdict") != "pass":
+                issues.append(
+                    "citation anchor pollution audit report claims pass but recomputed audit fails for "
+                    f"{expected_docx_path.resolve()}: {recomputed.get('error_codes')}"
+                )
+            expected_counts = {
+                ("docx", "visible_anchor_hit_count"): recomputed["docx"]["visible_anchor_hit_count"],
+                ("docx", "visible_anchor_polluted_paragraph_count"): recomputed["docx"][
+                    "visible_anchor_polluted_paragraph_count"
+                ],
+                ("docx", "field_result_anchor_hit_count"): recomputed["docx"]["field_result_anchor_hit_count"],
+            }
+            if expected_pdf_path is not None and recomputed.get("pdf") is not None:
+                expected_counts[("pdf", "visible_anchor_hit_count")] = recomputed["pdf"]["visible_anchor_hit_count"]
+                expected_counts[("pdf", "polluted_marker_pattern_count")] = recomputed["pdf"][
+                    "polluted_marker_pattern_count"
+                ]
+            for (section, field), expected_value in expected_counts.items():
+                section_payload = payload.get(section) if isinstance(payload.get(section), dict) else {}
+                if section_payload.get(field) != expected_value:
+                    issues.append(
+                        f"citation anchor pollution audit field is stale in {report_path}: "
+                        f"{section}.{field} report={section_payload.get(field)!r} actual={expected_value!r}"
+                    )
+        try:
+            citation_audit = audit_body_citations(expected_docx_path)
+        except Exception as exc:
+            issues.append(f"companion canonical citation audit could not be recomputed for {expected_docx_path}: {exc}")
+        else:
+            citation_surface_present = (
+                citation_audit.body_citation_paragraph_count > 0
+                or citation_audit.bibliography_item_count > 0
+            )
+            if citation_surface_present and not citation_audit.passed:
+                error_codes = ", ".join(citation_audit.error_codes) or "unknown"
+                issues.append(
+                    "citation anchor pollution audit cannot clear citation handoff while canonical citation audit "
+                    f"fails on the exact DOCX ({error_codes}); anchor-pollution pass is not a substitute for "
+                    "superscript/hyperlink/order audit"
+                )
 
     return issues
 

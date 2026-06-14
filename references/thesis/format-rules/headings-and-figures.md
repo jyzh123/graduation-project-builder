@@ -31,6 +31,7 @@ Use this file for heading repair and figure-format repair rules that sit on the 
 - If a first-level heading still differs materially from the sample after style binding, do not keep tuning the style definition blindly. Rewrite the paragraph's direct formatting from the approved sample instance instead.
 - Body first-level chapter pagination has one owner: use the template heading/page-break owner when present, otherwise add one explicit `pageBreakBefore` owner to each first-level chapter heading; do not combine hard page-break paragraphs with `pageBreakBefore` for the same opener.
 - Figure follow-up explanation paragraphs are body text, not captions. If generated follow-up text begins with a caption-like prefix such as `图 3-1`, rewrite it to a body-text reference such as `该图...` before insertion so caption detectors do not create duplicate figure captions.
+- Figure follow-up explanation paragraphs are body text, not captions. If generated follow-up text begins with a caption-like prefix such as `图3-1`, `图 3-1`, or `表3-1`, rewrite it to a body-text reference such as `该图...`, `该表...`, or `从图中可以看出...` before insertion so caption detectors do not create duplicate figure captions or caption-like body prose.
 - When converting a former body paragraph into a heading paragraph, explicitly clear the paragraph's direct body-format residues instead of relying on style reassignment alone.
 - Mandatory heading cleanup items after body-to-heading conversion include:
   - first-line indent
@@ -69,6 +70,8 @@ Use this file for heading repair and figure-format repair rules that sit on the 
 - Prefer figure placement strategies that preserve paragraph readability first.
 - Figure captions belong below the image in a centered paragraph.
 - Treat the caption paragraph and the caption-adjacent explanatory body paragraph as two different formatting surfaces.
+- The first body paragraph below a figure caption must not repeat the formal figure number as its opening token; use `该图...`, `从图中可以看出...`, or another normal body-text lead-in instead.
+- Nearby body paragraphs in the same figure/table block must not begin with a figure/table-number cluster such as `图3-4和图3-5...` or `该图和图3-5...`; use `该组图...`, `上述结果...`, or another body-text lead-in so the paragraph is not read as a caption continuation.
 - A figure caption may use caption styling, but any explanatory sentence such as `图 4-3 展示...` or other nearby narrative text must revert to the approved body-text class instead of inheriting the caption paragraph style, heading style, or any other figure-adjacent emphasis style.
 - If a figure insertion or renumbering pass leaves the nearby explanatory paragraph centered, bold, blue, underlined, caption-sized, or otherwise visually aligned with the caption instead of the body baseline, treat that figure block as polluted and repair the body paragraph explicitly.
 - Figure captions must also follow the approved sample's real caption paragraph instance. Do not treat the style name alone as proof that a caption matches the template.

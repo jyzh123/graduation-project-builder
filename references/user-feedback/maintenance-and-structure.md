@@ -2,6 +2,11 @@
 
 Use this file for durable maintenance, file-structure, screenshot-asset, encoding, and rule-architecture corrections.
 
+If the same thesis-scope complaint also includes bibliography repair or visible
+reference label family issues, load
+`references/user-feedback/citations-and-bibliography.md` as the sibling router
+before acting.
+
 ## Enforcement Status
 
 - Every numbered rule in this file is mandatory when this file is loaded for the current subtask.
@@ -606,6 +611,7 @@ Use this file for durable maintenance, file-structure, screenshot-asset, encodin
 - A handoff or audit card must fail if it passes only `comment coverage`, `citation audit result: pass`, or `officecli validate` while source-to-final review-artifact and citation-run diffs are missing.
 - Citation-run diffs must preserve hyperlink/bookmark hosts only when the source marker had such a host. If the source citation marker was already a plain superscript marker without a hyperlink host, the diff must record source-existing-only hyperlink scope instead of falsely reporting a lost final hyperlink.
 - A missing bookmark may be explicitly disposed only when the canonical review-artifact auditor receives a SHA-bound `empty-paragraph-bookmark-disposition` record proving the bookmark lived only on a deleted empty paragraph. The disposition must prove no visible text, image/table, section/page break, comment anchor, tracked change, field host, hyperlink, or citation marker was removed. Any other bookmark loss remains blocking.
+- For `new-thesis-production` only, when an old-topic manuscript is used solely as a template/source carrier and the final manuscript intentionally replaces the subject, the canonical auditor may accept a SHA-bound `new-thesis-source-artifact-disposition` record. That record must bind source/final DOCX paths and hashes, confirm `selected_thesis_workflow=new-thesis-production`, list every allowed missing bookmark, field host, and hyperlink host, explicitly allow source-citation non-preservation, and require the final citation chain plus full-content reference entries to pass. This exception must not be used for `whole-thesis-revision`, `local-surface-repair`, comment-driven repair, or format-only work.
 
 ### EXEC-MAINT-060. Smoke Summaries Cannot Become Final Thesis Acceptance (Mandatory)
 
@@ -738,9 +744,11 @@ Use this file for durable maintenance, file-structure, screenshot-asset, encodin
 - Acceptance generators must not rewrite unexpected near-empty pages into `unexpected_near_empty_pages=[]` after content-growth reconciliation.
 - Protected-surface evidence for `references_title` and `references_entries` must compare template and actual hard metrics for style, font, size, weight, alignment, first-line indent, hanging indent, left/right indent, and tab stops. A pass-shaped verdict cannot override numeric drift in these fields.
 - Reference-entry font audits must not use an explicit half-point override when a template/reference DOCX already provides a bibliography donor size. Use the template-derived size, or use an explicit named-size policy with all-entry WPS/Word evidence when the current user or official school rule requires that named size.
+- Reference-entry scans must stop at the first real terminal sibling block such as `附录`, `致谢`, `谢辞`, `Acknowledgements`, or `Appendix`. A numbered/list-form appendix or acknowledgement title must never be counted as a bibliography entry merely because it appears after `参考文献` and before another tail block.
 - `sample_self_check.py` must treat Word automatic numbering (`w:numPr`) as a valid bibliography baseline source. A template that uses automatic bibliography numbering must not downgrade reference entry or tail-block baseline checks to `not-applicable`.
 - Reference-section pagination is not proven by page count, blank-page absence, or a generic `tail block rendered map`. The `references` opener must have an explicit rendered physical page, `references_page_found=yes`, `references_fresh_page_verdict=pass`, `references previous content physical page=...`, `references_prior_block_separation_verdict=pass`, and `references_opener_owner_evidence` bound to `sample_self_check.py` detector `tail-block.pagination-contract`.
 - `sample_self_check.py` must fail closed when the `references` opener has no single pagination owner (`w:pageBreakBefore` on the opener, or exactly one previous-paragraph page/section break), when the previous real content block cannot be mapped to a rendered physical page, or when the previous real content page is the same as or after the formal `references` opener page. Missing, duplicated, stale, or generic opener-owner / prior-block separation evidence is a blocking defect.
+- The same `tail-block.pagination-contract` detector must cover acknowledgement and appendix openers when those blocks exist. Appendix must not be audited as a body-chapter opener, and a final report must not pass if the appendix opener lacks a single pagination owner, renders before or on the same page as acknowledgement, or is absent from detector evidence while appendix content exists.
 - Acceptance generators and validators must reject whole-document pagination JSON or final records that hide lost reference pagination behind pass-shaped fields, including `references previous content physical page=missing`, `references physical page=missing`, `references_page_found=no`, `references_fresh_page_verdict=fail`, `references_prior_block_separation_verdict=fail`, missing `tail-block.pagination-contract`, or a `tail_block_opener_page_map` without the required reference-opener and prior-block separation tokens.
 - Validators and selftests must reject: unapproved raw unexpected near-empty pages, reference title first-line drift, reference entry title-as-entry/target drift, normal-to-bold reference typography drift, explicit half-point size override against a template donor, automatic-numbered bibliography templates that become not-applicable, missing tail-block pagination detector evidence, reference-opener pagination loss, and pass-shaped reference maps that omit the previous-content page or prior-block separation verdict.
 
@@ -767,6 +775,205 @@ Use this file for durable maintenance, file-structure, screenshot-asset, encodin
 
 - A whole-thesis generation or whole-thesis revision cannot pass final acceptance from isolated checks for text length, reference count, media count, PDF export, font color, body style, live TOC presence, or page screenshots. It must also pass the exact-output whole-DOCX structural format gate.
 - The structural gate must bind to the handed-off DOCX path and SHA256 and must check, at minimum, section topology, front-matter/body/end-matter order, live or template-authorized TOC implementation, footer PAGE fields, front-matter/body page-number chain, header/footer part binding, builder-owned style contamination, and excessive style-less body paragraphs.
+- A school/template static running header, such as an institutional thesis header reused on cover, TOC, and body sections, is not automatically a section leak. The whole-format gate must distinguish safe static institutional header text from body/TOC heading leakage, visible PAGE fields on the cover section, unresolved placeholders, and chapter-title contamination.
+- When the locked donor is a converted template with empty front-matter headers, the gate may record that an empty converted template may allow safe static institutional header text only when the final header is the approved institutional header and no body/TOC heading leak is present.
+- Whole-format repair helpers must derive header text and header relationship topology from the current DOCX, locked template, or approved sample; in short, header repair derives from current DOCX or template. They must not hard-code a school name, `目 录`, or the first body chapter title as a global header repair policy.
+- TOC/body section repair must recognize localized heading styles, localized Heading1 style names, and outline levels, including Chinese `一级标题` style names or template-local style ids, before deciding that the body start is missing.
+- Whole-format reference-entry evidence must use formal bibliography-entry recognition, not `w:numPr` alone. List/numbering properties on `附录`, `致谢`, or other terminal titles are tail-title format defects, not bibliography-entry rows.
 - If the user reports blue text, cover format errors, TOC errors, header/footer errors, page-number errors, global style drift, or mixed table/figure/body formatting, the run must treat the complaint as a whole-document structural risk until `scripts/audit_docx_whole_format_gate.py` passes on the exact final DOCX.
 - A gate report from an earlier draft, a review copy that is not promoted to the final path, a manually edited JSON report, or a report whose SHA256 does not match the final DOCX cannot satisfy release acceptance.
 - Final acceptance must include `final DOCX whole-format structural audit path` and `final DOCX whole-format structural audit verdict`; validators must reject missing, failed, stale, path-mismatched, or SHA-mismatched reports for whole-thesis workflows.
+
+### EXEC-MAINT-077. Body Run Font-Slot Pollution Must Not Hide Behind Passing Style Binding (Mandatory)
+
+- A body paragraph may still be visually polluted even when it is bound to the correct body style, because direct `w:rFonts` on visible runs can override the style family.
+- Body-style, content-repair, and surface-format repair evidence must treat visible body run font slots as part of the protected body text surface whenever the user reports a paragraph that "looks different" from nearby正文.
+- A repair that splits mixed Chinese/Latin runs must assign Chinese-visible segments to the approved East Asian body font slot and Latin/digit segments to the approved Western body font slot. It may not let Chinese text inherit `Times New Roman`, theme-only ownership, or a copied polluted run model.
+- Citation runs, hyperlink wrappers, bookmarks, fields, drawings, comments, captions, references, TOC, abstracts, and tail-block titles remain protected. A body run font-slot repair must skip or preserve those objects unless the transaction explicitly owns them.
+- Final handoff after such a repair must include citation audit evidence proving superscript/hyperlink preservation and body-style or font-slot evidence proving the polluted visible body runs were corrected on the exact final DOCX.
+
+### EXEC-MAINT-078. Footer PAGE Field Repair Must Match The Whole-Format Gate Size Contract (Mandatory)
+
+- A footer PAGE-field repair helper must not repair page-number fields to a different direct run size than the exact-output whole-format gate expects.
+- The `footer-page-number-font-size` operation in `scripts/repair_thesis_frontmatter_toc_structure.py` must follow this rule whenever it is selected.
+- The canonical thesis footer PAGE-field size contract is 21 half-points (五号) unless an active official template/profile or current user instruction supplies a stronger explicit value.
+- Do not normalize footer PAGE fields to 18 half-points unless an active official template/profile explicitly requires that value; 18 half-points is treated as a mismatch under the default thesis footer contract.
+- Any repair helper that changes PAGE-field typography must expose the selected half-point size in its report, bind that value to the exact final DOCX, and be covered by a selftest that fails if the helper reintroduces previous 18 or 24 half-point defaults.
+- `scripts/audit_docx_whole_format_gate.py` remains the release authority for footer PAGE-field size acceptance; a helper report alone cannot clear footer/page-number handoff.
+
+### EXEC-MAINT-079. Tail-Block Titles Must Be Unlisted Explicit Title Surfaces (Mandatory)
+
+- Reference, appendix, and acknowledgement title repair may not directly inherit `w:numPr`, `w:ilvl`, `w:numId`, outline state, first-line body indent, or bibliography-entry formatting from a converted school template.
+- Appendix figure/table captions such as `图A.1` and `表A.1` are formal caption surfaces, not ordinary appendix body paragraphs. Self-check and repair helpers must not force those captions into first-line-indented body style, and table repair helpers must include appendix table titles when enforcing three-line-table structure.
+- `参考文献`, `附录`, `致谢`, `谢辞`, `References`, `Appendix`, and `Acknowledgements` are terminal title surfaces. They must be represented as explicit title paragraphs with title-level style binding or direct title metrics and explicit title-size evidence before whole-format acceptance.
+- If a template donor exposes a numbered title style, the canonical repair helper must strip list/numbering state after cloning donor metrics and then apply the accepted title baseline for the final manuscript. Do not pass the raw template numbering state through to the final document.
+- Self-check baseline comparison must follow the same rule: a numbered template donor such as `附录多级编号2` is evidence of old donor numbering state, not an instruction to reject final unlisted `Heading1` tail titles that carry explicit 30 half-point title-size evidence.
+- A whole-format gate or evidence helper must treat a numbered/list tail title as a tail-title style defect. It must not reinterpret that title as a reference entry, body heading, or appendix body paragraph to make another detector pass.
+- Selftests must cover both sides of the defect: the repair helper removes tail-title numbering while preserving explicit title size, sample self-check accepts final unlisted explicit-title surfaces while rejecting numbered/list final titles, and the whole-format gate stops reference-entry scanning at appendix/acknowledgement boundaries.
+
+### EXEC-MAINT-080. Cover Identity Placeholder Lines Must Not Survive Cover Repair (Mandatory)
+
+- Cover identity paragraphs such as `学生姓名：________________`, `学号：________________`, `班级：________________`, and `指导教师：________________` are unresolved template placeholders, not valid identity values.
+- Cover repair must start from a real cover authority: the official school template cover, an accepted local sample cover, or a locked current-manuscript cover baseline that has already been recorded as the donor for this run. Record the cover provenance, donor path/SHA, or the locked baseline evidence before mutating cover identity fields, cover tables, cover spacing, or the cover section boundary.
+- A cover repair may replay cover donor/baseline paragraph, run, table-cell, underline, spacing, and section metrics onto the cover surface. It must not paste body text, abstract paragraphs, TOC rows, reference entries, acknowledgement text, appendix rows, or other non-cover blocks into the cover and then style them to look like cover content.
+- If no real template/sample donor or locked cover baseline is available, the cover lane is blocked for mutation. Do not invent a cover layout from generic body formatting, default Word styles, school-name guesses, or nearby front-matter paragraphs.
+- If real identity values are unavailable, the canonical cover repair helper must remove the underline/square placeholder value and preserve the label-only line instead of inventing names, student numbers, class names, advisors, or `未填写` stand-ins.
+- Cover placeholder cleanup must be bounded to the cover/front-matter identity zone before the abstract, must preserve paragraph/run formatting where possible, and must not rewrite body content, references, figures, tables, media, comments, relationships, or headers/footers.
+- Cover placeholder cleanup must preserve the locked cover-only section behavior. It may not borrow a body/front-matter section break, header, footer, or page-number model merely because that makes pagination easier.
+- Whole-thesis release remains blocked until `scripts/audit_docx_whole_format_gate.py` passes the cover placeholder contract on the exact final DOCX.
+- Selftests must include a DOCX fixture where `scripts/repair_template_surface_baselines.py --surfaces cover` removes cover identity placeholder lines without creating invented identity values.
+
+### EXEC-MAINT-081. Live TOC Fields Must Be Locked When Cache Rows Are Preserved (Mandatory)
+
+- When a thesis final relies on reviewed TOC cache rows, especially front-matter rows such as `摘要` and `ABSTRACT`, the standard `TOC` field must exist and its begin field must carry `w:fldLock="true"` before handoff.
+- A visible TOC, static dotted-leader rows, or `HYPERLINK` / `PAGEREF` rows cannot satisfy the live-TOC requirement when the current workflow is whole-thesis production or whole-thesis revision.
+- `scripts/audit_docx_whole_format_gate.py --require-toc-field` must fail when the final DOCX has no standard `TOC` field or when any standard `TOC` field is not locked.
+- `scripts/validate_skill_gate_record_gate.py` must independently inspect the exact final DOCX named by the acceptance record and reject pass-shaped records that rely on visible TOC wording while the live TOC is absent or unlocked.
+- When the repair path uses `toc-field-lock`, `toc-frontmatter-cache-compact`, `frontmatter-title-outline-exclusion`, or `toc-frontmatter-cache-exclusion`, the final acceptance record must bind the repair report, live TOC field count, locked TOC field count, sample self-check, whole-format gate, and pagination evidence to the exact final DOCX SHA256.
+
+### EXEC-MAINT-082. Machine Evidence JSON Must Survive Windows Default Readers (Mandatory)
+
+- Thesis audit and repair helpers that write JSON evidence for final handoff must serialize non-ASCII paths, Chinese text, and template labels with JSON escapes (`ensure_ascii=True`) unless a stronger consumer contract explicitly requires raw UTF-8 text.
+- UTF-8 without BOM remains the required file encoding for skill artifacts, but final machine evidence must also parse under Windows PowerShell `Get-Content | ConvertFrom-Json` default-reader behavior when possible.
+- A pass-shaped JSON report that is valid only when the reader manually specifies UTF-8, or that fails strict JSON parsing after a normal Windows shell read because Chinese path text changed into invalid backslash escape sequences, cannot be the only final acceptance evidence.
+- The canonical final-thesis evidence scripts for list pollution, whole-format gate, font color, and bibliography school requirements must emit ASCII-safe JSON report files and console summaries so repeated cover/abstract/TOC/reference-format repair runs do not leave evidence that looks passed but is not machine-recheckable.
+
+### EXEC-MAINT-083. Pagination Or Page-Number Complaints Require Whole-Document Pagination Evidence (Mandatory)
+
+- When the user reports that the thesis has no pagination, no page numbers, wrong page breaks, frequent pagination errors, tail-block pagination loss, or equivalent page-flow defects, the next repair cannot close from a PDF page count or a generic `officecli validate` pass.
+- The format lane must inspect and record the DOCX section map, hard page-break and section-break owners, header/footer references, footer `PAGE` fields, front-matter/body page-number restart state, TOC/page sync, tail-block opener ownership, and rendered physical page map on the exact final DOCX/PDF.
+- Pagination evidence JSON must be ASCII-safe and machine-parseable under default Windows readers. A pagination report that becomes invalid JSON after `Get-Content | ConvertFrom-Json` because paths or non-ASCII text were written without JSON escaping is stale evidence and cannot close a page-number complaint.
+- If the school template expects visible page numbers, every page class where page numbers should appear must have a Word/WPS page-number field or template-approved equivalent; hand-typed page numbers and missing footer fields are hard failures.
+- The footer PAGE field must also carry the template/profile font-size contract directly on the field runs; a rendered PDF page number that looks present is not enough if the DOCX field can refresh into a different size.
+- The PAGE field direct run size is part of the evidence surface; footer repairs must audit the actual PAGE field direct run size rather than only surrounding paragraph or rendered PDF appearance.
+- When the official school format file is a prose rule sheet rather than a finished thesis sample, the prose-specified section geometry overrides that rule sheet DOCX's incidental section margins. The override must be explicit in the pagination evidence, for example by naming the accepted margin profile, and it must not hide missing PAGE fields, wrong page-number restarts, missing rendered footer maps, or tail-block opener defects.
+- If the school template expects body/tail blocks to start on fresh pages, the opener owner must be explicit and singular: one `w:pageBreakBefore`, one preceding page/section break, or another template-proven owner. Duplicate or missing opener ownership is a pagination failure even if the exported PDF happens to look acceptable once.
+- Chapter-opener checks must recognize Chinese chapter headings such as `第1章 ...` as first-level body openers, while avoiding false positives from calculation/result sentences that merely start with large numbers such as `96 ...`. A body pagination repair that misses `第N章` headings or treats calculation enumerators as chapters is stale.
+- Tail-block previous-content page mapping must be robust to rendered PDF line wrapping. The checker may use bounded fuzzy fragments from the exact preceding DOCX paragraph, but it must search only before the formal tail-block opener page; a hit elsewhere in the thesis cannot prove reference-section separation.
+- Mechanical design final chapters may use title variants such as `结论与展望` or `结论与后续优化` when the chapter is an independent body chapter before references. The pre-submission detector should reject merged test/summary chapters, not force every discipline into one literal `总结与展望` title.
+- Final acceptance for such a run must bind `inspect_docx_pagination_structure.py` evidence, full rendered page/footer evidence, and the whole-format gate to the same final DOCX/PDF SHA256 pair. A first/last-page sample, page count, or page-footer excerpt is not enough after a user says the whole document has no pagination.
+- The rendered evidence must include a complete physical-page footer/page-number map, not only sample pages. If the rendered footer map is generated before a field refresh, PDF export, formula-number repair, bibliography repair, or section-break repair, it is stale and must be regenerated.
+
+### EXEC-MAINT-084. Final Gate Records Must Use Recheckable UTF-8 Paths And Clean Role Aliases (Mandatory)
+
+- Final acceptance records, skill-invocation locks, agent manifests, task cards, and evidence ledgers must store real Windows absolute paths, not mojibake strings copied from a lossy console, PowerShell default-reader output, or a previously corrupted record.
+- Before a pass-shaped thesis handoff, the audit lane must re-open every path-bearing field that the validator will read, including final DOCX/PDF paths, template profile paths, whole-format/list-pollution/font-color reports, CAD package paths, CAD appendix binding reports, rendered page evidence, task-card paths, and the skill lock path.
+- `active_template_profile_path` must point to an existing generated profile file; `none`, empty strings, stale template paths, or corrupted template filenames block handoff.
+- Role aliases in records must be regenerated from the clean role map rather than copied from terminal output. The audit role must be recorded as `审核` in final gate records when validators require readable Chinese role names.
+- A final record cannot carry old failure text such as `blocked`, `failed`, `unresolved`, or `rendered sample still has unresolved thesis-quality issues` in pass-critical verdict, status, summary, handoff, or blocker fields. If the issue has been fixed, regenerate the record from the current evidence; if it has not been fixed, keep the handoff blocked.
+- When the user reports repeated reference-format, pagination, formula-number, cover, or CAD appendix failures, the next repair must explicitly audit the final record itself for path encoding, stale blocker text, and exact-output evidence binding before running `validate_skill_gate.py`.
+
+### EXEC-MAINT-085. External Format Reports Are Gate Inputs, Not Reference Notes (Mandatory)
+
+- When a user supplies a school, teacher, platform, or third-party thesis format-check report, the report must be parsed into a normalized issue ledger before DOCX mutation or handoff, and the run must complete report-equivalent final DOCX verification.
+- The issue ledger must preserve both expanded paragraph-level rows and report/statistics-page structural rows. Structure order, TOC, header, footer, page-number, table, caption, reference-label, abstract, keyword, heading, and acknowledgement/title rows from the report become user-reported protected surfaces.
+- The final DOCX must be checked against a report-equivalent verifier bound to the exact final DOCX path and SHA256. A whole-format gate, body-style audit, table audit, PDF export, or sampled screenshot cannot clear a report-driven repair if the external report ledger was never consumed.
+- The parser must distinguish report overview error counts from expanded sub-issue rows so table-cell fan-out does not inflate or hide the official reported error total.
+- Content reminders such as abstract word-count warnings must be recorded as manual/content decisions. A format repair helper must not silently rewrite abstract content merely to satisfy a length reminder.
+- Final acceptance for a report-driven repair must bind the report zip/path, extracted report files, normalized issue ledger, report-equivalent audit path/verdict, final DOCX SHA256, and any deliberately out-of-scope content reminders.
+- Validators or selftests must fail closed when a report-driven final record lacks a normalized issue ledger, lacks exact-output report-equivalent evidence, or treats stats-page structure/header/footer/page-number findings as advisory only.
+
+### EXEC-MAINT-086. Project-Local Helper Scans Must Distinguish Active Runs From Historical Archives (Mandatory)
+
+- When a thesis run has a locked current `.codex/graduation-project-builder/<run>` directory, the project-local helper preflight must record that active run directory and may treat sibling run directories under `.codex/graduation-project-builder` as historical archives for the current pass.
+- Historical sibling archives may still be listed in diagnostic scans, but they must not block a clean canonical-source pass when the current run uses only canonical skill scripts plus adapter data.
+- Generic archive packaging markers such as `zipfile` or `ZipFile` are not enough to classify a helper as DOCX/OOXML mutation. The scanner must require actual DOCX package surfaces such as `.docx`, `word/document.xml`, Word headers/footers, section/page XML, or equivalent OOXML target evidence before raising a DOCX rewrite risk.
+- CAD, PDF, DXF, DWG, PNG, or delivery-ZIP helpers must still fail if they insert or rewrite thesis DOCX surfaces outside canonical helpers; the active-run filter does not exempt a current helper from real DOCX mutation risks.
+- Final helper-preflight evidence for an active run must include the project root, active run directory when used, scanner command, risk count, and scanner exit status.
+
+### EXEC-MAINT-087. Heading-Completion Passes Must Not Corrupt TOC Or Body Typography (Mandatory)
+
+- A pass that adds missing second-level or third-level headings must be body-surface bounded. It must locate the real first body chapter from section/page evidence, live TOC field boundaries, and heading style ownership before inserting anything.
+- Project-local helpers must not search the whole `word/document.xml` for heading anchors with unbounded substring matching. If an anchor also appears in the TOC, abstract, figure caption, table title, reference entry, acknowledgement, appendix, header, footer, or formula/table text, the helper must skip that anchor until a canonical body-only locator proves a unique body paragraph.
+- A final proof for `uses三级标题` must count only body heading rows after the TOC/body boundary and must separately report any `Heading3`/body-heading style paragraph that appears inside the TOC block or live TOC field result. A global `Heading3` count is not acceptance evidence.
+- TOC cache rows are not body headings. Every visible TOC row, including level-3 and level-4 rows, must have a TOC-owned style/metrics record, a right dotted tab leader, and a visible page number. Aggregate dotted-leader counts cannot clear individual missing-row failures.
+- The TOC cache must be checked against the real body-heading map. Existing TOC rows with valid leaders/page numbers do not prove that every body level-1/2/3 heading, especially newly inserted `Heading3` rows, is represented in the TOC.
+- Body typography pollution is a release blocker when direct run size, style size, paragraph metrics, or caption/table sibling formatting makes body prose visibly smaller, denser, or otherwise different from the locked template/body baseline. The body-style audit must fail both over-large and under-size direct typography drift.
+- If a user reports TOC row defects, body font-size pollution, or abnormal blank/near-empty pages, the next handoff must bind exact-output whole-format, body-style, and whole-document pagination evidence to the final DOCX/PDF SHA256 pair. A formula audit, figure audit, heading count, `officecli validate`, PDF export success, or package hash cannot close those user-reported visual surfaces.
+- When the exact final PDF is available, whole-format evidence must scan rendered PDF near-empty pages directly or bind a canonical whole-document pagination JSON that does so. A page that contains only a footer/page number or other tiny residue is not acceptable unless its physical page number is explicitly allowlisted with independent review evidence.
+
+### EXEC-MAINT-088. Renderers Must Not Mutate The Visible Final DOCX (Mandatory)
+
+- A thesis render, PDF export, field refresh, Word/WPS/LibreOffice/officecli conversion, or screenshot pass must never operate on the visible handoff DOCX path directly.
+- Before any rendered review, copy the exact final DOCX to a disposable render-source path and render that copy. The transaction record must name the disposable render-source DOCX path and SHA256.
+- The visible handoff DOCX SHA256 must be recorded immediately before and immediately after the render/export/refresh step. The two hashes must be identical and must match `final_docx_sha256`.
+- If a renderer, field refresh, or export tool changes the visible handoff DOCX, earlier DOCX-bound evidence is stale. Do not "rebind" the mutated file as accepted; restart from the clean source or rerun the full transaction after explicitly classifying the renderer mutation.
+- Final acceptance must include `visible_final_docx_renderer_mutation_verdict=pass`, `final_docx_hash_before_render`, `final_docx_hash_after_render`, `render_source_docx_path`, and `render_source_docx_disposable_copy_verdict`.
+- `scripts/validate_thesis_mutation_transaction.py` must reject mutating thesis transactions whose rendered-review evidence lacks these fields, whose render-source path equals the final DOCX path, or whose before/after/final hashes differ.
+
+### EXEC-MAINT-089. Body Visual Pollution Evidence Must Prove Effective Typography And TOC Preservation (Mandatory)
+
+- When the user reports body text that "looks different", body font-size pollution, heading/body visual drift, or similar rendered-body defects, XML direct-format cleanup is not enough.
+- Body repair evidence must prove the effective font chain, including paragraph style, style inheritance, direct run `w:rFonts`, East Asian and Western font slots, `w:sz`/`w:szCs`, bold/boldCs, paragraph spacing, indentation, and nearby normal-body donor comparison.
+- The body gate must also include rendered comparison evidence for the exact affected page or paragraph family. A pass that only says direct 24 half-point size or direct bold was removed is a false pass when the rendered text still differs.
+- `--strict-direct-visible-metrics` or equivalent strict visible metrics must be enabled for user-reported body typography repairs. A disabled strict-direct-visible-metrics status cannot close a user-reported body pollution complaint.
+- Citation runs, bookmarks, hyperlinks, fields, drawings, TOC rows, captions, tables, references, headers, and footers remain protected while body typography is repaired.
+- If TOC is a protected sibling during such a repair, the transaction must prove the TOC field/cache rows, hyperlinks/bookmarks, page-number column, and rendered TOC/body heading sync were unchanged or intentionally refreshed under TOC ownership.
+- `scripts/validate_thesis_mutation_transaction.py` must reject mutating body-format transactions whose `chapter_format_preservation_report` lacks passing `effective_font_slot_verdict`, `strict_direct_visible_metrics_verdict`, `rendered_body_typography_comparison_verdict`, and `neighbor_body_baseline_comparison_verdict`, or whose TOC-protected transaction lacks TOC field/cache preservation evidence.
+
+### EXEC-MAINT-090. Protected-Surface Diff And Review/Citation Evidence Must Be Parsed (Mandatory)
+
+- A thesis mutation transaction cannot pass from `post_mutation_surface_diff verdict: pass` or a path-only check. The transaction validator must parse canonical protected-surface JSON, verify the schema, source/final DOCX paths and SHA256 values, full canonical surface-id coverage, changed package parts, unauthorized non-target surface rows, style-bearing part drift, keyword run split verdict, review-artifact verdict, citation-run verdict, and stale-evidence verdict.
+- The protected-surface diff record must name every canonical surface, including cover, declaration/title front matter, Chinese/English abstracts and keywords, TOC title/entries/leaders/page-number column, body headings/text, figure/table holders, body citation superscripts, review comments/change marks, references, acknowledgement, appendix, headers, footers, page numbers, and whole-document pagination.
+- Review-artifact and citation-run transaction fields must be re-opened and recomputed against the exact transaction source and final DOCX files. Fake markdown containing only `result: pass`, stale report paths, or reports for a different final DOCX must block handoff.
+- Citation superscript preservation must be source-relative and run-level. If a source body citation marker is superscript, the final occurrence cannot pass when it becomes plain text, loses its marker run, moves to an unrelated host paragraph, or keeps a pass-shaped stale citation report.
+- Selftest fixtures for transaction positives must generate canonical protected-surface diff JSON plus real source-to-final review/citation reports, so the fixture cannot hide a validator downgrade back to path checks.
+
+### EXEC-MAINT-091. Caption Baseline Repair And Audit Must Share One Contract (Mandatory)
+
+- Formal figure-caption and table-caption spacing baselines are protected template surfaces. A repair helper, body-style audit, sample self-check, and whole-format gate must use the same accepted caption baseline for the current school/template profile.
+- For the current IMUST mechanical-design baseline, `repair_template_surface_baselines.py` and `audit_docx_body_style.py` must agree on figure captions before `0` / after `240` / line `360`, and table captions before `240` / after `0` / line `360` with `keepNext`.
+- Do not require direct zero-indent attributes on captions when the locked baseline leaves those attributes absent. Adding explicit zero-indent attributes is itself a style drift unless a stronger template donor proves they are required.
+- A body-style audit that still expects an older generic caption pattern such as before `120` / after `120` / line `240` is stale evidence for this thesis profile and must be fixed before it can block or clear handoff.
+- If a future school template has a different caption baseline, first record the template/profile evidence, then update both the repair helper and all caption audit/self-check validators together. Do not patch only the document or only one checker.
+
+### EXEC-MAINT-092. Tail-Block Run Fonts Must Not Be Reported As Paragraph Drift (Mandatory)
+
+- Tail-block body checks for references, acknowledgement, and appendix must keep paragraph metrics and run typography as separate comparison surfaces.
+- If `sample_self_check.py` materializes first-run font slots into a paragraph signature for detection convenience, tail-block body paragraph baseline comparison must not report those run-derived slots as paragraph-level drift.
+- Appendix body paragraphs may carry explicit Chinese run fonts such as `宋体` when the approved donor/run model allows that visible typography. The checker must compare those slots through the run-signature contract, not through paragraph metric keys such as `eastAsia`, `ascii`, `hAnsi`, `size`, or `bold`.
+- A true tail-block failure is still blocking when paragraph properties drift, style binding drifts, or the run-signature contract itself drifts. This rule only prevents false failures caused by mixing run-derived font materialization into paragraph-baseline diffs.
+
+### EXEC-MAINT-093. Section Page Setup Must Be Materialized Before Rendered Geometry Acceptance (Mandatory)
+
+- Whole-thesis DOCX outputs must materialize page setup on every `w:sectPr`; empty section properties or sections missing `w:pgSz` / `w:pgMar` are hard failures even when Word or WPS appears to inherit a usable layout on screen.
+- When the locked school template exposes `w:cols` and `w:docGrid`, final sections must also carry those nodes unless a template/profile decision explicitly records why a section is exempt.
+- Reference-entry rendered geometry drift can be caused by document page-box fallback, not only by bibliography paragraph indentation. After a bibliography-label, reference-format, pagination, or section-boundary repair, compare section page setup against the active template before interpreting reference `x0` drift as a reference-paragraph issue.
+- A final PDF that renders thesis pages as US Letter or any non-template page box fails even if DOCX paragraph metrics, font audits, and citation audits pass. The rendered PDF page box must match the template A4/profile page size within an explicit tolerance.
+- Before final handoff after page-flow or reference-format complaints, run `scripts/audit_docx_section_page_setup.py` on the exact final DOCX, with the active template/reference DOCX and final PDF when available. The evidence must bind the final DOCX/PDF SHA256 values.
+- Repair helpers that add section breaks or clone front/body/tail blocks must copy or materialize `pgSz`, `pgMar`, `cols`, and `docGrid` from the active template/profile instead of leaving blank `sectPr` nodes for the renderer to guess.
+
+### EXEC-MAINT-094. Review-Artifact Detection Must Not Confuse Field Instructions With Tracked Changes (Mandatory)
+
+- Transaction validators must distinguish real Word tracked-change elements from field-instruction elements. The string prefix `<w:ins` is not enough because `<w:instrText>` belongs to Word field instructions such as TOC or hyperlink fields, not to revision insertion markup.
+- A DOCX must be classified as containing review artifacts only when it contains actual comment parts with comment records, comment anchors, or exact tracked-change tags such as `<w:ins>` / `<w:del>` with a tag boundary. Field instruction text, TOC field caches, PAGE fields, and hyperlink field instructions must not trigger comment-resolution ledger requirements by themselves.
+- A transaction that protects the `review_comments_and_change_marks` surface but whose source and final DOCX contain no comments and no real tracked-change tags may rely on source/final review-artifact inventory and diff evidence; it must not be blocked solely because the protected-surface list contains the word `comments`.
+- If a run explicitly claims teacher-comment repair, all-comments resolution, or a non-not-applicable comment scope, the ledger gate remains mandatory even when the DOCX currently has no visible open comments.
+
+### EXEC-MAINT-095. Durable Rules Must Be Wired Into Workflow Evidence Before Handoff (Mandatory)
+
+- A new or repaired durable rule cannot remain as passive guidance. The same turn that adds or changes the rule must connect it to the execution chain that will enforce it.
+- Required chain for each durable rule or user-reported defect class:
+  - router exposure from `SKILL.md` or a directly loaded parent reference
+  - one canonical owner file and `references/rule-owner-map.json` row
+  - active checklist or task-card row naming the rule or defect class
+  - agent run manifest entry naming the lane that owns execution and the audit lane that owns rejection
+  - evidence field or evidence file path bound to the exact final artifact
+  - validator or selftest owner when the check is automatable
+  - manual rendered-review record when the check is visual or non-automatable
+  - final acceptance or handoff text that states pass, fail, or explicitly skipped with reason
+- Do not mark a final handoff as passed while the active checklist still has unchecked required rows, the manifest still says `pending` for the same surface, or the final evidence was generated against an older candidate.
+- For thesis/CAD work, process-chain evidence must include the final DOCX/PDF/DWG/package path and SHA256 binding whenever the rule concerns formatting, figures, CAD borders, CAD overlap, CAD appendix binding, references, formulas, pagination, or media relationships.
+- If a validator is unavailable, the workflow must fail closed to `audit-only` or bind a manual review record that names the exact rendered pages, CAD sheets, screenshots, or exported PDFs reviewed. A generic statement such as `checked visually` is not enough.
+- When the user reports that rules exist but the flow did not follow them, the next skill-maintenance pass must audit the process chain itself before touching the thesis or drawing output. The audit must check router exposure, checklist rows, manifest fields, evidence freshness, final hash binding, and stale pass/failure text.
+- A stale checklist can invalidate an otherwise repaired artifact for skill-controlled handoff. Before final packaging, either all required rows are checked with evidence or the unchecked rows are reclassified with explicit `not-applicable`, `superseded`, or `blocked` reasons.
+
+### EXEC-MAINT-096. Flowchart And Table Rules Must Close Through Manifest, Validator, And Acceptance (Mandatory)
+
+- When the user reports that flowchart, diagram, table, draw.io, generated-image, or table-format rules were bypassed, the next skill-maintenance or thesis run must wire the complaint through `SKILL.md`, `references/thesis/figure-rules/workflow-and-checklists.md`, `references/thesis-table-style-memory.md`, `scripts/thesis_figure_contract.py`, agent task cards, the run manifest, selftests, and final acceptance fields before claiming repair.
+- Any thesis figure whose caption, title, nearby prose, manifest fields, teacher comment, or user comment contains workflow, process, step, chain, sequence, or flowchart semantics must be treated as a `flowchart` structural figure unless a stronger approved sample explicitly proves a different family. It cannot be recorded as a loose raster image, generic chart, AI-generated PNG, Mermaid final export, Pillow image, or unclassified screenshot.
+- Every flowchart must have a draw.io source file, SVG export, raster fallback, source-scale geometry validation report, source-to-inserted geometry evidence, post-insertion rendered-page evidence, final DOCX relationship evidence, visible start/end terminators, orthogonal boundary-to-boundary connectors, pass collision verdict, pass insertion status, and exact final DOCX binding. Missing any required field fails closed.
+- Every real body table present in scope, generated, repaired, preserved, or detected in the final DOCX must have a table manifest row. A row containing only a caption, title, table number, or row count is not evidence and must fail validation.
+- Each table manifest row must record active table authority lock, authority source type/path or pass no-template authority verdict, manuscript-binding proof, title/caption mode, border-family verdict, header separator verdict, vertical separator verdict, body-row separator verdict, table-local structure verdict, rendered table evidence, pagination/continuation verdict, insertion status, rendered-page status, final DOCX table evidence, and exact-output SHA binding.
+- If the final DOCX contains any `w:tbl` body table or table caption, the acceptance gate must treat the table lane as touched even when a format task card forgot to mark `table`. The table evidence fields, table manifest path, and per-table inventory are then mandatory.
+- The owner map entry for this rule must name validator and selftest owners. A skill-maintenance pass that only edits prose rules without updating `references/rule-owner-map.json`, templates, and validator/selftest coverage is incomplete.

@@ -162,20 +162,90 @@ def ensure_keep_next(paragraph: ET.Element) -> None:
         ppr.append(ET.Element(w("keepNext")))
 
 
+def ensure_child(parent: ET.Element, tag: str) -> ET.Element:
+    child = parent.find(tag)
+    if child is None:
+        child = ET.Element(tag)
+        parent.append(child)
+    return child
+
+
+def remove_children(parent: ET.Element, tags: set[str]) -> None:
+    for child in list(parent):
+        if child.tag in tags:
+            parent.remove(child)
+
+
+def insert_before_any(parent: ET.Element, child: ET.Element, later_tags: set[str]) -> None:
+    for index, existing in enumerate(list(parent)):
+        if existing.tag in later_tags:
+            parent.insert(index, child)
+            return
+    parent.append(child)
+
+
+def ensure_caption_direct_metrics(ppr: ET.Element) -> ET.Element:
+    remove_children(ppr, {w("spacing"), w("ind"), w("jc")})
+    spacing = ET.Element(w("spacing"))
+    spacing.set(w("before"), "120")
+    spacing.set(w("after"), "120")
+    spacing.set(w("line"), "240")
+    spacing.set(w("lineRule"), "auto")
+    ind = ET.Element(w("ind"))
+    ind.set(w("left"), "0")
+    ind.set(w("firstLine"), "0")
+    jc = ET.Element(w("jc"))
+    jc.set(w("val"), "center")
+    after_spacing = {
+        w("ind"),
+        w("contextualSpacing"),
+        w("mirrorIndents"),
+        w("suppressOverlap"),
+        w("jc"),
+        w("textDirection"),
+        w("textAlignment"),
+        w("textboxTightWrap"),
+        w("outlineLvl"),
+        w("divId"),
+        w("cnfStyle"),
+        w("rPr"),
+        w("sectPr"),
+        w("pPrChange"),
+    }
+    after_ind = after_spacing - {w("ind")}
+    after_jc = {
+        w("textDirection"),
+        w("textAlignment"),
+        w("textboxTightWrap"),
+        w("outlineLvl"),
+        w("divId"),
+        w("cnfStyle"),
+        w("rPr"),
+        w("sectPr"),
+        w("pPrChange"),
+    }
+    insert_before_any(ppr, spacing, after_spacing)
+    insert_before_any(ppr, ind, after_ind)
+    insert_before_any(ppr, jc, after_jc)
+    return ppr
+
+
+def ensure_caption_run_size(rpr: ET.Element | None) -> ET.Element:
+    fixed = copy.deepcopy(rpr) if rpr is not None else ET.Element(w("rPr"))
+    sz = ensure_child(fixed, w("sz"))
+    sz.set(w("val"), "21")
+    sz_cs = ensure_child(fixed, w("szCs"))
+    sz_cs.set(w("val"), "21")
+    return fixed
+
+
 def caption_ppr_without_wrapping(donor: ET.Element) -> ET.Element | None:
     ppr = donor.find("w:pPr", NS)
-    if ppr is None:
-        return None
-    cloned = copy.deepcopy(ppr)
+    cloned = copy.deepcopy(ppr) if ppr is not None else ET.Element(w("pPr"))
     for tag in ("w:framePr", "w:ind", "w:outlineLvl", "w:numPr"):
         for node in list(cloned.findall(tag, NS)):
             cloned.remove(node)
-    jc = cloned.find("w:jc", NS)
-    if jc is None:
-        jc = ET.Element(w("jc"))
-        cloned.append(jc)
-    jc.set(w("val"), "center")
-    return cloned
+    return ensure_caption_direct_metrics(cloned)
 
 
 def direct_bookmarks(paragraph: ET.Element) -> list[ET.Element]:
@@ -199,7 +269,7 @@ def set_caption_from_donor(target: ET.Element, donor: ET.Element, kind: str) -> 
     run_count = 0
     for segment_kind, payload in split_caption_text(text):
         rpr = latin_rpr if segment_kind == "latin" else cjk_rpr
-        target.append(make_run(payload, rpr or fallback_rpr))
+        target.append(make_run(payload, ensure_caption_run_size(rpr or fallback_rpr)))
         run_count += 1
     if kind == "table":
         ensure_keep_next(target)
@@ -221,6 +291,13 @@ def caption_donors(template_docx: Path) -> dict[str, ET.Element]:
         kind = caption_kind(paragraph_text(paragraph))
         if kind and kind not in donors:
             donors[kind] = paragraph
+    # Some official templates contain only one caption exemplar. Figure and
+    # table captions share the same visible typography in that case, so keep
+    # the repair usable instead of silently skipping one caption family.
+    if "figure" not in donors and "table" in donors:
+        donors["figure"] = donors["table"]
+    if "table" not in donors and "figure" in donors:
+        donors["table"] = donors["figure"]
     return donors
 
 

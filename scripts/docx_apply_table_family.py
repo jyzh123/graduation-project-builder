@@ -749,12 +749,32 @@ def normalize_body_table_structure(tbl: ET._Element) -> dict[str, object]:
             tc_borders = ensure_ordered(tcpr, W + "tcBorders", TC_PR_ORDER)
             tc_borders.clear()
             if row_index == 0:
-                tc_borders.extend([border(W + "top", "single", "12"), border(W + "bottom", "single", "4")])
+                tc_borders.extend(
+                    [
+                        border(W + "top", "single", "4"),
+                        border(W + "left", "none", "0"),
+                        border(W + "bottom", "single", "4"),
+                        border(W + "right", "none", "0"),
+                    ]
+                )
             elif row_index == len(rows) - 1:
-                tc_borders.extend([border(W + "top", "single", "4"), border(W + "bottom", "single", "12")])
+                tc_borders.extend(
+                    [
+                        border(W + "top", "none", "0"),
+                        border(W + "left", "none", "0"),
+                        border(W + "bottom", "single", "4"),
+                        border(W + "right", "none", "0"),
+                    ]
+                )
             else:
-                tc_borders.extend([border(W + "top", "single", "4"), border(W + "bottom", "single", "4")])
-            tc_borders.extend([border(W + "left", "none", "0"), border(W + "right", "none", "0")])
+                tc_borders.extend(
+                    [
+                        border(W + "top", "none", "0"),
+                        border(W + "left", "none", "0"),
+                        border(W + "bottom", "none", "0"),
+                        border(W + "right", "none", "0"),
+                    ]
+                )
             for paragraph in children(cell, W + "p"):
                 set_paragraph_cell_metrics(paragraph, header=(row_index == 0))
                 for run in children(paragraph, W + "r"):
@@ -827,11 +847,22 @@ def normalize_three_line_table_borders(tbl: ET._Element) -> dict[str, object]:
     if tbl_style is not None:
         tbl_pr.remove(tbl_style)
         removed_style = True
-    tbl_layout = tbl_pr.find(W + "tblLayout")
-    if tbl_layout is not None:
-        tbl_pr.remove(tbl_layout)
+    tbl_layout = ensure_ordered(tbl_pr, W + "tblLayout", TBL_PR_ORDER)
+    tbl_layout.set(w_attr("type"), "fixed")
+    tbl_jc = ensure_ordered(tbl_pr, W + "jc", TBL_PR_ORDER)
+    tbl_jc.set(w_attr("val"), "center")
     tbl_borders = ensure_ordered(tbl_pr, W + "tblBorders", TBL_PR_ORDER)
-    tbl_pr.remove(tbl_borders)
+    tbl_borders.clear()
+    tbl_borders.extend(
+        [
+            border(W + "top", "single", "4"),
+            border(W + "left", "none", "0"),
+            border(W + "bottom", "single", "4"),
+            border(W + "right", "none", "0"),
+            border(W + "insideH", "none", "0"),
+            border(W + "insideV", "none", "0"),
+        ]
+    )
     header_cell_count = 0
     rows = children(tbl, W + "tr")
     if rows:
@@ -843,8 +874,10 @@ def normalize_three_line_table_borders(tbl: ET._Element) -> dict[str, object]:
             tc_borders.clear()
             tc_borders.extend(
                 [
-                    border(W + "top", "single", "12"),
+                    border(W + "top", "single", "4"),
+                    border(W + "left", "none", "0"),
                     border(W + "bottom", "single", "4"),
+                    border(W + "right", "none", "0"),
                 ]
             )
     return {"removed_table_style": removed_style, "header_cell_border_count": header_cell_count}

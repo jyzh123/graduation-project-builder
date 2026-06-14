@@ -212,7 +212,9 @@
         "scripts/selftest_skill_flow.py::case_audit_figure_extents_oversized_body_image_rejected",
         "scripts/selftest_skill_flow.py::case_audit_figure_extents_structural_undersized_rejected",
         "scripts/selftest_skill_flow.py::case_audit_figure_extents_frontmatter_image_rejected",
-        "scripts/selftest_skill_flow.py::case_audit_figure_extents_caption_overcount_guard_valid"
+        "scripts/selftest_skill_flow.py::case_audit_figure_extents_caption_overcount_guard_valid",
+        "scripts/selftest_skill_flow.py::case_figure_manifest_wmf_formula_fallback_not_figure_valid",
+        "scripts/selftest_skill_flow.py::case_figure_manifest_wmf_real_figure_still_detected_valid"
       ],
       "required_load_modes": [
         "thesis-only",
@@ -245,6 +247,34 @@
         "Repeated Table-Fix Complaints Must Escalate To Exact-Page Visual Review"
       ],
       "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/thesis-workflow.md`: namespace `FB-THESIS-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_table_structure.py::audit_docx",
+        "scripts/thesis_figure_contract.py::validate_table_manifest_entries",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_figure_manifest_table_caption_rows_only_rejected",
+        "scripts/selftest_skill_flow.py::case_figure_manifest_table_authority_rendered_evidence_valid"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "table surface inventory path",
+        "table manifest path",
+        "table manifest contract verdict",
+        "table authority evidence paths",
+        "table-local structure evidence paths",
+        "table rendered baseline comparison evidence paths",
+        "table exact-output DOCX binding evidence path",
+        "table final DOCX SHA256 binding",
+        "table per-table evidence rows"
+      ],
       "status": "active"
     },
     {
@@ -404,14 +434,14 @@
         "scripts/validate_thesis_mutation_transaction.py::validate_transaction_record"
       ],
       "selftest_owner": [
-                "scripts/selftest_skill_flow.py::case_comment_resolution_missing_source_docx_for_all_resolved_rejected",
-                "scripts/selftest_skill_flow.py::case_comment_resolution_ledger_claim_requires_source_docx_without_cli_assert",
-                "scripts/selftest_skill_flow.py::case_comment_resolution_source_final_same_path_rejected",
-                "scripts/selftest_skill_flow.py::case_comment_resolution_ledger_schema_missing_rejected",
-                "scripts/selftest_skill_flow.py::case_comment_anchor_removed_rejected",
-                "scripts/selftest_skill_flow.py::case_comment_anchor_added_without_authorization_rejected",
-                "scripts/selftest_skill_flow.py::case_comment_anchor_restoration_authorized_valid",
-                "scripts/selftest_skill_flow.py::case_review_comment_anchor_ids_changed_rejected",
+        "scripts/selftest_skill_flow.py::case_comment_resolution_missing_source_docx_for_all_resolved_rejected",
+        "scripts/selftest_skill_flow.py::case_comment_resolution_ledger_claim_requires_source_docx_without_cli_assert",
+        "scripts/selftest_skill_flow.py::case_comment_resolution_source_final_same_path_rejected",
+        "scripts/selftest_skill_flow.py::case_comment_resolution_ledger_schema_missing_rejected",
+        "scripts/selftest_skill_flow.py::case_comment_anchor_removed_rejected",
+        "scripts/selftest_skill_flow.py::case_comment_anchor_added_without_authorization_rejected",
+        "scripts/selftest_skill_flow.py::case_comment_anchor_restoration_authorized_valid",
+        "scripts/selftest_skill_flow.py::case_review_comment_anchor_ids_changed_rejected",
         "scripts/selftest_skill_flow.py::case_comment_disposal_without_explicit_user_approval_rejected",
         "scripts/selftest_skill_flow.py::case_comment_done_without_evidence_rejected",
         "scripts/selftest_skill_flow.py::case_comment_reference_requirement_generic_detector_rejected",
@@ -673,6 +703,7 @@
         "boundary-to-boundary orthogonal connector law",
         "edgeStyle=orthogonalEdgeStyle",
         "rounded=0",
+        "vertical-first connector preference",
         "source/targetless line segments"
       ],
       "router_file": "references/thesis/thesis-figure-generation-rules.md",
@@ -718,20 +749,179 @@
         "annotation margin clearance",
         "local crowding",
         "default mechanical CAD baseline",
+        "v12 six-sheet",
+        "A0 overall assembly layout baseline",
+        "two full-length conveyor views",
+        "upper and lower full-length views",
+        "BOM right zone",
+        "balloon-to-BOM row match",
+        "effective_min_dimensioned_dxf_files",
+        "机尾张紧部",
         "user-provided sample wins",
         "entity-count-only false-pass",
+        "formal CAD source provenance",
+        "schematic/concept substitute rejection",
         "frame/title-block/table overlap",
-        "audit_mechanical_drawing_package.py"
+        "machine overlap audit",
+        "rendered_frame_overflow_verdict",
+        "outside-frame ink audit",
+        "outside-frame independent ink component",
+        "outside-frame text component",
+        "outside-frame leader component",
+        "outside-frame hatch component",
+        "outside-frame table/title-block component",
+        "hatch/section fill clipping",
+        "stale rendered preview freshness",
+        "non-corresponding background fill",
+        "title-block cell containment",
+        "title-block short-line topology audit",
+        "missing short table line count",
+        "broken cell-border count",
+        "table-grid topology mismatch count",
+        "reserved-zone intrusion audit",
+        "protected-table-zone intrusion audit",
+        "annotation ownership audit",
+        "unowned free text",
+        "unsupported floating text",
+        "unbound scattered text",
+        "dimension-like text without anchor",
+        "orphan text examples",
+        "owner-zone coverage",
+        "user-reported crop binding review",
+        "protected zones",
+        "dimension-line table-zone intrusion",
+        "view-geometry table-zone intrusion",
+        "detail-view table-zone intrusion",
+        "leader/balloon table-zone intrusion",
+        "title-block/BOM protected-zone intrusion",
+        "view-geometry reserved-zone intrusion",
+        "entity boundary",
+        "adjacent view",
+        "dimension line",
+        "blank background leak",
+        "text entity overlap count",
+        "content-overlap audit",
+        "view-view overlap",
+        "detail-frame-main-view overlap",
+        "table-text/grid collision",
+        "table_text_grid_collision_count",
+        "title-block text-grid collision",
+        "covered text by grid line",
+        "dimension-line cross-view collision",
+        "leader-line cross-view collision",
+        "balloon/detail collision",
+        "bbox-helper-envelope audit",
+        "text legibility audit",
+        "manufacturing complexity audit",
+        "lineweight/linetype fidelity audit",
+        "source line family coverage",
+        "CENTER/HIDDEN source linetype normalization",
+        "PDF page-box sheet-size audit",
+        "estimated PDF sheet workload",
+        "A-series page box",
+        "compact preview size",
+        "rendered ink contrast audit",
+        "source-level low-contrast CAD color rejection",
+        "layer/entity color",
+        "true-color",
+        "readable ink ratio",
+        "worst readable ink ratio",
+        "minimum readable ink ratio",
+        "effective DWG byte-density ratio",
+        "thick solid",
+        "thin solid",
+        "center dash-dot",
+        "hidden dashed",
+        "section hatch",
+        "package_sha256",
+        "DXF group 370",
+        "DXF group 48",
+        "$LWDISPLAY",
+        "$LTSCALE",
+        "$PSLTSCALE",
+        "user-locked A0-equivalent workload",
+        "--min-total-a0",
+        "TITLE thick-family lineweight",
+        "audit_mechanical_drawing_package.py",
+        "Mechanical CAD rendered readability is a hard gate",
+        "audit_mechanical_render_readability.py",
+        "rendered effective lineweight",
+        "render-only stroke cap",
+        "render-only lineweight scaling",
+        "line-cluster distinguishability",
+        "standard-sheet render density gate",
+        "small-tile line-cluster challenge",
+        "semantic small-tile density classification",
+        "semantic_density_false_positive",
+        "requires_crop_review",
+        "line_bundle_blocker_count",
+        "standard-sheet view occupancy",
+        "diagnostic-overlay-free crop review",
+        "annotation ownership audit",
+        "unowned_free_text_count=0",
+        "unsupported_floating_text_count=0",
+        "unbound_scattered_text_count=0",
+        "dimension_like_text_without_anchor_count=0",
+        "CAD text style/font audit",
+        "target CAD Chinese font style",
+        "actual CAD font file",
+        "font fallback recorded verdict",
+        "artistic/vectorized text count=0",
+        "unsupported CAD font/style count=0",
+        "min cell padding mm",
+        "cell padding violation count=0",
+        "source thick lineweight required",
+        "source thick lineweight mismatch count=0",
+        "source thin lineweight required",
+        "source thin lineweight mismatch count=0",
+        "drawing regeneration manifest",
+        "exact DXF package path",
+        "exact PNG render package path",
+        "current package SHA binding verdict",
+        "diagnostic-overlay-free title-block crop",
+        "text_graphic_cover_count=0",
+        "user-reported text-cover crop audit path",
+        "diagnostic-overlay-free after-crop paths",
+        "reported crop blocker count=0",
+        "text exclusion halo audit",
+        "text exclusion halo violation count=0",
+        "diagonal hatch/section/flow text-cover count=0",
+        "severe_line_crowding_count=0",
+        "text_integrity_audit",
+        "text_orientation_audit",
+        "cad_text_quality_verdict",
+        "MTEXT attachment point",
+        "DXF MTEXT group 71",
+        "TEXT generation flags",
+        "mojibake/tofu/missing glyph count",
+        "upside-down text count",
+        "mirrored text count",
+        "CAD rule-to-flow binding",
+        "active checklist enforcement",
+        "regenerate DXF/DWG/PDF/PNG after rule change",
+        "rendered-review JSON refresh",
+        "final package audit rerun",
+        "DWG backread text integrity audit",
+        "DWG backread question mark text count=0",
+        "DWG backread mojibake/tofu/missing glyph count=0",
+        "bundled CAD Chinese fallback font",
+        "lower-left orphan line artifact audit",
+        "source lower-left orphan line artifact count=0",
+        "DWG backread lower-left orphan line artifact count=0"
       ],
       "router_file": "references/thesis/thesis-figure-generation-rules.md",
       "router_anchor": "- `references/thesis/figure-rules/baseline-and-sourcing.md`: figure scope, source priority, required figure families, baseline style, and completion/failure rules",
       "enforcement_required": true,
       "validator_owner": [
+        "scripts/audit_cad_dxf_linework_fidelity.py::audit",
         "scripts/audit_mechanical_drawing_package.py::audit_package",
-        "scripts/validate_skill_gate_record_gate.py::check_mechanical_cad_acceptance_record"
+        "scripts/validate_skill_gate_record_gate.py::check_mechanical_cad_acceptance_record",
+        "scripts/audit_mechanical_render_readability.py::audit"
       ],
       "selftest_owner": [
-        "scripts/audit_mechanical_drawing_package.py::run_self_test"
+        "scripts/audit_cad_dxf_linework_fidelity.py::self_test",
+        "scripts/audit_mechanical_drawing_package.py::run_self_test",
+        "scripts/audit_mechanical_render_readability.py::run_self_test"
       ],
       "template_owner": "assets/mechanical-cad-acceptance-template.md",
       "required_load_modes": [
@@ -743,6 +933,13 @@
       "acceptance_fields": [
         "mechanical drawing package audit path",
         "mechanical drawing package audit verdict",
+        "mechanical drawing formal CAD source provenance verdict",
+        "mechanical drawing schematic/concept substitute rejection verdict",
+        "mechanical drawing A0 overall assembly layout baseline verdict",
+        "mechanical drawing A0 upper full-length view count",
+        "mechanical drawing A0 lower full-length view count",
+        "mechanical drawing A0 BOM right-zone verdict",
+        "mechanical drawing A0 balloon-to-BOM row match verdict",
         "mechanical drawing package exact package path",
         "mechanical drawing package exact package sha256",
         "mechanical drawing rendered review evidence paths",
@@ -753,7 +950,461 @@
         "mechanical drawing annotation margin clearance verdict",
         "mechanical drawing local crowding verdict",
         "mechanical drawing text/table/frame overlap verdict",
-        "mechanical drawing entity-count-only false-pass verdict"
+        "mechanical drawing machine overlap audit verdict",
+        "mechanical drawing content-overlap audit verdict",
+        "mechanical drawing content-overlap evidence path",
+        "mechanical drawing registered content bbox count",
+        "mechanical drawing checked content pair count",
+        "mechanical drawing content overlap count",
+        "mechanical drawing view-view overlap count",
+        "mechanical drawing detail-frame-main-view overlap count",
+        "mechanical drawing table text/grid collision count",
+        "mechanical drawing dimension-line view/table crossing count",
+        "mechanical drawing leader-line view/table crossing count",
+        "mechanical drawing balloon geometry collision count",
+        "mechanical drawing bbox helper envelope escape count",
+        "mechanical drawing stale rendered preview count",
+        "mechanical drawing outside-frame ink audit verdict",
+        "mechanical drawing outside-frame ink audit evidence path",
+        "mechanical drawing outside-frame independent ink component count",
+        "mechanical drawing outside-frame text component count",
+        "mechanical drawing outside-frame leader component count",
+        "mechanical drawing outside-frame hatch/section component count",
+        "mechanical drawing outside-frame table/title-block component count",
+        "mechanical drawing inner-frame safe-margin audit verdict",
+        "mechanical drawing inner-frame safe-margin evidence path",
+        "mechanical drawing right safe-boundary intrusion count",
+        "mechanical drawing leader-text inner-frame intrusion count",
+        "mechanical drawing view-geometry inner-frame intrusion count",
+        "mechanical drawing dimension-text inner-frame intrusion count",
+        "mechanical drawing annotation ownership audit verdict",
+        "mechanical drawing unowned free text count",
+        "mechanical drawing unsupported floating text count",
+        "mechanical drawing unbound scattered text count",
+        "mechanical drawing dimension-like text without anchor count",
+        "mechanical drawing orphan text examples path",
+        "mechanical drawing owner-zone coverage verdict",
+        "mechanical drawing user-reported crop binding review path",
+        "mechanical drawing user-reported crop binding review verdict",
+        "mechanical drawing min cell padding mm",
+        "mechanical drawing cell padding violation count",
+        "CAD text style/font audit path",
+        "CAD text style/font audit verdict",
+        "target CAD Chinese font style",
+        "actual CAD font file",
+        "font fallback recorded verdict",
+        "normal CAD text entity verdict",
+        "unsupported CAD font/style count",
+        "artistic/vectorized text count",
+        "mechanical drawing title-block cell containment verdict",
+        "mechanical drawing title-block short-line topology audit verdict",
+        "mechanical drawing missing short table line count",
+        "mechanical drawing broken cell-border count",
+        "mechanical drawing table-grid topology mismatch count",
+        "mechanical drawing table_text_grid_collision_count",
+        "mechanical drawing diagnostic-overlay-free title-block crop path",
+        "mechanical drawing reserved-zone intrusion audit verdict",
+        "mechanical drawing protected-table-zone intrusion audit verdict",
+        "mechanical drawing reserved-zone intrusion count",
+        "mechanical drawing protected-table-zone intrusion count",
+        "mechanical drawing dimension-line table-zone intrusion count",
+        "mechanical drawing dimension-text table-zone intrusion count",
+        "mechanical drawing view-geometry table-zone intrusion count",
+        "mechanical drawing detail-view table-zone intrusion count",
+        "mechanical drawing leader/balloon table-zone intrusion count",
+        "mechanical drawing dimension table-zone intrusion count",
+        "mechanical drawing title-block/BOM protected-zone intrusion count",
+        "mechanical drawing view-geometry reserved-zone intrusion count",
+        "mechanical drawing hatch/section fill clipping audit verdict",
+        "mechanical drawing hatch/section fill clipping evidence path",
+        "mechanical drawing hatch/section fill boundary violation count",
+        "mechanical drawing hatch/section fill adjacent-view crossing count",
+        "mechanical drawing hatch/section fill dimension-line crossing count",
+        "mechanical drawing hatch/section fill title-block/table/BOM/frame crossing count",
+        "mechanical drawing hatch/section fill blank-background leak count",
+        "mechanical drawing text entity overlap count",
+        "mechanical drawing text legibility machine audit verdict",
+        "mechanical drawing minimum CAD text height mm",
+        "mechanical drawing minimum rendered text height px",
+        "mechanical drawing text integrity audit path",
+        "mechanical drawing text integrity audit verdict",
+        "mechanical drawing mojibake/tofu/missing glyph count",
+        "mechanical drawing missing required drawing text count",
+        "mechanical drawing text orientation audit path",
+        "mechanical drawing text orientation audit verdict",
+        "mechanical drawing upside-down text count",
+        "mechanical drawing mirrored text count",
+        "mechanical drawing lineweight/linetype fidelity audit path",
+        "mechanical drawing lineweight/linetype fidelity audit verdict",
+        "mechanical drawing lineweight/linetype fidelity package sha256",
+        "source thick lineweight required",
+        "source thick lineweight observed",
+        "source thick lineweight mismatch count",
+        "source thin lineweight required",
+        "source thin lineweight observed",
+        "source thin lineweight mismatch count",
+        "mechanical drawing source line family coverage verdict",
+        "mechanical drawing PDF page-box sheet-size audit verdict",
+        "mechanical drawing rendered ink contrast audit verdict",
+        "mechanical drawing worst readable ink ratio",
+        "mechanical drawing minimum readable ink ratio",
+        "mechanical drawing effective DWG byte-density ratio",
+        "mechanical drawing estimated PDF sheet workload",
+        "mechanical drawing A-series page box count",
+        "mechanical drawing thick solid family count",
+        "mechanical drawing thin solid family count",
+        "mechanical drawing center dash-dot family count",
+        "mechanical drawing hidden dashed family count",
+        "mechanical drawing section hatch family count",
+        "mechanical drawing manufacturing complexity audit verdict",
+        "mechanical drawing minimum manufacturing detail family count",
+        "mechanical drawing entity-count-only false-pass verdict",
+        "mechanical render readability audit path",
+        "mechanical render readability verdict",
+        "mechanical render readability source lineweight verdict",
+        "mechanical render readability render-only stroke cap",
+        "mechanical render readability render-only lineweight scaling",
+        "text text overlap count",
+        "text graphic cover count",
+        "severe line crowding count",
+        "mechanical render readability small-tile threshold",
+        "mechanical render readability failed sheet list",
+        "mechanical render readability requires crop review count",
+        "mechanical render readability line bundle blocker count",
+        "mechanical render readability diagnostic-overlay-free crop review path",
+        "mechanical render readability standard-sheet view occupancy verdict",
+        "mechanical render readability final PDF/PNG SHA evidence",
+        "mechanical drawing user-reported text-cover crop audit path",
+        "mechanical drawing diagnostic-overlay-free after-crop paths",
+        "mechanical drawing reported crop blocker count",
+        "mechanical drawing text exclusion halo audit path",
+        "mechanical drawing text exclusion halo audit verdict",
+        "mechanical drawing text exclusion halo violation count",
+        "mechanical drawing diagonal hatch/section/flow text-cover count",
+        "DWG backread text integrity audit",
+        "DWG backread question mark text count",
+        "DWG backread mojibake/tofu/missing glyph count",
+        "bundled CAD Chinese fallback font",
+        "lower-left orphan line artifact audit",
+        "source lower-left orphan line artifact count",
+        "DWG backread lower-left orphan line artifact count",
+        "diagnostic-overlay-free lower-left crop path",
+        "diagnostic-overlay-free title-block crop path"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "CORE-FIGURE-011",
+      "legacy_id": null,
+      "owner_file": "references/thesis/figure-rules/baseline-and-sourcing.md",
+      "owner_group": "mechanical-cad-appendix-binding",
+      "heading": "### CORE-FIGURE-011. Mechanical CAD Appendices Must Embed Final Sheet Renders (Mandatory)",
+      "required_keywords": [
+        "CORE-FIGURE-011",
+        "Mechanical CAD Appendices",
+        "final sheet renders",
+        "embedded DOCX media hashes",
+        "final CAD package hashes",
+        "text-only drawing descriptions",
+        "schematic/concept substitute rejection",
+        "stale workload wording",
+        "audit_docx_cad_appendix_binding.py"
+      ],
+      "router_file": "references/thesis/thesis-figure-generation-rules.md",
+      "router_anchor": "- `references/thesis/figure-rules/baseline-and-sourcing.md`: figure scope, source priority, required figure families, baseline style, and completion/failure rules",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_cad_appendix_binding.py::audit_docx_cad_appendix_binding",
+        "scripts/validate_skill_gate_record_gate.py::_validate_cad_appendix_binding_record"
+      ],
+      "selftest_owner": [
+        "scripts/audit_docx_cad_appendix_binding.py::run_self_test",
+        "scripts/selftest_skill_flow.py::case_gate_record_cad_appendix_binding_missing_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "CAD appendix binding audit path",
+        "CAD appendix binding audit verdict",
+        "CAD appendix matched sheet count",
+        "CAD appendix missing sheet count",
+        "CAD appendix final DOCX SHA256",
+        "CAD appendix final package path"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "CORE-FIGURE-012",
+      "legacy_id": null,
+      "owner_file": "references/thesis/figure-rules/baseline-and-sourcing.md",
+      "owner_group": "mechanical-cad-body-figure-coverage",
+      "heading": "### CORE-FIGURE-012. Mechanical CAD Appendix Does Not Satisfy Body Figure Requirements (Mandatory)",
+      "required_keywords": [
+        "CORE-FIGURE-012",
+        "Mechanical CAD Appendix Does Not Satisfy Body Figure Requirements",
+        "min_body_figure_count",
+        "body_figure_count",
+        "audit_docx_figure_extents.py",
+        "mechanical-cad",
+        "verified-cad-png",
+        "structural_context_count",
+        "structural-signal gate",
+        "mechanical drawing wording",
+        "Appendix CAD binding evidence",
+        "body figure evidence"
+      ],
+      "router_file": "references/thesis/thesis-figure-generation-rules.md",
+      "router_anchor": "- `references/thesis/figure-rules/baseline-and-sourcing.md`: figure scope, source priority, required figure families, baseline style, and completion/failure rules",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_figure_extents.py::audit_figure_extents",
+        "scripts/thesis_figure_contract.py::validate_figure_manifest"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_audit_figure_extents_appendix_not_body_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "body figure audit path",
+        "body figure audit verdict",
+        "body figure count",
+        "body figure minimum count",
+        "body figure final DOCX SHA256"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "CORE-FIGURE-013",
+      "legacy_id": null,
+      "owner_file": "references/thesis/figure-rules/baseline-and-sourcing.md",
+      "owner_group": "mechanical-cad-source-linework-delta",
+      "heading": "### CORE-FIGURE-013. CAD Source Linework Differentiation Must Be Proven At Source Level (Mandatory)",
+      "required_keywords": [
+        "CORE-FIGURE-013",
+        "CAD Source Linework Differentiation",
+        "source-linework differentiation audit",
+        "PDF-only change rejection",
+        "minor-entity-move-only rejection",
+        "source-to-render derivation",
+        "changed source sheet count",
+        "changed source entity count",
+        "old-like large circle overlay count",
+        "audit_cad_source_differentiation.py"
+      ],
+      "router_file": "references/thesis/thesis-figure-generation-rules.md",
+      "router_anchor": "- For mechanical CAD, drawing-package, source-linework, CAD color-family differentiation, redraw/different-from-baseline, official-CAD-command requirements, CAD open-view structural coherence complaints, teacher/reference drawing alignment, CAD text mojibake/missing-glyph boxes, upside-down/mirrored CAD text, external CAD case references including jixie5-style same-type drawing pages, or PDF-only-change complaints, load `baseline-and-sourcing.md` before CAD mutation and route `CORE-FIGURE-010` through `CORE-FIGURE-017` as applicable. In particular, `CORE-FIGURE-013` / CAD Source Linework Differentiation requires a source-linework differentiation audit, PDF-only change rejection, minor-entity-move-only rejection, and source-to-render derivation evidence.",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_cad_source_differentiation.py::audit",
+        "scripts/audit_cad_dxf_linework_fidelity.py::audit",
+        "scripts/validate_skill_gate_record_gate.py::check_mechanical_cad_acceptance_record"
+      ],
+      "selftest_owner": [
+        "scripts/audit_cad_source_differentiation.py::self_test"
+      ],
+      "template_owner": [
+        "assets/mechanical-cad-acceptance-template.md",
+        "assets/final-acceptance-template.md"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "mechanical drawing source linework delta audit path",
+        "mechanical drawing source linework delta verdict",
+        "mechanical drawing source CAD package sha256",
+        "mechanical drawing final CAD package sha256",
+        "mechanical drawing changed source sheet count",
+        "mechanical drawing identical source sheet count",
+        "mechanical drawing changed source entity count",
+        "mechanical drawing linework family delta count",
+        "mechanical drawing old-like large circle overlay count",
+        "mechanical drawing PDF-only change rejection verdict",
+        "mechanical drawing minor-entity-move-only rejection verdict",
+        "mechanical drawing source-to-PDF derivation verdict"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "CORE-FIGURE-014",
+      "legacy_id": null,
+      "owner_file": "references/thesis/figure-rules/baseline-and-sourcing.md",
+      "owner_group": "mechanical-cad-color-family-standard",
+      "heading": "### CORE-FIGURE-014. CAD Color Families Must Distinguish Line Families (Mandatory)",
+      "required_keywords": [
+        "CORE-FIGURE-014",
+        "CAD Color Families",
+        "only the thin solid family may be white",
+        "THIN_SOLID",
+        "bright green",
+        "cyan",
+        "centerline",
+        "hidden line",
+        "hatch/section line",
+        "Layer `0` must also be non-white",
+        "BYLAYER or exact family overrides",
+        "true-color override",
+        "color-family audit",
+        "audit_cad_dxf_color_family_standard.py",
+        "preserve geometry",
+        "lineweights",
+        "linetypes",
+        "TITLE thick-family lineweight",
+        "Color-family changes must preserve or repair source lineweight fidelity"
+      ],
+      "router_file": "references/thesis/thesis-figure-generation-rules.md",
+      "router_anchor": "- For mechanical CAD, drawing-package, source-linework, CAD color-family differentiation, redraw/different-from-baseline, official-CAD-command requirements, CAD open-view structural coherence complaints, teacher/reference drawing alignment, CAD text mojibake/missing-glyph boxes, upside-down/mirrored CAD text, external CAD case references including jixie5-style same-type drawing pages, or PDF-only-change complaints, load `baseline-and-sourcing.md` before CAD mutation and route `CORE-FIGURE-010` through `CORE-FIGURE-017` as applicable. In particular, `CORE-FIGURE-013` / CAD Source Linework Differentiation requires a source-linework differentiation audit, PDF-only change rejection, minor-entity-move-only rejection, and source-to-render derivation evidence.",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_cad_dxf_color_family_standard.py::audit",
+        "scripts/audit_cad_dxf_linework_fidelity.py::audit",
+        "scripts/validate_skill_gate_record_gate.py::check_mechanical_cad_acceptance_record"
+      ],
+      "selftest_owner": [
+        "scripts/audit_cad_dxf_color_family_standard.py::self_test"
+      ],
+      "template_owner": [
+        "assets/mechanical-cad-acceptance-template.md"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "mechanical drawing color-family audit path",
+        "mechanical drawing color-family audit verdict",
+        "mechanical drawing color-family package/path sha256",
+        "mechanical drawing thin-solid-white-only verdict",
+        "mechanical drawing non-thin white layer/entity count",
+        "mechanical drawing expected color family count",
+        "mechanical drawing entity color override count",
+        "mechanical drawing lineweight/linetype fidelity audit verdict"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "CORE-FIGURE-016",
+      "legacy_id": null,
+      "owner_file": "references/thesis/figure-rules/baseline-and-sourcing.md",
+      "owner_group": "mechanical-cad-official-command-and-reference-sourcing",
+      "heading": "### CORE-FIGURE-016. Official CAD Command Route And External Case Sourcing Must Be Proven (Mandatory)",
+      "required_keywords": [
+        "CORE-FIGURE-016",
+        "official CAD command route",
+        "CAD official command route verdict",
+        "CAD official command test log",
+        "CAD executable or COM ProgID evidence",
+        "non-CAD fallback rejection verdict",
+        "ODA Drawings Explorer",
+        "QCAD/qcadcmd",
+        "CENTER/HIDDEN source linetype normalization",
+        "package JSON parseability",
+        "external CAD case reference URL",
+        "reference-use restriction",
+        "no verbatim geometry copying verdict"
+      ],
+      "router_file": "references/thesis/thesis-figure-generation-rules.md",
+      "router_anchor": "- For mechanical CAD, drawing-package, source-linework, CAD color-family differentiation, redraw/different-from-baseline, official-CAD-command requirements, CAD open-view structural coherence complaints, teacher/reference drawing alignment, CAD text mojibake/missing-glyph boxes, upside-down/mirrored CAD text, external CAD case references including jixie5-style same-type drawing pages, or PDF-only-change complaints, load `baseline-and-sourcing.md` before CAD mutation and route `CORE-FIGURE-010` through `CORE-FIGURE-017` as applicable. In particular, `CORE-FIGURE-013` / CAD Source Linework Differentiation requires a source-linework differentiation audit, PDF-only change rejection, minor-entity-move-only rejection, and source-to-render derivation evidence.",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/validate_skill_gate_record_gate.py::check_mechanical_cad_acceptance_record",
+        "scripts/audit_mechanical_drawing_package.py::main"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_final_acceptance_cad_official_command_fields_missing_rejected"
+      ],
+      "template_owner": [
+        "assets/mechanical-cad-acceptance-template.md",
+        "assets/final-acceptance-template.md"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "CAD official command route verdict",
+        "CAD official command test log",
+        "CAD executable or COM ProgID evidence",
+        "non-CAD fallback rejection verdict",
+        "external CAD case reference URL",
+        "reference-use restriction",
+        "no verbatim geometry copying verdict"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "CORE-FIGURE-017",
+      "legacy_id": null,
+      "owner_file": "references/thesis/figure-rules/baseline-and-sourcing.md",
+      "owner_group": "mechanical-cad-open-view-structure-and-reference-alignment",
+      "heading": "### CORE-FIGURE-017. CAD Open-View Structure Must Be Complete And Reference-Aligned (Mandatory)",
+      "required_keywords": [
+        "CORE-FIGURE-017",
+        "CAD open-view structural coherence",
+        "complete assembly/object recognizability",
+        "scattered-parts rejection",
+        "reference-view trace alignment",
+        "annotation/leader/title-block completeness",
+        "structure-first redraw workflow verdict",
+        "dimension/leader/title-block second-pass verdict",
+        "loose-part collage rejection verdict",
+        "a0_process_flow_verdict",
+        "a0_drive_chain_verdict",
+        "a0_support_load_path_verdict",
+        "a0_internal_working_element_verdict",
+        "a0_design_intent_readability_verdict",
+        "external-case annotation checklist"
+      ],
+      "router_file": "references/thesis/thesis-figure-generation-rules.md",
+      "router_anchor": "- For mechanical CAD, drawing-package, source-linework, CAD color-family differentiation, redraw/different-from-baseline, official-CAD-command requirements, CAD open-view structural coherence complaints, teacher/reference drawing alignment, CAD text mojibake/missing-glyph boxes, upside-down/mirrored CAD text, external CAD case references including jixie5-style same-type drawing pages, or PDF-only-change complaints, load `baseline-and-sourcing.md` before CAD mutation and route `CORE-FIGURE-010` through `CORE-FIGURE-017` as applicable. In particular, `CORE-FIGURE-013` / CAD Source Linework Differentiation requires a source-linework differentiation audit, PDF-only change rejection, minor-entity-move-only rejection, and source-to-render derivation evidence.",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/validate_skill_gate_record_gate.py::check_mechanical_cad_acceptance_record",
+        "scripts/audit_mechanical_drawing_package.py::main"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_final_acceptance_cad_open_view_fields_missing_rejected",
+        "scripts/selftest_skill_flow.py::case_final_acceptance_cad_annotation_checklist_missing_rejected"
+      ],
+      "template_owner": [
+        "assets/mechanical-cad-acceptance-template.md",
+        "assets/final-acceptance-template.md"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "mechanical drawing reference baseline path",
+        "mechanical drawing CAD open-view close-up evidence path",
+        "mechanical drawing CAD open-view structural coherence verdict",
+        "mechanical drawing complete assembly/object recognizability verdict",
+        "mechanical drawing scattered-parts rejection verdict",
+        "mechanical drawing reference-view trace alignment verdict",
+        "mechanical drawing annotation/leader/title-block completeness verdict",
+        "mechanical drawing A0 process flow verdict",
+        "mechanical drawing A0 drive chain verdict",
+        "mechanical drawing A0 support load path verdict",
+        "mechanical drawing A0 internal working element verdict",
+        "mechanical drawing A0 design intent readability verdict",
+        "mechanical drawing external-case annotation checklist path"
       ],
       "status": "active"
     },
@@ -767,7 +1418,9 @@
         "FMT-TOC-001",
         "TOC And Front Matter",
         "w:drawing",
-        "authorized edit to that protected surface"
+        "authorized edit to that protected surface",
+        "template cover is text-only",
+        "must not insert a fake logo"
       ],
       "router_file": "references/thesis/thesis-format-rules.md",
       "router_anchor": "- `references/thesis/format-rules/front-matter-and-toc.md`: front-matter and TOC repair rules",
@@ -963,7 +1616,12 @@
         "humanizer-zh",
         "meta-evaluation voice",
         "process-pollution signals",
-        "touched-scope pollution scan"
+        "touched-scope pollution scan",
+        "先完成PDF+DWG工程图纸包",
+        "再按图纸参数反推计算书和说明书内容",
+        "交付PDF与DWG源文件",
+        "已作为独立A0图纸交付",
+        "源文件包含PDF、DWG和DXF格式"
       ],
       "router_file": "references/user-feedback-persistence.md",
       "status": "active"
@@ -1034,9 +1692,39 @@
       "heading": "### FB-CITE-002 (legacy 11). Thesis Superscripts Must Be Single-Number And Sequential (Mandatory)",
       "required_keywords": [
         "FB-CITE-002",
-        "Thesis Superscripts Must Be Single-Number And Sequential"
+        "Thesis Superscripts Must Be Single-Number And Sequential",
+        "numeric citation syntax",
+        "BODY_CITATION_ORDER",
+        "BODY_CITATION_NOT_SUPERSCRIPT"
       ],
       "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/citations-and-bibliography.md`: namespace `FB-CITE-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_thesis_citations.py::audit_docx",
+        "scripts/audit_thesis_citations.py::sentence_marker_rule_violations",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record",
+        "scripts/validate_skill_gate_record_core.py::check_thesis_citation_audit_report"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_body_citation_order_rejected",
+        "scripts/selftest_skill_flow.py::case_body_citation_multi_marker_sentence_rejected",
+        "scripts/selftest_skill_flow.py::case_body_citation_multi_number_marker_rejected",
+        "scripts/selftest_skill_flow.py::case_body_citation_formula_bracket_ignored_valid",
+        "scripts/selftest_skill_flow.py::case_citation_audit_missing_final_order_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "citation audit evidence path",
+        "citation audit final DOCX SHA256",
+        "citation audit source-to-final run diff path",
+        "citation-reference coupled-chain verdict"
+      ],
       "status": "active"
     },
     {
@@ -1193,10 +1881,17 @@
       "router_anchor": "- `references/user-feedback/citations-and-bibliography.md`: namespace `FB-CITE-*`",
       "enforcement_required": true,
       "validator_owner": [
-        "scripts/audit_thesis_citations.py::audit_docx"
+        "scripts/audit_thesis_citations.py::audit_docx",
+        "scripts/audit_docx_citation_anchor_pollution.py::audit_docx_citation_anchor_pollution",
+        "scripts/validate_skill_gate_record_core.py::check_docx_citation_anchor_pollution_audit_report",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
       ],
       "selftest_owner": [
-        "scripts/selftest_skill_flow.py::case_body_citation_visible_anchor_leak_rejected"
+        "scripts/selftest_skill_flow.py::case_body_citation_visible_anchor_leak_rejected",
+        "scripts/selftest_skill_flow.py::case_citation_anchor_pollution_docx_visible_rejected",
+        "scripts/selftest_skill_flow.py::case_citation_anchor_pollution_pdf_visible_rejected",
+        "scripts/selftest_skill_flow.py::case_gate_citation_anchor_pollution_audit_missing_rejected",
+        "scripts/selftest_skill_flow.py::case_gate_anchor_pollution_pass_plain_citation_rejected"
       ],
       "required_load_modes": [
         "thesis-only",
@@ -1205,7 +1900,13 @@
         "skill-maintenance"
       ],
       "acceptance_fields": [
-        "citation audit evidence path"
+        "citation audit evidence path",
+        "citation anchor pollution audit path",
+        "citation anchor pollution verdict",
+        "citation anchor visible DOCX hit count",
+        "citation anchor field-result hit count",
+        "citation anchor rendered PDF hit count",
+        "citation anchor pollution final DOCX SHA256"
       ],
       "status": "active"
     },
@@ -1432,6 +2133,28 @@
         "reject long Western bibliography runs that have no visible `w:sz` slot"
       ],
       "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/citations-and-bibliography.md`: namespace `FB-CITE-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_font_encoding.py::bibliography_font_slot_hits",
+        "scripts/validate_skill_gate_record_core.py::check_docx_font_audit_report"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_docx_font_audit_bibliography_mixed_run_font_rejected",
+        "scripts/selftest_skill_flow.py::case_docx_font_audit_bibliography_mixed_run_font_valid",
+        "scripts/selftest_skill_flow.py::case_docx_font_audit_bibliography_collapsed_run_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "docx font/encoding audit evidence path",
+        "bibliography content-format model checks",
+        "bibliography font-slot checks"
+      ],
       "status": "active"
     },
     {
@@ -1448,6 +2171,28 @@
         "theme/default ownership"
       ],
       "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/citations-and-bibliography.md`: namespace `FB-CITE-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_font_encoding.py::bibliography_font_slot_hits",
+        "scripts/validate_skill_gate_record_core.py::check_docx_font_audit_report"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_docx_font_audit_bibliography_instruction_policy_missing_direct_rejected",
+        "scripts/selftest_skill_flow.py::case_docx_font_audit_bibliography_instruction_policy_valid",
+        "scripts/selftest_skill_flow.py::case_audit_body_style_ignores_reference_tail_font_alias_valid"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "docx font/encoding audit evidence path",
+        "bibliography content-format model checks",
+        "bibliography font-slot checks"
+      ],
       "status": "active"
     },
     {
@@ -1594,9 +2339,24 @@
       "heading": "### FB-LAYOUT-008 (legacy 20). Clear Inherited Headers Explicitly When Reusing Sample DOCX Files (Mandatory)",
       "required_keywords": [
         "FB-LAYOUT-008",
-        "Clear Inherited Headers Explicitly When Reusing Sample DOCX Files"
+        "Clear Inherited Headers Explicitly When Reusing Sample DOCX Files",
+        "locked template has no visible running headers",
+        "final DOCX must not add institutional or sample running headers",
+        "template header baseline is empty"
       ],
       "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/template-and-layout.md`: namespace `FB-LAYOUT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_whole_format_gate.py::reference_header_visibility_contract",
+        "scripts/audit_docx_whole_format_gate.py::audit_docx"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
       "status": "active"
     },
     {
@@ -1830,7 +2590,6 @@
         "scripts/selftest_skill_flow.py::case_figure_manifest_runtime_screenshot_top_left_crop_rejected",
         "scripts/selftest_skill_flow.py::case_figure_manifest_runtime_screenshot_blank_render_rejected"
       ],
-      "router_anchor": "- `references/user-feedback/template-and-layout.md`: namespace `FB-LAYOUT-*`",
       "required_load_modes": [
         "thesis-only",
         "program-plus-thesis",
@@ -1862,7 +2621,7 @@
         "Figure Captions Must Be Targeted As Exact Caption Paragraphs, Not As Generic Figure-Number Mentions"
       ],
       "router_file": "references/user-feedback-persistence.md",
-      "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
+      "router_anchor": "- `references/user-feedback/template-and-layout.md`: namespace `FB-LAYOUT-*`",
       "enforcement_required": true,
       "validator_owner": [
         "scripts/thesis_figure_contract.py::is_docx_figure_caption"
@@ -1870,7 +2629,6 @@
       "selftest_owner": [
         "scripts/selftest_skill_flow.py::case_figure_manifest_narrative_figure_reference_not_caption_valid"
       ],
-      "router_anchor": "- `references/user-feedback/template-and-layout.md`: namespace `FB-LAYOUT-*`",
       "required_load_modes": [
         "thesis-only",
         "program-plus-thesis",
@@ -2025,12 +2783,12 @@
         "scripts/thesis_figure_contract.py::is_docx_figure_caption",
         "scripts/validate_thesis_mutation_transaction.py::has_image_mutation_intent"
       ],
-  "selftest_owner": [
-    "scripts/selftest_skill_flow.py::case_figure_manifest_narrative_figure_reference_not_caption_valid",
-    "scripts/selftest_skill_flow.py::case_figure_manifest_image_word_body_paragraph_not_caption_valid",
-    "scripts/selftest_skill_flow.py::case_transaction_image_word_body_text_no_manifest_valid",
-    "scripts/selftest_skill_flow.py::case_sample_self_check_figure_intro_reference_not_caption_valid"
-  ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_figure_manifest_narrative_figure_reference_not_caption_valid",
+        "scripts/selftest_skill_flow.py::case_figure_manifest_image_word_body_paragraph_not_caption_valid",
+        "scripts/selftest_skill_flow.py::case_transaction_image_word_body_text_no_manifest_valid",
+        "scripts/selftest_skill_flow.py::case_sample_self_check_figure_intro_reference_not_caption_valid"
+      ],
       "router_anchor": "- `references/user-feedback/template-and-layout.md`: namespace `FB-LAYOUT-*`",
       "required_load_modes": [
         "thesis-only",
@@ -2193,6 +2951,27 @@
         "Heading-Indent Repair Must Clear Both Standard And Character-Unit Indents"
       ],
       "router_file": "references/user-feedback-persistence.md",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_whole_format_gate.py::body_heading_direct_format_issues",
+        "scripts/validate_skill_gate_record_core.py::check_docx_whole_format_gate_report"
+      ],
+      "selftest_owner": [
+        "scripts/audit_docx_whole_format_gate.py::self_test",
+        "scripts/selftest_skill_flow.py"
+      ],
+      "router_anchor": "- `references/user-feedback/template-and-layout.md`: namespace `FB-LAYOUT-*`",
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only"
+      ],
+      "acceptance_fields": [
+        "body heading indentation audit path",
+        "body heading indentation residue verdict",
+        "whole-format body_heading_direct_format verdict",
+        "heading direct rPr/font/size/bold/spacing verdict"
+      ],
       "status": "active"
     },
     {
@@ -2206,6 +2985,26 @@
         "Fourth-Level Heading Paragraph Instances Must Be Repaired Explicitly"
       ],
       "router_file": "references/user-feedback-persistence.md",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_whole_format_gate.py::body_heading_level",
+        "scripts/audit_docx_whole_format_gate.py::body_heading_direct_format_issues"
+      ],
+      "selftest_owner": [
+        "scripts/audit_docx_whole_format_gate.py::self_test",
+        "scripts/selftest_skill_flow.py"
+      ],
+      "router_anchor": "- `references/user-feedback/template-and-layout.md`: namespace `FB-LAYOUT-*`",
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only"
+      ],
+      "acceptance_fields": [
+        "heading level 4 verdict",
+        "body heading indentation residue verdict",
+        "whole-format body_heading_direct_format verdict"
+      ],
       "status": "active"
     },
     {
@@ -2610,6 +3409,7 @@
       ],
       "selftest_owner": [
         "scripts/selftest_skill_flow.py::case_formula_text_pseudo_object_rejected",
+        "scripts/selftest_skill_flow.py::case_inline_formula_anchor_replacement_valid",
         "scripts/selftest_skill_flow.py::case_formula_paragraph_tabs_fit_content_width_valid"
       ],
       "generator_owner": "scripts/generate_thesis_acceptance_record.py::main",
@@ -3027,6 +3827,31 @@
         "Visible Citation Anchor Leakage Must Hard-Fail Final QA"
       ],
       "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/final-qa-and-tooling.md`: namespace `QA-FINAL-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_citation_anchor_pollution.py::audit_docx_citation_anchor_pollution",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_citation_anchor_pollution_docx_visible_rejected",
+        "scripts/selftest_skill_flow.py::case_citation_anchor_pollution_pdf_visible_rejected",
+        "scripts/selftest_skill_flow.py::case_gate_citation_anchor_pollution_audit_missing_rejected"
+      ],
+      "acceptance_fields": [
+        "citation anchor pollution audit path",
+        "citation anchor pollution verdict",
+        "citation anchor visible DOCX hit count",
+        "citation anchor field-result hit count",
+        "citation anchor rendered PDF hit count",
+        "citation anchor pollution final DOCX SHA256"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
       "status": "active"
     },
     {
@@ -4093,7 +4918,10 @@
         "keyword run split extraction method",
         "content run count",
         "compact label run text exactly equals",
-        "label run must contain only the label text"
+        "label run must contain only the label text",
+        "keyword content title-style contamination",
+        "must not use a heading, title, TOC-title",
+        "direct `w:outlineLvl`"
       ],
       "router_file": "references/thesis/thesis-format-rules.md",
       "router_anchor": "- `references/thesis/format-rules/tables-abstracts-citations-references.md`: table, abstract, Chinese abstract mixed-script font inspection, keyword label/content run separation, citation, and references rules",
@@ -4103,15 +4931,18 @@
         "scripts/sample_self_check.py::extract_abstract_baseline_checks",
         "scripts/audit_docx_frontmatter_structure.py::audit_frontmatter"
       ],
-  "selftest_owner": [
-    "scripts/selftest_skill_flow.py::case_protected_keyword_label_content_unsplit_rejected",
-    "scripts/selftest_skill_flow.py::case_protected_keyword_label_run_contains_content_rejected",
-    "scripts/selftest_skill_flow.py::case_protected_english_keyword_colon_split_valid",
-    "scripts/selftest_skill_flow.py::case_repair_thesis_surface_format_keyword_toc_template_donor_fallback_valid",
-    "scripts/selftest_skill_flow.py::case_repair_thesis_surface_format_abstract_role_format_valid",
-    "scripts/selftest_skill_flow.py::case_integration_gate_abstract_self_donor_alias_valid",
-    "scripts/selftest_skill_flow.py::case_frontmatter_audit_reports_english_indent_metrics_valid"
-  ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_protected_keyword_label_content_unsplit_rejected",
+        "scripts/selftest_skill_flow.py::case_protected_keyword_label_run_contains_content_rejected",
+        "scripts/selftest_skill_flow.py::case_protected_keyword_heading_style_rejected",
+        "scripts/selftest_skill_flow.py::case_protected_keyword_content_title_face_rejected",
+        "scripts/selftest_skill_flow.py::case_protected_keyword_content_normal_valid",
+        "scripts/selftest_skill_flow.py::case_protected_english_keyword_colon_split_valid",
+        "scripts/selftest_skill_flow.py::case_repair_thesis_surface_format_keyword_toc_template_donor_fallback_valid",
+        "scripts/selftest_skill_flow.py::case_repair_thesis_surface_format_abstract_role_format_valid",
+        "scripts/selftest_skill_flow.py::case_integration_gate_abstract_self_donor_alias_valid",
+        "scripts/selftest_skill_flow.py::case_frontmatter_audit_reports_english_indent_metrics_valid"
+      ],
       "required_load_modes": [
         "thesis-only",
         "program-plus-thesis",
@@ -4121,7 +4952,9 @@
         "Chinese keyword line evidence path",
         "English keyword line evidence path",
         "keyword run split verdict",
-        "keyword run split extraction method"
+        "keyword run split extraction method",
+        "keyword content title-style contamination evidence path",
+        "keyword content title-style contamination verdict"
       ],
       "status": "active"
     },
@@ -4380,6 +5213,34 @@
         "cs"
       ],
       "router_file": "references/thesis/thesis-format-rules.md",
+      "router_anchor": "- For thesis generation, thesis revision, format repair, whole-thesis format audit, or any user-reported format problem involving abstract, keywords, TOC, fonts, citations, references, page numbers, headers, footers, or end matter, always load `references/thesis/format-rules/protected-surface-evidence-contract.md`.",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/validate_skill_gate_record_evidence.py::check_effective_font_evidence_record",
+        "scripts/validate_skill_gate_record_evidence.py::check_required_surface_evidence_record",
+        "scripts/audit_docx_font_encoding.py::bibliography_font_slot_hits",
+        "scripts/audit_docx_body_style.py::body_surface_direct_metric_records"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_font_summary_passed_missing_chain_rejected",
+        "scripts/selftest_skill_flow.py::case_surface_hardfields_typography_drift_rejected",
+        "scripts/selftest_skill_flow.py::case_docx_font_audit_bibliography_instruction_policy_missing_direct_rejected",
+        "scripts/selftest_skill_flow.py::case_protected_body_text_mixed_font_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "baseline effective font chain",
+        "actual effective font chain",
+        "effective font slots compared",
+        "effective font-chain verdict",
+        "docx font/encoding audit evidence path",
+        "bibliography font-slot checks"
+      ],
       "status": "active"
     },
     {
@@ -4494,7 +5355,9 @@
         "typography evidence",
         "scale/compression verdict",
         "acknowledgement title/body",
-        "left, right, first-line, and hanging indentation"
+        "left, right, first-line, and hanging indentation",
+        "cover media/icon requirement baseline",
+        "required=false"
       ],
       "router_file": "references/thesis/thesis-format-rules.md",
       "router_anchor": "- `references/thesis/format-rules/protected-surface-evidence-contract.md`: protected surface ids, evidence record shape, effective font-chain proof, TOC visual-geometry proof, TOC paragraph-and-typography proof, and multi-agent audit handoff contract",
@@ -4505,14 +5368,17 @@
         "scripts/validate_skill_gate_record_evidence.py::_body_text_paragraphs",
         "scripts/validate_skill_gate_record_evidence.py::_front_matter_surface_paragraphs",
         "scripts/validate_skill_gate_record_evidence.py::_validate_acknowledgement_body_hard_metrics",
-        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record",
+        "scripts/audit_docx_whole_format_gate.py::audit_docx",
+        "scripts/validate_skill_gate_record_core.py::check_docx_whole_format_gate_report"
       ],
       "selftest_owner": [
         "scripts/selftest_skill_flow.py::case_surface_hardfields_caption_missing_pair_numeric_valid",
         "scripts/selftest_skill_flow.py::case_gate_direct_body_text_excludes_toc_caption_valid",
         "scripts/selftest_skill_flow.py::case_gate_direct_inline_abstract_body_valid",
         "scripts/selftest_skill_flow.py::case_acknowledgement_body_title_contamination_drift_rejected",
-        "scripts/selftest_skill_flow.py::case_protected_acknowledgement_body_paragraph_typography_drift_rejected"
+        "scripts/selftest_skill_flow.py::case_protected_acknowledgement_body_paragraph_typography_drift_rejected",
+        "scripts/selftest_skill_flow.py::case_whole_format_cover_media_template_text_only_valid"
       ],
       "required_load_modes": [
         "thesis-only",
@@ -4819,10 +5685,40 @@
         "FB-CITE-032",
         "Positive Evidence",
         "WPS Named-Size Coverage",
+        "contradictory reference-entry donor sizes",
         "exact DOCX by SHA256",
-        "checked runs"
+        "checked runs",
+        "manual dotted labels like `1.`",
+        "Chinese comma labels like `1、`",
+        "zero-entry WPS evidence file"
       ],
       "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/citations-and-bibliography.md`: namespace `FB-CITE-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_font_encoding.py::validate_wps_named_size_evidence",
+        "scripts/validate_skill_gate_record_core.py::check_docx_font_audit_report",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_docx_font_audit_named_size_without_wps_rejected",
+        "scripts/selftest_skill_flow.py::case_docx_font_audit_explicit_halfpoint_template_conflict_rejected",
+        "scripts/selftest_skill_flow.py::case_docx_font_audit_bibliography_five_point_rejects_11pt",
+        "scripts/selftest_skill_flow.py::case_docx_font_audit_bibliography_five_point_valid",
+        "scripts/selftest_skill_flow.py::case_wps_reference_entry_ui_font_manual_label_detection_valid"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "bibliography named-size WPS evidence path",
+        "bibliography named-size WPS evidence verdict",
+        "bibliography expected size half-points",
+        "docx font/encoding audit evidence path"
+      ],
       "status": "active"
     },
     {
@@ -4876,11 +5772,11 @@
         "scripts/selftest_skill_flow.py::case_user_reported_repeated_defect_bundle_partial_ledger_rejected",
         "scripts/selftest_skill_flow.py::case_protected_keyword_label_content_unsplit_rejected",
         "scripts/selftest_skill_flow.py::case_protected_keyword_label_run_contains_content_rejected",
-    "scripts/selftest_skill_flow.py::case_gate_embedded_image_without_manifest_rejected",
-    "scripts/selftest_skill_flow.py::case_figure_manifest_drawing_extent_changed_rejected",
-    "scripts/selftest_skill_flow.py::case_figure_manifest_caption_adjacency_changed_rejected",
-    "scripts/selftest_skill_flow.py::case_integration_gate_image_dimension_valid"
-  ],
+        "scripts/selftest_skill_flow.py::case_gate_embedded_image_without_manifest_rejected",
+        "scripts/selftest_skill_flow.py::case_figure_manifest_drawing_extent_changed_rejected",
+        "scripts/selftest_skill_flow.py::case_figure_manifest_caption_adjacency_changed_rejected",
+        "scripts/selftest_skill_flow.py::case_integration_gate_image_dimension_valid"
+      ],
       "required_load_modes": [
         "thesis-only",
         "program-plus-thesis",
@@ -5006,9 +5902,39 @@
         "source citation markers",
         "w:vertAlign=superscript",
         "occurrence-level",
-        "controlled-change ledger"
+        "controlled-change ledger",
+        "BODY_CITATION_NOT_SUPERSCRIPT"
       ],
       "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/citations-and-bibliography.md`: namespace `FB-CITE-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_thesis_citations.py::audit_docx",
+        "scripts/audit_docx_review_artifacts.py::validate_citation_run_reports",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record",
+        "scripts/validate_skill_gate_record_core.py::check_thesis_citation_audit_report"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_citation_superscript_plain_text_final_rejected",
+        "scripts/selftest_skill_flow.py::case_citation_audit_missing_final_plain_text_rejected",
+        "scripts/selftest_skill_flow.py::case_gate_anchor_pollution_pass_plain_citation_rejected",
+        "scripts/selftest_skill_flow.py::case_body_citation_split_run_all_super_valid",
+        "scripts/selftest_skill_flow.py::case_body_citation_split_run_digit_plain_rejected",
+        "scripts/selftest_skill_flow.py::case_body_citation_duplicate_occurrence_plain_text_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "citation audit evidence path",
+        "citation audit final DOCX SHA256",
+        "source body-citation run inventory path",
+        "final body-citation run diff path",
+        "body citation superscripts preservation verdict"
+      ],
       "status": "active"
     },
     {
@@ -5225,7 +6151,8 @@
         "scripts/selftest_skill_flow.py::case_gate_source_citation_surface_stripped_rejected",
         "scripts/selftest_skill_flow.py::case_body_citation_diff_source_without_hyperlinks_valid",
         "scripts/selftest_skill_flow.py::case_body_citation_diff_source_hyperlink_removed_rejected",
-        "scripts/selftest_skill_flow.py::case_empty_paragraph_bookmark_disposition_valid"
+        "scripts/selftest_skill_flow.py::case_empty_paragraph_bookmark_disposition_valid",
+        "scripts/selftest_skill_flow.py::case_new_thesis_source_artifact_disposition_valid"
       ],
       "required_load_modes": [
         "thesis-only",
@@ -5297,6 +6224,8 @@
       "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
       "enforcement_required": true,
       "validator_owner": [
+        "scripts/audit_docx_review_artifacts.py::validate_review_artifact_reports",
+        "scripts/audit_docx_review_artifacts.py::validate_citation_run_reports",
         "scripts/validate_thesis_mutation_transaction.py::validate_transaction_record"
       ],
       "selftest_owner": [
@@ -5846,7 +6775,9 @@
         "FMT-REF-001",
         "formal end-matter title",
         "references_entries",
-        "title-as-entry"
+        "title-as-entry",
+        "label-content spacing none",
+        "[1]内容"
       ],
       "router_file": "references/thesis/thesis-format-rules.md",
       "status": "active"
@@ -5861,7 +6792,9 @@
         "FMT-REF-002",
         "count inventory",
         "citation audit",
-        "references entry format verdict"
+        "references entry format verdict",
+        "label-content spacing none",
+        "visible bibliography family"
       ],
       "router_file": "references/thesis/thesis-format-rules.md",
       "status": "active"
@@ -5951,6 +6884,10 @@
       "required_keywords": [
         "FB-LAYOUT-070",
         "protected donor families",
+        "Attachment 8 cover skeleton",
+        "cover section boundary before declaration",
+        "cover-only section boundary",
+        "strip cover-section `headerReference`, `footerReference`, and `pgNumType`",
         "Header/footer repair",
         "Page-number repair"
       ],
@@ -5959,19 +6896,21 @@
       "validator_owner": [
         "scripts/validate_skill_gate_record_gate.py",
         "scripts/sample_self_check.py",
-        "scripts/inspect_docx_pagination_structure.py"
+        "scripts/inspect_docx_pagination_structure.py",
+        "scripts/audit_docx_whole_format_gate.py::cover_template_layout_contract"
       ],
-  "selftest_owner": [
-    "scripts/selftest_skill_flow.py::case_sample_self_check_cover_residue_rejected",
-    "scripts/selftest_skill_flow.py::case_sample_self_check_cover_value_line_ignores_reference_legend_valid",
-    "scripts/selftest_skill_flow.py::case_inspect_docx_pagination_structure_blank_rendered_page_rejected",
-    "scripts/selftest_skill_flow.py::case_user_reported_cross_surface_ledger_missing_rejected",
-    "scripts/selftest_skill_flow.py::case_repair_front_matter_page_numbering_inserts_frontmatter_section_valid",
-    "scripts/selftest_skill_flow.py::case_repair_front_matter_page_numbering_updates_existing_frontmatter_sections_valid",
-    "scripts/selftest_skill_flow.py::case_repair_front_matter_page_numbering_same_path_rejected",
-    "scripts/selftest_skill_flow.py::case_repair_front_matter_page_numbering_missing_chinese_abstract_rejected",
-    "scripts/selftest_skill_flow.py::case_repair_front_matter_page_numbering_missing_body_start_rejected"
-  ],
+      "generator_owner": "scripts/repair_thesis_frontmatter_toc_structure.py::repair_attachment8_cover_template_layout",
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_sample_self_check_cover_residue_rejected",
+        "scripts/selftest_skill_flow.py::case_sample_self_check_cover_value_line_ignores_reference_legend_valid",
+        "scripts/selftest_skill_flow.py::case_inspect_docx_pagination_structure_blank_rendered_page_rejected",
+        "scripts/selftest_skill_flow.py::case_user_reported_cross_surface_ledger_missing_rejected",
+        "scripts/selftest_skill_flow.py::case_repair_front_matter_page_numbering_inserts_frontmatter_section_valid",
+        "scripts/selftest_skill_flow.py::case_repair_front_matter_page_numbering_updates_existing_frontmatter_sections_valid",
+        "scripts/selftest_skill_flow.py::case_repair_front_matter_page_numbering_same_path_rejected",
+        "scripts/selftest_skill_flow.py::case_repair_front_matter_page_numbering_missing_chinese_abstract_rejected",
+        "scripts/selftest_skill_flow.py::case_repair_front_matter_page_numbering_missing_body_start_rejected"
+      ],
       "router_anchor": "- `references/user-feedback/template-and-layout.md`: namespace `FB-LAYOUT-*`",
       "required_load_modes": [
         "thesis-only",
@@ -5980,6 +6919,8 @@
       ],
       "acceptance_fields": [
         "cover style verdict",
+        "cover template layout verdict",
+        "cover section boundary before declaration verdict",
         "abstract and keyword surface verdict",
         "header verdict",
         "header expected display string source",
@@ -6149,10 +7090,54 @@
       ],
       "acceptance_fields": [
         "citation audit evidence path",
+        "citation audit final DOCX SHA256",
         "citation audit source-to-final run diff path",
         "body citation superscripts preservation verdict",
         "citation-reference coupled-chain verdict",
         "bibliography audit evidence path"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "FB-CITE-049",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/citations-and-bibliography.md",
+      "owner_group": "citations-and-bibliography",
+      "heading": "### FB-CITE-049. Final Citation Audit Report Is Non-Substitutable Evidence (Mandatory)",
+      "required_keywords": [
+        "FB-CITE-049",
+        "Final Citation Audit Report Is Non-Substitutable Evidence",
+        "BODY_CITATION_NOT_SUPERSCRIPT",
+        "BODY_CITATION_ORDER",
+        "hand-written pass verdict cannot override"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/citations-and-bibliography.md`: namespace `FB-CITE-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_thesis_citations.py::audit_docx",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record",
+        "scripts/validate_skill_gate_record_core.py::check_thesis_citation_audit_report"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_citation_audit_missing_final_plain_text_rejected",
+        "scripts/selftest_skill_flow.py::case_citation_audit_missing_final_order_rejected",
+        "scripts/selftest_skill_flow.py::case_citation_audit_current_sha_but_stale_content_rejected",
+        "scripts/selftest_skill_flow.py::case_citation_audit_same_counts_stale_records_rejected"
+      ],
+      "template_owner": "assets/final-acceptance-template.md",
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "citation audit evidence path",
+        "citation audit final DOCX SHA256",
+        "citation audit source-to-final run diff path",
+        "body citation superscripts preservation verdict",
+        "citation-reference coupled-chain verdict"
       ],
       "status": "active"
     },
@@ -6225,6 +7210,9 @@
       "router_anchor": "- `references/thesis/thesis-mutation-transaction.md`",
       "enforcement_required": true,
       "validator_owner": [
+        "scripts/audit_docx_protected_surface_diff.py",
+        "scripts/audit_docx_review_artifacts.py::validate_review_artifact_reports",
+        "scripts/audit_docx_review_artifacts.py::validate_citation_run_reports",
         "scripts/validate_thesis_mutation_transaction.py::validate_transaction_record"
       ],
       "selftest_owner": [
@@ -6234,6 +7222,12 @@
         "scripts/selftest_skill_flow.py::case_transaction_body_touch_requires_chapter_format_report_rejected",
         "scripts/selftest_skill_flow.py::case_transaction_non_target_toc_table_changed_rejected",
         "scripts/selftest_skill_flow.py::case_transaction_toc_image_target_rejected",
+        "scripts/selftest_skill_flow.py::case_transaction_post_mutation_surface_diff_schema_rejected",
+        "scripts/selftest_skill_flow.py::case_transaction_protected_surface_diff_non_target_rejected",
+        "scripts/selftest_skill_flow.py::case_transaction_review_artifact_fake_pass_rejected",
+        "scripts/selftest_skill_flow.py::case_transaction_citation_superscript_loss_rejected",
+        "scripts/selftest_skill_flow.py::case_transaction_render_source_same_as_final_rejected",
+        "scripts/selftest_skill_flow.py::case_transaction_body_visual_evidence_field_missing_rejected",
         "scripts/selftest_skill_flow.py::case_transaction_image_manifest_invalid_but_pass_rejected",
         "scripts/selftest_skill_flow.py::case_transaction_image_manifest_final_docx_binding_missing_rejected",
         "scripts/selftest_skill_flow.py::case_transaction_image_manifest_source_sha_mismatch_rejected",
@@ -6250,8 +7244,8 @@
         "scripts/selftest_skill_flow.py::case_transaction_image_word_body_text_no_manifest_valid",
         "scripts/selftest_skill_flow.py::case_transaction_local_keyword_no_chapter_format_claim_valid",
         "scripts/selftest_skill_flow.py::case_gate_transaction_figure_manifest_path_mismatch_rejected",
-    "scripts/selftest_skill_flow.py::case_transaction_valid_local_toc_pass"
-  ],
+        "scripts/selftest_skill_flow.py::case_transaction_valid_local_toc_pass"
+      ],
       "required_load_modes": [
         "thesis-only",
         "program-plus-thesis",
@@ -6261,6 +7255,12 @@
         "thesis mutation transaction record path",
         "thesis mutation transaction validator result",
         "thesis mutation transaction final docx sha256",
+        "post_mutation_surface_diff",
+        "source_review_artifact_inventory_path",
+        "final_review_artifact_diff_path",
+        "source_body_citation_run_inventory_path",
+        "final_body_citation_run_diff_path",
+        "body_citation_superscripts_preservation_verdict",
         "thesis mutation transaction figure anchor location verdict",
         "thesis mutation transaction caption asset binding verdict",
         "figure asset manifest path",
@@ -6503,10 +7503,10 @@
       "legacy_id": null,
       "owner_file": "references/user-feedback/citations-and-bibliography.md",
       "owner_group": "citations-and-bibliography",
-      "heading": "### FB-CITE-038. Bibliography Entries Must Not Combine Manual Bracket Numbers With Word Numbering (Mandatory)",
+      "heading": "### FB-CITE-038. Bibliography Entries Must Not Combine Manual Labels With Word Numbering (Mandatory)",
       "required_keywords": [
         "FB-CITE-038",
-        "Manual Bracket Numbers",
+        "Manual Labels",
         "Word Numbering",
         "BIBLIOGRAPHY_MANUAL_AND_AUTO_NUMBERING"
       ],
@@ -6528,6 +7528,37 @@
       "acceptance_fields": [
         "citation audit evidence path",
         "bibliography audit evidence path"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "FB-CITE-038A",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/citations-and-bibliography.md",
+      "owner_group": "citations-and-bibliography",
+      "heading": "### FB-CITE-038A. Bibliography Entry Repair Must Not Regress The References Title Layer (Mandatory)",
+      "required_keywords": [
+        "FB-CITE-038A",
+        "References Title Layer",
+        "references title lacks the template main-title layer/font size"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/citations-and-bibliography.md`: namespace `FB-CITE-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_whole_format_gate.py::audit_docx"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_repair_bibliography_entry_format_valid"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "final DOCX whole-format structural audit path"
       ],
       "status": "active"
     },
@@ -6701,6 +7732,156 @@
       "status": "active"
     },
     {
+      "id": "FB-CITE-044",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/citations-and-bibliography.md",
+      "owner_group": "citations-and-bibliography",
+      "heading": "### FB-CITE-044. Body Citation Labels And Bibliography Labels Are Separate Surfaces (Mandatory)",
+      "required_keywords": [
+        "FB-CITE-044",
+        "Body Citation Labels And Bibliography Labels Are Separate Surfaces",
+        "body citation marker",
+        "bibliography list",
+        "cite_ref"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/citations-and-bibliography.md`: namespace `FB-CITE-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_thesis_citations.py::audit_docx",
+        "scripts/audit_bibliography_school_requirements.py"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "citation audit evidence path",
+        "bibliography audit evidence path"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "FB-CITE-045",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/citations-and-bibliography.md",
+      "owner_group": "citations-and-bibliography",
+      "heading": "### FB-CITE-045. Citation Occurrence Assignment Must Cover Every Bibliography Entry When Markers Are Available (Mandatory)",
+      "required_keywords": [
+        "FB-CITE-045",
+        "Citation Occurrence Assignment Must Cover Every Bibliography Entry",
+        "assign-all-bibliography-by-occurrence",
+        "citation-chain corruption"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/citations-and-bibliography.md`: namespace `FB-CITE-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/normalize_thesis_citation_chain.py::replace_citation_occurrences_preserving_runs",
+        "scripts/audit_thesis_citations.py::audit_docx"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_citation_chain_occurrence_assigns_all_bibliography_valid"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "citation audit evidence path",
+        "bibliography audit evidence path"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "FB-CITE-046",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/citations-and-bibliography.md",
+      "owner_group": "citations-and-bibliography",
+      "heading": "### FB-CITE-046. Bibliography Entries Must Contain Substantive Content After The Label (Mandatory)",
+      "required_keywords": [
+        "FB-CITE-046",
+        "Bibliography Entries Must Contain Substantive Content After The Label",
+        "fewer than eight non-space characters",
+        "BIBLIOGRAPHY_ENTRY_CONTENT_MISSING",
+        "bibliography empty-entry/content completeness checks",
+        "zero empty/content-missing reference entries"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/citations-and-bibliography.md`: namespace `FB-CITE-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_thesis_citations.py::audit_docx",
+        "scripts/audit_docx_font_encoding.py::bibliography_content_completeness_hits",
+        "scripts/audit_bibliography_school_requirements.py"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_bibliography_label_only_entry_rejected"
+      ],
+      "template_owner": "assets/final-acceptance-template.md",
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "citation audit evidence path",
+        "bibliography audit evidence path",
+        "bibliography empty-entry/content completeness evidence path",
+        "bibliography empty-entry/content completeness verdict",
+        "docx font/encoding audit evidence path"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "FB-CITE-047",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/citations-and-bibliography.md",
+      "owner_group": "citations-and-bibliography",
+      "heading": "### FB-CITE-047. Locked Bibliography Count Profiles Must Drive The Audit Command (Mandatory)",
+      "required_keywords": [
+        "FB-CITE-047",
+        "Locked Bibliography Count Profiles Must Drive The Audit Command",
+        "--min-reference-count 60",
+        "--min-foreign-count 10",
+        "effective bibliography profile",
+        "audit command thresholds",
+        "zero empty/content-missing entries"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/citations-and-bibliography.md`: namespace `FB-CITE-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_bibliography_school_requirements.py",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_bibliography_locked_thresholds_rejected",
+        "scripts/selftest_skill_flow.py::case_bibliography_automatic_numbering_school_audit_valid"
+      ],
+      "template_owner": "assets/final-acceptance-template.md",
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "bibliography effective profile",
+        "bibliography audit command thresholds",
+        "bibliography total reference count",
+        "bibliography foreign/English reference count",
+        "bibliography empty/content-missing count",
+        "bibliography audit evidence path"
+      ],
+      "status": "active"
+    },
+    {
       "id": "FMT-FORMULA-002",
       "legacy_id": null,
       "owner_file": "references/thesis-formula-style-memory.md",
@@ -6728,7 +7909,229 @@
       ],
       "acceptance_fields": [
         "formula object audit evidence path",
+        "formula object preservation summary",
+        "formula minimum object count",
+        "formula minimum body object count",
+        "formula audit command thresholds"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "FMT-FORMULA-003",
+      "legacy_id": null,
+      "owner_file": "references/thesis-formula-style-memory.md",
+      "owner_group": "thesis-formula-style",
+      "heading": "### FMT-FORMULA-003. Mechanical Design Thesis Formula Density Gate (Mandatory)",
+      "required_keywords": [
+        "FMT-FORMULA-003",
+        "Mechanical Design Thesis Formula Density Gate",
+        "min_formula_count",
+        "min_body_formula_count",
+        "body_math_object_count",
+        "at least 200 real Word equation objects",
+        "--min-formula-count 200",
+        "--min-body-formula-count 200",
+        "CAD/mechanical drawing theses"
+      ],
+      "router_file": "SKILL.md",
+      "router_anchor": "- `references/thesis-formula-style-memory.md` when formulas are in scope; formula acceptance must include `scripts/audit_docx_formula_objects.py` evidence when formulas or formula-like text are present",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_formula_objects.py::main",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_formula_minimum_count_rejected",
+        "scripts/selftest_skill_flow.py::case_gate_record_mechanical_formula_minimum_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "formula object audit evidence path",
         "formula object preservation summary"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "FMT-FORMULA-004",
+      "legacy_id": null,
+      "owner_file": "references/thesis-formula-style-memory.md",
+      "owner_group": "thesis-formula-style",
+      "heading": "### FMT-FORMULA-004. Mechanical Formula Placement Must Be In Body Chapters (Mandatory)",
+      "required_keywords": [
+        "FMT-FORMULA-004",
+        "Mechanical Formula Placement Must Be In Body Chapters",
+        "body_math_object_count",
+        "min_body_formula_count",
+        "audit_docx_formula_objects.py",
+        "formula appendix"
+      ],
+      "router_file": "SKILL.md",
+      "router_anchor": "- `references/thesis-formula-style-memory.md` when formulas are in scope; formula acceptance must include `scripts/audit_docx_formula_objects.py` evidence when formulas or formula-like text are present",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_formula_objects.py::main",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_formula_body_scope_excludes_toc_and_appendix"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "formula object audit evidence path",
+        "formula object preservation summary",
+        "body formula count"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "FMT-FORMULA-006",
+      "legacy_id": null,
+      "owner_file": "references/thesis-formula-style-memory.md",
+      "owner_group": "thesis-formula-style",
+      "heading": "### FMT-FORMULA-006. Calculation Source Formulas Must Be Carried Into The Final Manuscript (Mandatory)",
+      "required_keywords": [
+        "FMT-FORMULA-006",
+        "Calculation Source Formulas Must Be Carried Into The Final Manuscript",
+        "source formula inventory",
+        "audit_docx_formula_source_coverage.py",
+        "--source-docx",
+        "source formula count",
+        "matched source formula count",
+        "missing source formula count",
+        "coverage ratio"
+      ],
+      "router_file": "SKILL.md",
+      "router_anchor": "- `references/thesis-formula-style-memory.md` when formulas are in scope; formula acceptance must include `scripts/audit_docx_formula_objects.py` evidence when formulas or formula-like text are present",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_formula_source_coverage.py::main",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
+      ],
+      "selftest_owner": [
+        "scripts/audit_docx_formula_source_coverage.py::self_test"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "formula source coverage audit path",
+        "formula source map paths",
+        "formula source DOCX paths",
+        "formula source DOCX formula-label counts",
+        "formula source count",
+        "formula source matched count",
+        "formula source missing count",
+        "formula source coverage ratio"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "FMT-FORMULA-007",
+      "legacy_id": null,
+      "owner_file": "references/thesis-formula-style-memory.md",
+      "owner_group": "thesis-formula-style",
+      "heading": "### FMT-FORMULA-007. Formula Additions Must Have Nearby Body Explanation (Mandatory)",
+      "required_keywords": [
+        "FMT-FORMULA-007",
+        "Formula Additions Must Have Nearby Body Explanation",
+        "formula dump",
+        "nearby body prose",
+        "formula_dump_marker_count",
+        "formula_without_nearby_body_explanation_count",
+        "formula_without_calculation_process_explanation_count",
+        "formula_narrative_style_issue_count",
+        "orphan_formula_style_issue_count",
+        "formula_duplicate_density_verdict",
+        "unique_formula_ratio",
+        "duplicate_formula_body_text_count",
+        "body mixed-script font summary",
+        "--require-formula-narrative"
+      ],
+      "router_file": "SKILL.md",
+      "router_anchor": "- `references/thesis-formula-style-memory.md` when formulas are in scope; formula acceptance must include `scripts/audit_docx_formula_objects.py` evidence when formulas or formula-like text are present",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_formula_objects.py::audit_formula_narrative_context",
+        "scripts/audit_docx_formula_objects.py::audit_formula_orphan_styles",
+        "scripts/audit_docx_formula_objects.py::audit_formula_duplicate_density",
+        "scripts/audit_docx_body_style.py::mixed_script_body_contamination_records",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
+      ],
+      "selftest_owner": [
+        "scripts/audit_docx_formula_objects.py"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "formula object audit evidence path",
+        "formula narrative-context verdict",
+        "formula dump marker count",
+        "formula without nearby body explanation count",
+        "formula without calculation process explanation count",
+        "formula narrative style issue count",
+        "orphan formula style issue count",
+        "formula duplicate-density verdict",
+        "unique formula ratio",
+        "duplicate formula body text count",
+        "body mixed-script font summary"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "FMT-FORMULA-008",
+      "legacy_id": null,
+      "owner_file": "references/thesis-formula-style-memory.md",
+      "owner_group": "thesis-formula-style",
+      "heading": "### FMT-FORMULA-008. Raw Math Command Tokens And Formula-Only Pages Are Hard Failures (Mandatory)",
+      "required_keywords": [
+        "FMT-FORMULA-008",
+        "Raw Math Command Tokens",
+        "formula-only pages",
+        "raw_math_command_token_count",
+        "rendered_raw_math_token_page_count",
+        "rendered_near_empty_formula_page_count",
+        "sub",
+        "frac"
+      ],
+      "router_file": "SKILL.md",
+      "router_anchor": "- `references/thesis-formula-style-memory.md` when formulas are in scope; formula acceptance must include `scripts/audit_docx_formula_objects.py` evidence when formulas or formula-like text are present",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_formula_objects.py::audit_raw_math_command_tokens",
+        "scripts/audit_docx_formula_objects.py::audit_rendered_formula_raw_tokens",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
+      ],
+      "selftest_owner": [
+        "scripts/audit_docx_formula_objects.py::self_test_raw_math_tokens"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "formula object audit evidence path",
+        "raw math command token count",
+        "rendered raw math token page count",
+        "rendered near-empty formula page count"
       ],
       "status": "active"
     },
@@ -6852,6 +8255,56 @@
       "status": "active"
     },
     {
+      "id": "QA-FINAL-059",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/final-qa-and-tooling.md",
+      "owner_group": "final-qa-and-tooling",
+      "heading": "### QA-FINAL-059. Mechanical Design Thesis Profile Must Close As One Gate (Mandatory)",
+      "required_keywords": [
+        "QA-FINAL-059",
+        "Mechanical Design Thesis Profile Must Close As One Gate",
+        "visible manuscript length at least 20000",
+        "bibliography count at least 60",
+        "foreign/English bibliography count at least 10",
+        "at least 200 real Word equation objects",
+        "body figures in the main narrative",
+        "all final CAD sheet renders embedded in the appendix",
+        "coupled profile verdict"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/final-qa-and-tooling.md`: namespace `QA-FINAL-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record",
+        "scripts/audit_bibliography_school_requirements.py",
+        "scripts/audit_docx_formula_objects.py",
+        "scripts/audit_docx_figure_extents.py",
+        "scripts/audit_docx_cad_appendix_binding.py"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_bibliography_locked_thresholds_rejected"
+      ],
+      "template_owner": "assets/final-acceptance-template.md",
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "mechanical design thesis profile verdict",
+        "visible manuscript length evidence path",
+        "bibliography effective profile",
+        "formula object audit evidence path",
+        "formula minimum object count",
+        "formula minimum body object count",
+        "formula body object count",
+        "body figure audit path",
+        "CAD appendix binding audit path",
+        "mechanical profile coupled gate verdict"
+      ],
+      "status": "active"
+    },
+    {
       "id": "FB-LAYOUT-072",
       "legacy_id": null,
       "owner_file": "references/user-feedback/template-and-layout.md",
@@ -6863,18 +8316,33 @@
         "Heading, Caption, Or Title Formatting",
         "whole-paragraph text replacement",
         "visible Word/WPS style differs from surrounding body text",
-        "body prose rendered bold/oversized like a heading"
+        "body prose rendered bold/oversized like a heading",
+        "After a formal figure caption, table title, figure holder, or table object",
+        "caption/table sibling body contamination",
+        "first explanatory paragraph after a formal figure/table caption",
+        "visible figure/table number",
+        "nearby explanatory body paragraphs",
+        "Newly inserted body prose after the caption"
       ],
       "router_file": "references/user-feedback-persistence.md",
       "router_anchor": "- `references/user-feedback/template-and-layout.md`: namespace `FB-LAYOUT-*`",
       "enforcement_required": true,
       "validator_owner": [
         "scripts/validate_skill_gate_record_gate.py::check_gate_record",
-        "scripts/validate_skill_gate_record_gate.py::validate_content_mutation_rendered_evidence"
+        "scripts/validate_skill_gate_record_gate.py::validate_content_mutation_rendered_evidence",
+        "scripts/audit_docx_body_style.py::caption_sibling_body_contamination_records",
+        "scripts/audit_docx_body_style.py::style_is_caption_title_family"
       ],
+      "generator_owner": "scripts/repair_docx_caption_adjacent_body.py",
       "selftest_owner": [
         "scripts/selftest_skill_flow.py::case_content_expansion_machine_vision_missing_rejected",
-        "scripts/selftest_skill_flow.py::case_content_expansion_machine_vision_valid"
+        "scripts/selftest_skill_flow.py::case_figure_caption_pollution_rendered_evidence_missing_rejected",
+        "scripts/selftest_skill_flow.py::case_content_expansion_machine_vision_valid",
+        "scripts/selftest_skill_flow.py::case_audit_body_style_caption_sibling_pollution_rejected",
+        "scripts/selftest_skill_flow.py::case_audit_body_style_caption_sibling_body_valid",
+        "scripts/selftest_skill_flow.py::case_audit_body_style_figure_caption_sibling_label_prefix_rejected",
+        "scripts/selftest_skill_flow.py::case_audit_body_style_nearby_figure_label_prefix_rejected",
+        "scripts/selftest_skill_flow.py::case_repair_docx_caption_adjacent_body_repairs_second_inserted_body"
       ],
       "required_load_modes": [
         "thesis-only",
@@ -6883,6 +8351,7 @@
       ],
       "acceptance_fields": [
         "inserted body heading-contamination verdict",
+        "caption/table sibling body contamination verdict",
         "body text evidence path",
         "body heading levels evidence path"
       ],
@@ -6928,6 +8397,44 @@
       "status": "active"
     },
     {
+      "id": "FB-LAYOUT-074",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/template-and-layout.md",
+      "owner_group": "template-and-layout",
+      "heading": "### FB-LAYOUT-074. Protected Thesis Surfaces Must Not Carry Abnormal Bullet Or List State (Mandatory)",
+      "required_keywords": [
+        "FB-LAYOUT-074",
+        "Abnormal Bullet Or List State",
+        "w:numPr",
+        "numFmt=bullet",
+        "visible bullet prefixes",
+        "bibliography entries"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/template-and-layout.md`: namespace `FB-LAYOUT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_list_pollution.py",
+        "scripts/audit_docx_whole_format_gate.py"
+      ],
+      "generator_owner": "scripts/repair_imust_thesis_format.py",
+      "selftest_owner": [
+        "scripts/audit_docx_list_pollution.py::run_self_test"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "final DOCX list-pollution audit path",
+        "final DOCX list-pollution audit verdict",
+        "whole-format list_pollution_audit verdict"
+      ],
+      "status": "active"
+    },
+    {
       "id": "EXEC-MAINT-076",
       "legacy_id": null,
       "owner_file": "references/user-feedback/maintenance-and-structure.md",
@@ -6938,6 +8445,10 @@
         "Whole-Thesis DOCX Structural Format Gate",
         "section topology",
         "live or template-authorized TOC",
+        "static institutional header",
+        "empty converted template may allow safe static institutional header",
+        "header repair derives from current DOCX or template",
+        "localized Heading1 style",
         "footer PAGE fields",
         "builder-owned style contamination",
         "final DOCX whole-format structural audit"
@@ -6947,6 +8458,7 @@
       "enforcement_required": true,
       "validator_owner": [
         "scripts/audit_docx_whole_format_gate.py",
+        "scripts/repair_docx_whole_format_structure.py",
         "scripts/validate_skill_gate_record_core.py::check_docx_whole_format_gate_report",
         "scripts/validate_skill_gate_record_gate.py::check_gate_record"
       ],
@@ -6954,7 +8466,9 @@
       "selftest_owner": [
         "scripts/selftest_skill_flow.py::case_whole_docx_structural_gate_missing_rejected",
         "scripts/selftest_skill_flow.py::case_whole_docx_structural_gate_failed_rejected",
-        "scripts/selftest_skill_flow.py::case_whole_docx_structural_gate_stale_sha_rejected"
+        "scripts/selftest_skill_flow.py::case_whole_docx_structural_gate_stale_sha_rejected",
+        "scripts/selftest_skill_flow.py::case_whole_format_cover_media_template_text_only_valid",
+        "scripts/selftest_skill_flow.py::case_repair_docx_whole_format_toc_body_section_headers_valid"
       ],
       "required_load_modes": [
         "thesis-only",
@@ -6965,6 +8479,477 @@
       "acceptance_fields": [
         "final DOCX whole-format structural audit path",
         "final DOCX whole-format structural audit verdict"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "EXEC-MAINT-077",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/maintenance-and-structure.md",
+      "owner_group": "maintenance-and-structure",
+      "heading": "### EXEC-MAINT-077. Body Run Font-Slot Pollution Must Not Hide Behind Passing Style Binding (Mandatory)",
+      "required_keywords": [
+        "EXEC-MAINT-077",
+        "Body Run Font-Slot Pollution",
+        "w:rFonts",
+        "East Asian body font slot",
+        "Citation runs",
+        "style binding"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_body_style.py",
+        "scripts/repair_thesis_surface_format.py::apply_body_mixed_script_font_slot_repairs"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_repair_thesis_surface_format_body_mixed_script_font_slots_valid",
+        "scripts/selftest_skill_flow.py::case_audit_body_style_semicolon_font_slot_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "final DOCX body-style audit path",
+        "citation audit evidence path",
+        "font-slot repair report path"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "EXEC-MAINT-078",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/maintenance-and-structure.md",
+      "owner_group": "maintenance-and-structure",
+      "heading": "### EXEC-MAINT-078. Footer PAGE Field Repair Must Match The Whole-Format Gate Size Contract (Mandatory)",
+      "required_keywords": [
+        "EXEC-MAINT-078",
+        "Footer PAGE Field Repair",
+        "Whole-Format Gate Size Contract",
+        "21 half-points",
+        "footer-page-number-font-size"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_whole_format_gate.py",
+        "scripts/repair_thesis_frontmatter_toc_structure.py::repair_footer_page_number_font_sizes"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_repair_frontmatter_toc_structure_whole_gate_surface_fields_valid"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "final DOCX whole-format structural audit path",
+        "final DOCX whole-format structural audit verdict",
+        "footer page size half-points"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "EXEC-MAINT-079",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/maintenance-and-structure.md",
+      "owner_group": "maintenance-and-structure",
+      "heading": "### EXEC-MAINT-079. Tail-Block Titles Must Be Unlisted Explicit Title Surfaces (Mandatory)",
+      "required_keywords": [
+        "EXEC-MAINT-079",
+        "Tail-Block Titles",
+        "w:numPr",
+        "explicit title-size evidence",
+        "reference-entry scanning at appendix/acknowledgement boundaries"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/repair_template_surface_baselines.py::normalize_tail_title_paragraph",
+        "scripts/audit_docx_whole_format_gate.py::audit_surface_contracts",
+        "scripts/sample_self_check.py::extract_tail_block_baseline_checks"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_repair_template_surface_baselines_tail_titles_unlisted_valid",
+        "scripts/selftest_skill_flow.py::case_whole_format_references_stop_at_appendix_valid",
+        "scripts/selftest_skill_flow.py::case_sample_self_check_tail_titles_explicit_contract_valid",
+        "scripts/selftest_skill_flow.py::case_sample_self_check_tail_titles_numbered_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "final DOCX whole-format structural audit path",
+        "final DOCX whole-format structural audit verdict",
+        "references title evidence path",
+        "acknowledgement title evidence path"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "EXEC-MAINT-080",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/maintenance-and-structure.md",
+      "owner_group": "maintenance-and-structure",
+      "heading": "### EXEC-MAINT-080. Cover Identity Placeholder Lines Must Not Survive Cover Repair (Mandatory)",
+      "required_keywords": [
+        "EXEC-MAINT-080",
+        "Cover Identity Placeholder Lines",
+        "学生姓名：________________",
+        "label-only line",
+        "cover placeholder contract",
+        "real cover authority",
+        "locked current-manuscript cover baseline",
+        "cover provenance",
+        "must not paste body text",
+        "locked cover-only section behavior"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/repair_template_surface_baselines.py::replay_cover",
+        "scripts/audit_docx_whole_format_gate.py::cover_placeholder_contract"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_repair_template_surface_cover_placeholder_lines_valid"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "cover identity value-line evidence path",
+        "cover identity value-line verdict",
+        "final DOCX whole-format structural audit path",
+        "final DOCX whole-format structural audit verdict"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "EXEC-MAINT-081",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/maintenance-and-structure.md",
+      "owner_group": "maintenance-and-structure",
+      "heading": "### EXEC-MAINT-081. Live TOC Fields Must Be Locked When Cache Rows Are Preserved (Mandatory)",
+      "required_keywords": [
+        "EXEC-MAINT-081",
+        "Live TOC Fields Must Be Locked",
+        "w:fldLock=\"true\"",
+        "toc-field-lock",
+        "toc-frontmatter-cache-compact"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_whole_format_gate.py::audit_docx",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record",
+        "scripts/generate_thesis_acceptance_record.py::inspect_live_toc_fields"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_gate_live_toc_required_unlocked_toc_rejected",
+        "scripts/selftest_skill_flow.py::case_repair_frontmatter_toc_structure_toc_field_lock_and_frontmatter_compact_valid",
+        "scripts/selftest_skill_flow.py::case_repair_frontmatter_toc_structure_toc_frontmatter_cache_exclusion_valid",
+        "scripts/selftest_skill_flow.py::case_repair_frontmatter_toc_structure_frontmatter_title_outline_exclusion_valid"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "live TOC required this round?",
+        "live TOC field count",
+        "live TOC locked field count",
+        "live TOC field verdict",
+        "frontmatter/TOC repair report path",
+        "final DOCX whole-format structural audit path",
+        "whole-document pagination evidence path"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "EXEC-MAINT-082",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/maintenance-and-structure.md",
+      "owner_group": "maintenance-and-structure",
+      "heading": "### EXEC-MAINT-082. Machine Evidence JSON Must Survive Windows Default Readers (Mandatory)",
+      "required_keywords": [
+        "EXEC-MAINT-082",
+        "Machine Evidence JSON",
+        "ensure_ascii=True",
+        "ConvertFrom-Json",
+        "ASCII-safe JSON"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_list_pollution.py",
+        "scripts/audit_docx_whole_format_gate.py",
+        "scripts/audit_docx_font_color.py",
+        "scripts/audit_bibliography_school_requirements.py"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "final DOCX list-pollution audit path",
+        "final DOCX whole-format structural audit path",
+        "final DOCX font-color audit path",
+        "bibliography audit evidence path"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "FMT-FORMULA-005",
+      "legacy_id": null,
+      "owner_file": "references/thesis-formula-style-memory.md",
+      "owner_group": "thesis-formula-style",
+      "heading": "### FMT-FORMULA-005. Formula Number Cells Must Stay Single-Line And Style-Consistent (Mandatory)",
+      "required_keywords": [
+        "FMT-FORMULA-005",
+        "Formula Number Cells Must Stay Single-Line",
+        "式(6-1)",
+        "formula_number_layout_issue_count=0",
+        "formula_number_requirement_verdict=pass",
+        "formula_number_requirement_issue_count=0",
+        "body_formula_group_count",
+        "strict_formula_number_label_count",
+        "formula-number-cell-style-invalid",
+        "formula-number-required-missing",
+        "rendered-formula-label-style-invalid",
+        "locked surface requires bare `(chapter-sequence)`",
+        "one visible label on one physical line",
+        "right-aligned at the formula numbering surface",
+        "consistent visible font size",
+        "bare `(6-1)` rejected",
+        "dot `(6.1)` rejected",
+        "full-width parentheses rejected",
+        "split `式` plus number rejected",
+        "schema-invalid `w:noWrap`",
+        "Missing `--rendered-pdf`",
+        "scripts/audit_docx_formula_objects.py"
+      ],
+      "router_file": "SKILL.md",
+      "router_anchor": "- `references/thesis-formula-style-memory.md` when formulas are in scope; formula acceptance must include `scripts/audit_docx_formula_objects.py` evidence when formulas or formula-like text are present",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_formula_objects.py::audit_formula_number_layout",
+        "scripts/audit_docx_formula_objects.py::audit_formula_number_requirement",
+        "scripts/audit_docx_formula_objects.py::audit_rendered_formula_labels",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_formula_numbering_surface_rejected",
+        "scripts/selftest_skill_flow.py::case_formula_object_without_number_rejected",
+        "scripts/selftest_skill_flow.py::case_formula_number_fallback_valid",
+        "scripts/selftest_skill_flow.py::case_formula_number_style_invalid_rejected",
+        "scripts/selftest_skill_flow.py::case_formula_paragraph_tabs_fit_content_width_valid"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "formula object audit evidence path",
+        "formula number layout issue count",
+        "formula rendered label geometry path",
+        "formula rendered label split count",
+        "formula rendered label font-size verdict",
+        "formula object preservation summary"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "FB-CITE-048",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/citations-and-bibliography.md",
+      "owner_group": "citations-and-bibliography",
+      "heading": "### FB-CITE-048. User-Corrected Bibliography Label Family Must Be Enforced On The Final Render (Mandatory)",
+      "required_keywords": [
+        "FB-CITE-048",
+        "User-Corrected Bibliography Label Family",
+        "chosen visible label family",
+        "body citation markers",
+        "rendered final-PDF label geometry",
+        "`--expected-style` is mandatory",
+        "label/content spacing",
+        "`--label-content-spacing none`",
+        "`--expected-label-content-spacing none`",
+        "`[1]内容` through `[n]内容`",
+        "`label-content spacing none` is a hard constraint",
+        "Count-only, citation-only",
+        "must not paste body paragraphs",
+        "reference-entry font size is separate from formula and caption size",
+        "visible font-size comparison uses w:sz before w:szCs"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/citations-and-bibliography.md`: namespace `FB-CITE-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_bibliography_school_requirements.py",
+        "scripts/audit_pdf_bibliography_labels.py",
+        "scripts/audit_thesis_citations.py",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_bibliography_manual_auto_numbering_rejected",
+        "scripts/selftest_skill_flow.py::case_bibliography_automatic_numbering_school_audit_valid",
+        "scripts/selftest_skill_flow.py::case_sample_self_check_bibliography_rendered_geometry_drift_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "bibliography label-family decision path",
+        "bibliography audit evidence path",
+        "reference rendered label geometry path"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "EXEC-MAINT-083",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/maintenance-and-structure.md",
+      "owner_group": "maintenance-and-structure",
+      "heading": "### EXEC-MAINT-083. Pagination Or Page-Number Complaints Require Whole-Document Pagination Evidence (Mandatory)",
+      "required_keywords": [
+        "EXEC-MAINT-083",
+        "Pagination Or Page-Number Complaints",
+        "inspect_docx_pagination_structure.py",
+        "footer PAGE fields",
+        "PAGE field direct run size",
+        "ASCII-safe",
+        "official school format file is a prose rule sheet",
+        "whole-document pagination evidence",
+        "single pagination owner",
+        "Chinese chapter headings",
+        "calculation enumerators",
+        "tail-block previous-content page mapping",
+        "formal tail-block opener page",
+        "结论与后续优化"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/inspect_docx_pagination_structure.py",
+        "scripts/audit_pdf_page_footers.py",
+        "scripts/audit_docx_whole_format_gate.py",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "whole-document pagination evidence path",
+        "full rendered page/footer map path",
+        "final DOCX whole-format structural audit path",
+        "near-empty page explicit allowlist",
+        "raw unexpected near-empty pages",
+        "near-empty allowlist review verdict",
+        "footer page number field verdict"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "EXEC-MAINT-084",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/maintenance-and-structure.md",
+      "owner_group": "maintenance-and-structure",
+      "heading": "### EXEC-MAINT-084. Final Gate Records Must Use Recheckable UTF-8 Paths And Clean Role Aliases (Mandatory)",
+      "required_keywords": [
+        "EXEC-MAINT-084",
+        "Final Gate Records Must Use Recheckable UTF-8 Paths And Clean Role Aliases",
+        "active_template_profile_path",
+        "审核",
+        "validate_skill_gate.py"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record",
+        "scripts/selftest_skill_flow.py::case_gate_record_path_encoding_and_alias_normalization"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "final gate record path",
+        "agent run manifest path",
+        "active template profile path",
+        "audit role alias zh",
+        "validation command"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "EXEC-MAINT-085",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/maintenance-and-structure.md",
+      "owner_group": "maintenance-and-structure",
+      "heading": "### EXEC-MAINT-085. External Format Reports Are Gate Inputs, Not Reference Notes (Mandatory)",
+      "required_keywords": [
+        "EXEC-MAINT-085",
+        "External Format Reports Are Gate Inputs",
+        "normalized issue ledger",
+        "report-equivalent final DOCX verification",
+        "stats-page structure/header/footer/page-number"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/parse_fanyu_format_report.py",
+        "scripts/audit_docx_fanyu_format_report.py",
+        "scripts/repair_docx_fanyu_format_report.py"
+      ],
+      "template_owner": [
+        "assets/format-repair-task-template.md",
+        "assets/final-acceptance-template.md"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "external format report path",
+        "normalized issue ledger path",
+        "report-equivalent audit path",
+        "report-equivalent audit verdict",
+        "final DOCX SHA256"
       ],
       "status": "active"
     },
@@ -7000,6 +8985,584 @@
         "format lane post-mutation rendered audit verdict",
         "content mutation machine-vision verdict"
       ],
+      "status": "active"
+    },
+    {
+      "id": "EXEC-MAINT-086",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/maintenance-and-structure.md",
+      "owner_group": "maintenance-and-structure",
+      "heading": "### EXEC-MAINT-086. Project-Local Helper Scans Must Distinguish Active Runs From Historical Archives (Mandatory)",
+      "required_keywords": [
+        "EXEC-MAINT-086",
+        "active run directory",
+        "historical sibling archives",
+        "Generic archive packaging markers",
+        "actual DOCX package surfaces"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/scan_project_local_thesis_helpers.py"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_project_local_scanner_active_run_dir_ignores_historical_archives"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "project-local helper preflight report path",
+        "project-local helper active run dir",
+        "project-local helper risk count",
+        "project-local helper scanner exit status"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "EXEC-MAINT-087",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/maintenance-and-structure.md",
+      "owner_group": "maintenance-and-structure",
+      "heading": "### EXEC-MAINT-087. Heading-Completion Passes Must Not Corrupt TOC Or Body Typography (Mandatory)",
+      "required_keywords": [
+        "EXEC-MAINT-087",
+        "Heading3",
+        "TOC cache rows",
+        "right dotted tab leader",
+        "body baseline",
+        "rendered PDF near-empty pages"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_whole_format_gate.py",
+        "scripts/audit_docx_whole_format_gate.py::audit_rendered_pdf_page_occupancy",
+        "scripts/audit_docx_body_style.py",
+        "scripts/sample_self_check.py::extract_toc_page_number_right_edge_checks",
+        "scripts/update_static_toc.py::require_mapped_tail_entries_present",
+        "scripts/generate_thesis_acceptance_record.py::docx_body_style_audit_passes",
+        "scripts/validate_skill_gate_record_core.py::check_docx_whole_format_gate_report",
+        "scripts/validate_skill_gate_record_core.py::check_docx_body_style_audit_report"
+      ],
+      "selftest_owner": [
+        "scripts/audit_docx_whole_format_gate.py::self_test"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "final DOCX whole-format structural audit path",
+        "final DOCX whole-format structural audit verdict",
+        "body style audit evidence path",
+        "body style binding summary",
+        "body heading contamination summary",
+        "TOC page-number column evidence path",
+        "TOC page-number column verdict"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "EXEC-MAINT-088",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/maintenance-and-structure.md",
+      "owner_group": "maintenance-and-structure",
+      "heading": "### EXEC-MAINT-088. Renderers Must Not Mutate The Visible Final DOCX (Mandatory)",
+      "required_keywords": [
+        "EXEC-MAINT-088",
+        "disposable render-source path",
+        "final_docx_hash_before_render",
+        "final_docx_hash_after_render",
+        "visible_final_docx_renderer_mutation_verdict"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/validate_thesis_mutation_transaction.py::validate_transaction_record"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_transaction_render_source_same_as_final_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "visible_final_docx_renderer_mutation_verdict",
+        "final_docx_hash_before_render",
+        "final_docx_hash_after_render",
+        "render_source_docx_path",
+        "render_source_docx_disposable_copy_verdict"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "EXEC-MAINT-089",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/maintenance-and-structure.md",
+      "owner_group": "maintenance-and-structure",
+      "heading": "### EXEC-MAINT-089. Body Visual Pollution Evidence Must Prove Effective Typography And TOC Preservation (Mandatory)",
+      "required_keywords": [
+        "EXEC-MAINT-089",
+        "effective font chain",
+        "strict_direct_visible_metrics_verdict",
+        "rendered_body_typography_comparison_verdict",
+        "TOC field/cache preservation evidence"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/validate_thesis_mutation_transaction.py::validate_transaction_record",
+        "scripts/audit_docx_body_style.py"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_transaction_body_visual_evidence_field_missing_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "chapter_format_preservation_report",
+        "effective_font_slot_verdict",
+        "strict_direct_visible_metrics_verdict",
+        "rendered_body_typography_comparison_verdict",
+        "neighbor_body_baseline_comparison_verdict",
+        "toc_field_cache_preservation_verdict",
+        "toc_package_diff_verdict",
+        "toc_rendered_sync_verdict"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "EXEC-MAINT-090",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/maintenance-and-structure.md",
+      "owner_group": "maintenance-and-structure",
+      "heading": "### EXEC-MAINT-090. Protected-Surface Diff And Review/Citation Evidence Must Be Parsed (Mandatory)",
+      "required_keywords": [
+        "EXEC-MAINT-090",
+        "canonical protected-surface JSON",
+        "source-to-final review/citation reports",
+        "Citation superscript preservation"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_protected_surface_diff.py",
+        "scripts/audit_docx_review_artifacts.py::validate_review_artifact_reports",
+        "scripts/audit_docx_review_artifacts.py::validate_citation_run_reports",
+        "scripts/validate_thesis_mutation_transaction.py::validate_transaction_record"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_protected_surface_diff_script_citation_loss_rejected",
+        "scripts/selftest_skill_flow.py::case_transaction_post_mutation_surface_diff_schema_rejected",
+        "scripts/selftest_skill_flow.py::case_transaction_protected_surface_diff_non_target_rejected",
+        "scripts/selftest_skill_flow.py::case_transaction_review_artifact_fake_pass_rejected",
+        "scripts/selftest_skill_flow.py::case_transaction_citation_superscript_loss_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "post_mutation_surface_diff",
+        "source_review_artifact_inventory_path",
+        "final_review_artifact_diff_path",
+        "source_body_citation_run_inventory_path",
+        "final_body_citation_run_diff_path",
+        "body_citation_superscripts_preservation_verdict"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "EXEC-MAINT-091",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/maintenance-and-structure.md",
+      "owner_group": "maintenance-and-structure",
+      "heading": "### EXEC-MAINT-091. Caption Baseline Repair And Audit Must Share One Contract (Mandatory)",
+      "required_keywords": [
+        "EXEC-MAINT-091",
+        "Caption Baseline Repair And Audit Must Share One Contract",
+        "figure captions before `0` / after `240` / line `360`",
+        "table captions before `240` / after `0` / line `360`"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_body_style.py::body_surface_direct_metric_records",
+        "scripts/repair_template_surface_baselines.py",
+        "scripts/repair_docx_caption_adjacent_body.py"
+      ],
+      "selftest_owner": [],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "body_style_audit_path",
+        "caption_baseline_verdict"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "EXEC-MAINT-092",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/maintenance-and-structure.md",
+      "owner_group": "maintenance-and-structure",
+      "heading": "### EXEC-MAINT-092. Tail-Block Run Fonts Must Not Be Reported As Paragraph Drift (Mandatory)",
+      "required_keywords": [
+        "EXEC-MAINT-092",
+        "Tail-Block Run Fonts Must Not Be Reported As Paragraph Drift",
+        "run-derived slots",
+        "paragraph-level drift",
+        "appendix body"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/sample_self_check.py::extract_tail_block_baseline_checks"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_sample_self_check_appendix_run_font_materialization_valid"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "sample_self_check_report_path",
+        "appendix_format_verdict"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "EXEC-MAINT-093",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/maintenance-and-structure.md",
+      "owner_group": "maintenance-and-structure",
+      "heading": "### EXEC-MAINT-093. Section Page Setup Must Be Materialized Before Rendered Geometry Acceptance (Mandatory)",
+      "required_keywords": [
+        "EXEC-MAINT-093",
+        "Section Page Setup Must Be Materialized",
+        "w:sectPr",
+        "pgSz",
+        "pgMar",
+        "PDF page box"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_section_page_setup.py"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_section_page_setup_missing_nodes_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "section_page_setup_audit_path",
+        "section_page_setup_verdict",
+        "final_pdf_page_box_verdict"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "EXEC-MAINT-094",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/maintenance-and-structure.md",
+      "owner_group": "maintenance-and-structure",
+      "heading": "### EXEC-MAINT-094. Review-Artifact Detection Must Not Confuse Field Instructions With Tracked Changes (Mandatory)",
+      "required_keywords": [
+        "EXEC-MAINT-094",
+        "Review-Artifact Detection Must Not Confuse Field Instructions",
+        "<w:instrText>",
+        "<w:ins>",
+        "comment-resolution ledger"
+      ],
+      "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/validate_thesis_mutation_transaction.py::docx_has_review_artifacts",
+        "scripts/validate_thesis_mutation_transaction.py::validate_transaction_record"
+      ],
+      "selftest_owner": [],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "source_review_artifact_inventory_path",
+        "final_review_artifact_diff_path",
+        "thesis mutation transaction record path"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "FMT-FORMULA-009",
+      "legacy_id": null,
+      "owner_file": "references/thesis-formula-style-memory.md",
+      "owner_group": "thesis-formula-style",
+      "heading": "### FMT-FORMULA-009. Body Formulas Must Not Be Chapter-Front Formula Dumps (Mandatory)",
+      "required_keywords": [
+        "FMT-FORMULA-009",
+        "Body Formulas Must Not Be Chapter-Front Formula Dumps",
+        "formula_front_dump_marker_count",
+        "公式组",
+        "chapter-front formula piles"
+      ],
+      "router_file": "SKILL.md",
+      "router_anchor": "- `references/thesis-formula-style-memory.md` when formulas are in scope; formula acceptance must include `scripts/audit_docx_formula_objects.py` evidence when formulas or formula-like text are present",
+      "enforcement_required": false,
+      "validator_owner": [
+        "scripts/audit_docx_formula_objects.py::audit_formula_narrative_context"
+      ],
+      "selftest_owner": [],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [],
+      "status": "active"
+    },
+    {
+      "id": "EXEC-MAINT-095",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/maintenance-and-structure.md",
+      "owner_group": "maintenance-and-structure",
+      "heading": "### EXEC-MAINT-095. Durable Rules Must Be Wired Into Workflow Evidence Before Handoff (Mandatory)",
+      "required_keywords": [
+        "EXEC-MAINT-095",
+        "Durable Rules Must Be Wired Into Workflow Evidence Before Handoff",
+        "process chain",
+        "checklist",
+        "manifest",
+        "final artifact",
+        "SHA256"
+      ],
+      "router_file": "SKILL.md",
+      "router_anchor": "## 0D. Process-Chain Closure Gate",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record",
+        "scripts/validate_thesis_mutation_transaction.py::validate_transaction_record"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_rule_owner_manifest_acceptance_field_uncovered_rejected"
+      ],
+      "template_owner": [
+        "assets/skill-invocation-lock-template.md",
+        "assets/agents/agent-run-manifest-template.md",
+        "assets/agents/agent-task-card-template.md"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "routed owner file",
+        "active checklist row",
+        "agent run manifest lane owner",
+        "audit lane verdict",
+        "evidence path bound to exact final artifact",
+        "final artifact SHA256"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "EXEC-MAINT-096",
+      "legacy_id": null,
+      "owner_file": "references/user-feedback/maintenance-and-structure.md",
+      "owner_group": "maintenance-and-structure",
+      "heading": "### EXEC-MAINT-096. Flowchart And Table Rules Must Close Through Manifest, Validator, And Acceptance (Mandatory)",
+      "required_keywords": [
+        "EXEC-MAINT-096",
+        "Flowchart And Table Rules Must Close Through Manifest, Validator, And Acceptance",
+        "flowchart",
+        "table manifest",
+        "draw.io",
+        "validator",
+        "acceptance"
+      ],
+      "router_file": "SKILL.md",
+      "router_anchor": "- `references/thesis/figure-rules/workflow-and-checklists.md` and `references/thesis-table-style-memory.md` together when the user reports flowchart, diagram, figure, table, draw.io, generated-image substitution, or table-format rules being bypassed",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/thesis_figure_contract.py::validate_figure_manifest",
+        "scripts/thesis_figure_contract.py::validate_table_manifest_entries",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_figure_manifest_flowchart_geometry_report_required_rejected",
+        "scripts/selftest_skill_flow.py::case_figure_manifest_flowchart_geometry_report_valid",
+        "scripts/selftest_skill_flow.py::case_figure_manifest_table_caption_rows_only_rejected",
+        "scripts/selftest_skill_flow.py::case_figure_manifest_table_authority_rendered_evidence_valid"
+      ],
+      "template_owner": [
+        "assets/final-acceptance-template.md",
+        "assets/agents/agent-run-manifest-template.md",
+        "assets/agents/agent-task-card-template.md"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "flowchart semantic trigger inventory path",
+        "flowchart draw.io source evidence paths",
+        "flowchart SVG export evidence paths",
+        "flowchart raster fallback evidence paths",
+        "flowchart source-scale geometry report paths",
+        "flowchart rendered-page evidence paths",
+        "flowchart final DOCX relationship evidence paths",
+        "flowchart manifest contract verdict",
+        "table surface inventory path",
+        "table manifest path",
+        "table manifest contract verdict",
+        "table per-table evidence rows",
+        "table exact-output DOCX binding evidence path",
+        "table final DOCX SHA256 binding"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "CORE-FIGURE-018",
+      "legacy_id": null,
+      "owner_file": "references/thesis/figure-rules/baseline-and-sourcing.md",
+      "owner_group": "thesis-figure-baseline-and-sourcing",
+      "heading": "### CORE-FIGURE-018. Mechanical CAD Annotations Must Bind To The Correct Target (Mandatory)",
+      "required_keywords": [
+        "CORE-FIGURE-018",
+        "Mechanical CAD Annotations Must Bind To The Correct Target",
+        "leader-target-binding",
+        "dimension-anchor",
+        "balloon-bom-crosswalk",
+        "Balloon-to-BOM binding",
+        "Dimension anchor validity",
+        "annotation drift",
+        "ordinary CAD `TEXT`/`MTEXT`",
+        "unowned free text",
+        "unsupported floating text",
+        "unbound scattered text",
+        "dimension-like text without anchor",
+        "orphan text examples",
+        "owner-zone coverage",
+        "user-reported crop binding review",
+        "unbound_scattered_text_count=0",
+        "dimension_like_text_without_anchor_count=0",
+        "CAD text style/font audit",
+        "artistic/vectorized text count=0",
+        "unsupported CAD font/style count=0",
+        "cell padding violation count=0",
+        "drawing regeneration manifest",
+        "current package SHA binding verdict"
+      ],
+      "router_file": "SKILL.md",
+      "router_anchor": "- `references/thesis/figure-rules/baseline-and-sourcing.md` for mechanical CAD/DWG/DXF/PDF packages, sheet workload, linework, CAD color-family differentiation, official CAD command route proof, CAD open-view structural coherence, teacher/reference drawing alignment, external CAD case sourcing, CAD appendix binding, frame overflow, text/entity overlap, CAD text mojibake/missing-glyph boxes, upside-down/mirrored CAD text, annotation ownership, orphan/free-floating CAD text, or unbound scattered drawing labels; for CAD-only handoff, also bind `assets/mechanical-cad-acceptance-template.md`, strict package audit, DXF linework audit, DXF color-family audit, and annotation ownership audit when colors or annotation defects are in scope.",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_mechanical_drawing_package.py::main",
+        "scripts/audit_mechanical_render_readability.py::_pdf_text_graphic_audit"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_final_acceptance_cad_annotation_checklist_missing_rejected",
+        "scripts/selftest_skill_flow.py::case_figure_manifest_mechanical_cad_sequence_word_valid"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "leader-target-binding report",
+        "dimension-anchor audit",
+        "balloon-bom-crosswalk",
+        "annotation drift rendered overlay review",
+        "mechanical drawing annotation ownership audit verdict",
+        "mechanical drawing unowned free text count",
+        "mechanical drawing unsupported floating text count",
+        "mechanical drawing unbound scattered text count",
+        "mechanical drawing dimension-like text without anchor count",
+        "mechanical drawing orphan text examples path",
+        "mechanical drawing owner-zone coverage verdict",
+        "mechanical drawing user-reported crop binding review path",
+        "mechanical drawing user-reported crop binding review verdict",
+        "mechanical drawing min cell padding mm",
+        "mechanical drawing cell padding violation count",
+        "CAD text style/font audit path",
+        "CAD text style/font audit verdict",
+        "normal CAD text entity verdict",
+        "unsupported CAD font/style count",
+        "artistic/vectorized text count",
+        "final DXF/DWG/PDF/PNG SHA256 binding"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "CORE-FIGURE-015",
+      "legacy_id": null,
+      "owner_file": "references/thesis/figure-rules/baseline-and-sourcing.md",
+      "owner_group": "thesis-figure-baseline-and-sourcing",
+      "heading": "### CORE-FIGURE-015. Body Figures Must Not Use CAD Sheet Renders When User Rejects CAD-Converted Images (Mandatory)",
+      "required_keywords": [
+        "CORE-FIGURE-015",
+        "CAD sheet renders are allowed only in the appendix",
+        "Body figures must be non-CAD explanatory diagrams",
+        "formal DWG/DXF package"
+      ],
+      "router_file": "SKILL.md",
+      "router_anchor": "- `references/thesis/figure-rules/baseline-and-sourcing.md` for mechanical CAD/DWG/DXF/PDF packages, sheet workload, linework, CAD color-family differentiation, official CAD command route proof, CAD open-view structural coherence, teacher/reference drawing alignment, external CAD case sourcing, CAD appendix binding, frame overflow, text/entity overlap, CAD text mojibake/missing-glyph boxes, upside-down/mirrored CAD text, annotation ownership, orphan/free-floating CAD text, or unbound scattered drawing labels; for CAD-only handoff, also bind `assets/mechanical-cad-acceptance-template.md`, strict package audit, DXF linework audit, DXF color-family audit, and annotation ownership audit when colors or annotation defects are in scope.",
+      "enforcement_required": false,
+      "validator_owner": [
+        "scripts/audit_docx_figure_extents.py::audit_figure_extents",
+        "scripts/audit_docx_cad_appendix_binding.py::main"
+      ],
+      "selftest_owner": [],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [],
       "status": "active"
     }
   ]

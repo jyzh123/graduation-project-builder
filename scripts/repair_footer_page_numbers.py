@@ -94,6 +94,20 @@ def referenced_default_page_footer_parts(zf: zipfile.ZipFile) -> set[str]:
     return parts
 
 
+def footer_part_has_page_field(zf: zipfile.ZipFile, part_name: str) -> bool:
+    try:
+        root = ET.fromstring(zf.read(part_name))
+    except (KeyError, ET.ParseError):
+        return False
+    for node in root.findall(".//w:instrText", NS):
+        if "PAGE" in (node.text or "").upper():
+            return True
+    for node in root.findall(".//w:fldSimple", NS):
+        if "PAGE" in node.get(qn("instr"), "").upper():
+            return True
+    return False
+
+
 def relationship_root(zf: zipfile.ZipFile) -> ET.Element:
     try:
         return ET.fromstring(zf.read("word/_rels/document.xml.rels"))
@@ -284,17 +298,84 @@ def serialize_word_xml(root: ET.Element) -> bytes:
     return ET.tostring(root, encoding="utf-8", xml_declaration=True)
 
 
-def centered_page_footer_xml() -> bytes:
-    ftr = ET.Element(qn("ftr"))
-    para = ET.SubElement(ftr, qn("p"))
-    ppr = ET.SubElement(para, qn("pPr"))
-    jc = ET.SubElement(ppr, qn("jc"))
+def clone_element(element: ET.Element | None) -> ET.Element | None:
+    if element is None:
+        return None
+    return ET.fromstring(ET.tostring(element, encoding="utf-8"))
+
+
+def paragraph_has_page_field(paragraph: ET.Element) -> bool:
+    for node in paragraph.findall(".//w:instrText", NS):
+        if "PAGE" in (node.text or "").upper():
+            return True
+    for node in paragraph.findall(".//w:fldSimple", NS):
+        if "PAGE" in node.get(qn("instr"), "").upper():
+            return True
+    return False
+
+
+def first_run_properties(paragraph: ET.Element) -> ET.Element | None:
+    for run in paragraph.findall(".//w:r", NS):
+        rpr = run.find("./w:rPr", NS)
+        if rpr is not None:
+            return clone_element(rpr)
+    return None
+
+
+def ensure_center_alignment(ppr: ET.Element) -> None:
+    jc = ppr.find("./w:jc", NS)
+    if jc is None:
+        jc = ET.SubElement(ppr, qn("jc"))
     jc.set(qn("val"), "center")
 
+
+def default_page_run_properties() -> ET.Element:
+    rpr = ET.Element(qn("rPr"))
+    sz = ET.SubElement(rpr, qn("sz"))
+    sz.set(qn("val"), "21")
+    sz_cs = ET.SubElement(rpr, qn("szCs"))
+    sz_cs.set(qn("val"), "21")
+    return rpr
+
+
+def footer_baseline_properties(zf: zipfile.ZipFile, part_name: str) -> tuple[ET.Element | None, ET.Element | None]:
+    try:
+        root = ET.fromstring(zf.read(part_name))
+    except (KeyError, ET.ParseError):
+        return None, None
+    fallback_ppr: ET.Element | None = None
+    fallback_rpr: ET.Element | None = None
+    for paragraph in root.findall(".//w:p", NS):
+        if fallback_ppr is None:
+            fallback_ppr = clone_element(paragraph.find("./w:pPr", NS))
+        if fallback_rpr is None:
+            fallback_rpr = first_run_properties(paragraph)
+        if paragraph_has_page_field(paragraph):
+            return clone_element(paragraph.find("./w:pPr", NS)), first_run_properties(paragraph)
+    return fallback_ppr, fallback_rpr
+
+
+def centered_page_footer_xml(
+    zf: zipfile.ZipFile | None = None,
+    part_name: str | None = None,
+) -> bytes:
+    ftr = ET.Element(qn("ftr"))
+    para = ET.SubElement(ftr, qn("p"))
+    baseline_ppr: ET.Element | None = None
+    baseline_rpr: ET.Element | None = None
+    if zf is not None and part_name is not None:
+        baseline_ppr, baseline_rpr = footer_baseline_properties(zf, part_name)
+    ppr = clone_element(baseline_ppr) or ET.SubElement(para, qn("pPr"))
+    if ppr not in list(para):
+        para.append(ppr)
+    ensure_center_alignment(ppr)
+    run_template = clone_element(baseline_rpr) or default_page_run_properties()
+
     def field_run() -> ET.Element:
-        # Footer typography is inherited from the locked template; direct run
-        # fonts here would be reported as footer-surface drift.
-        return ET.SubElement(para, qn("r"))
+        run = ET.SubElement(para, qn("r"))
+        if run_template is not None:
+            run.append(clone_element(run_template) or default_page_run_properties())
+        return run
 
     begin = ET.SubElement(field_run(), qn("fldChar"))
     begin.set(qn("fldCharType"), "begin")
@@ -335,7 +416,8 @@ def plan_footer_repair(
     apply_template_margins: bool,
 ) -> tuple[dict[str, bytes], dict[str, object], int]:
     with zipfile.ZipFile(input_docx, "r") as zf:
-        parts = referenced_default_page_footer_parts(zf)
+        referenced_parts = referenced_default_page_footer_parts(zf)
+        parts = {part for part in referenced_parts if footer_part_has_page_field(zf, part)}
         document = document_root(zf)
         rels_root = relationship_root(zf)
         content_root = content_types_root(zf)
@@ -368,16 +450,21 @@ def plan_footer_repair(
             if content_created:
                 section_changes.append("footer_content_type_added")
 
-        footer_xml = centered_page_footer_xml()
-        replacements = {part: footer_xml for part in sorted(parts)}
+        replacements = {
+            part: centered_page_footer_xml(zf, part)
+            for part in sorted(parts)
+        }
         if created_footer_part:
             replacements["word/document.xml"] = serialize_word_xml(document)
             replacements["word/_rels/document.xml.rels"] = serialize_relationships(rels_root)
             replacements["[Content_Types].xml"] = serialize_content_types(content_root)
         report = {
             "footer_parts_rewritten": sorted(parts),
-            "footer_parts_created": [created_footer_part] if created_footer_part else [],
-            "section_changes": section_changes,
+            "referenced_footer_parts": sorted(referenced_parts),
+        "blank_referenced_footer_parts_left_unchanged": sorted(referenced_parts - parts),
+        "footer_parts_created": [created_footer_part] if created_footer_part else [],
+        "footer_page_size_half_points": "21",
+        "section_changes": section_changes,
             "create_if_missing": create_if_missing,
             "apply_template_margins": apply_template_margins,
             "template_docx": str(template_docx) if template_docx else "",
@@ -424,8 +511,8 @@ def main() -> int:
         "output_docx_sha256": sha256_file(output_docx),
         **repair_payload,
     }
-    report.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    report.write_text(json.dumps(payload, ensure_ascii=True, indent=2), encoding="utf-8")
+    print(json.dumps(payload, ensure_ascii=True, indent=2))
     return status
 
 

@@ -97,6 +97,16 @@ Directory:
 
 Current sample files:
 - `default-mechanical-cad-baseline-sgb62080t.md`
+- `sgb62080t-v10-six-sheet-baseline/sgb62080t-v10-00-a0-overall-assembly.png`
+- `sgb62080t-v10-six-sheet-baseline/sgb62080t-v10-01-a1-head-drive-assembly.png`
+- `sgb62080t-v10-six-sheet-baseline/sgb62080t-v10-02-a1-middle-trough-assembly.png`
+- `sgb62080t-v10-six-sheet-baseline/sgb62080t-v10-03-a1-tail-tension-assembly.png`
+- `sgb62080t-v10-six-sheet-baseline/sgb62080t-v10-04-a2-scraper-part.png`
+- `sgb62080t-v10-six-sheet-baseline/sgb62080t-v10-05-a2-sprocket-shaft-component.png`
+- `sgb62080t-v10-six-sheet-baseline/rendered-review-v10.json`
+- `sgb62080t-v10-six-sheet-baseline/rendered-review-manifest-v10.json`
+- `sgb62080t-v10-six-sheet-baseline/cad-linework-fidelity-v10.json`
+- `sgb62080t-v10-six-sheet-baseline/mechanical-drawing-package-v10-fixed.json`
 - `sgb62080t-sheet-11-default-baseline.png`
 - `sgb62080t-sheet-13-default-baseline.png`
 - `sgb62080t-sheet-16-default-baseline.png`
@@ -104,16 +114,17 @@ Current sample files:
 
 Default semantic usage:
 - fallback benchmark for graduation-level mechanical CAD drawing packages
-- visual comparison target for installation/drive integration sheets
-- visual comparison target for assembly dimension-chain sheets
-- visual comparison target for installation/maintenance/trial-run sheets
-- copied audit baseline for density, rendered-review, and package-workload expectations
+- primary visual comparison target for the v10 six-sheet SGB620/80T package family
+- visual comparison target for A0 total assembly, A1 head drive, A1 middle trough, A1 tail tensioning, A2 scraper part, and A2 sprocket shaft component sheets
+- copied v10 audit baseline for density, rendered-review, lineweight/linetype fidelity, frame overflow, overlap, and package-workload expectations
+- v5 three-sheet assets are secondary historical extension benchmarks only
 
 Usage rule:
 - When the current run has no stronger user-provided mechanical CAD package sample, this directory is the mandatory default mechanical CAD baseline.
-- Use the stored PNG sheets together with the copied v5 audit JSON and the baseline note; do not compare only border/title-block style.
+- Use the stored v10 six-sheet PNG sheets together with the copied v10 audit JSON files and the baseline note; do not compare only border/title-block style.
 - A stronger current-run user sample overrides this fallback baseline.
 - This baseline controls both complexity and cleanliness expectations, including no-overlap, annotation margin clearance, local crowding, and manufacturing-view depth.
+- For SGB620/80T-like conveyor tasks, the default expected sheet set is six formal sheets: A0 total assembly, A1 head drive assembly, A1 middle trough assembly, A1 tail tensioning assembly, A2 scraper part, and A2 sprocket shaft component. A locked six-sheet package may use `effective_min_dimensioned_dxf_files=6`; it must not be rejected merely because an older generic default asked for eight dimensioned DXF files.
 
 ## 6. Missing Sample Categories
 

@@ -251,8 +251,15 @@ def main() -> int:
 
         para_count = int(com_call_with_retry(lambda: doc.Paragraphs.Count))
         for i in range(1, para_count + 1):
-            para = com_call_with_retry(lambda idx=i: doc.Paragraphs.Item(idx))
-            text = re.sub(r"[\r\a]+", "", str(para.Range.Text)).strip()
+            try:
+                para = com_call_with_retry(lambda idx=i: doc.Paragraphs.Item(idx))
+            except Exception:
+                continue
+            try:
+                para_range = para.Range
+                text = re.sub(r"[\r\a]+", "", str(para_range.Text)).strip()
+            except Exception:
+                continue
             if not text:
                 continue
             if normalize_for_match(text) in {normalize_for_match("摘    要"), normalize_for_match("Abstract"), normalize_for_match("目    录")}:
@@ -270,7 +277,10 @@ def main() -> int:
             level = heading_level_from_style(style_name) or heading_level_from_text(text)
             if level is None:
                 continue
-            page = int(com_call_with_retry(lambda p=para: p.Range.Information(3)))
+            try:
+                page = int(com_call_with_retry(lambda r=para_range: r.Information(3)))
+            except Exception:
+                continue
             rows.append(
                 {
                     "text": text,

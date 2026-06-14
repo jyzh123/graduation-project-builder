@@ -61,7 +61,7 @@ def visible_text(element: ET.Element) -> str:
 def is_black_color(color: ET.Element) -> bool:
     value = color.attrib.get(qn("val"), "")
     theme = color.attrib.get(qn("themeColor"), "")
-    return value in BLACK_VALUES and not theme
+    return value in BLACK_VALUES and theme in {"", "text1", "auto"}
 
 
 def force_black(color: ET.Element) -> None:
@@ -220,8 +220,8 @@ def main() -> int:
     report = audit_docx(args.docx_path, repair_output=args.repair_output_docx)
     if args.report_json:
         args.report_json.parent.mkdir(parents=True, exist_ok=True)
-        args.report_json.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps(report, ensure_ascii=False, indent=2))
+        args.report_json.write_text(json.dumps(report, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps(report, ensure_ascii=True, indent=2))
     return 0 if report["passed"] or args.repair_output_docx else 1
 
 

@@ -27,10 +27,16 @@ NS = {
     "asvg": "http://schemas.microsoft.com/office/drawing/2016/SVG/main",
 }
 W14 = "{%s}" % NS["w14"]
+W = "{%s}" % NS["w"]
 R = "{%s}" % NS["r"]
 PR = "{%s}" % NS["pr"]
 CT = "{%s}" % NS["ct"]
 SCRIPT_DIR = Path(__file__).resolve().parent
+CAPTION_LABEL_PREFIX_RE = re.compile(
+    r"^\s*(?:图|表)\s*(?:\d+|[一二三四五六七八九十]+)(?:[-.－．](?:\d+|[一二三四五六七八九十]+))*"
+    r"(?=\s*[\u4e00-\u9fff])",
+    flags=re.IGNORECASE,
+)
 
 try:
     from thesis_figure_contract import docx_drawing_object_manifest, validate_figure_manifest
@@ -242,6 +248,25 @@ def build_picture_paragraph(
     cx, cy = scaled_extent_emu(image_path, width_cm=width_cm)
     paragraph = make_el("w:p")
     ppr = sub_el(paragraph, "w:pPr")
+    sub_el(
+        ppr,
+        "w:spacing",
+        {
+            f"{{{NS['w']}}}before": "120",
+            f"{{{NS['w']}}}after": "0",
+            f"{{{NS['w']}}}line": "240",
+            f"{{{NS['w']}}}lineRule": "auto",
+        },
+    )
+    sub_el(
+        ppr,
+        "w:ind",
+        {
+            f"{{{NS['w']}}}left": "0",
+            f"{{{NS['w']}}}right": "0",
+            f"{{{NS['w']}}}firstLine": "0",
+        },
+    )
     sub_el(ppr, "w:jc", {f"{{{NS['w']}}}val": "center"})
     run = sub_el(paragraph, "w:r")
     drawing = sub_el(run, "w:drawing")
@@ -322,6 +347,46 @@ def replace_paragraph_picture(paragraph: ET.Element, picture_paragraph: ET.Eleme
 
 def is_figure_caption_text(text: str) -> bool:
     return bool(re.match(r"^\s*(图|Figure|Fig\.)\s*[\d一二三四五六七八九十]+(?:[-.]\d+)?\s+\S", text, flags=re.IGNORECASE))
+
+
+def _attr(element: ET.Element | None, local_name: str) -> str:
+    return element.attrib.get(f"{{{NS['w']}}}{local_name}", "") if element is not None else ""
+
+
+def caption_following_body_safety_issues(document_root: ET.Element, caption: str) -> list[str]:
+    """Fail on caption-adjacent body prose that looks like another caption."""
+
+    _body, children, index, _caption_para = find_caption_paragraph(document_root, caption)
+    for child in children[index + 1 :]:
+        if child.tag != W + "p":
+            if child.tag == W + "tbl":
+                return []
+            continue
+        text = paragraph_text(child)
+        if not text:
+            continue
+        if is_figure_caption_text(text):
+            return []
+        ppr = child.find("./w:pPr", NS)
+        spacing = ppr.find("./w:spacing", NS) if ppr is not None else None
+        ind = ppr.find("./w:ind", NS) if ppr is not None else None
+        jc = ppr.find("./w:jc", NS) if ppr is not None else None
+        pstyle = ppr.find("./w:pStyle", NS) if ppr is not None else None
+        issues: list[str] = []
+        if CAPTION_LABEL_PREFIX_RE.match(text):
+            issues.append("body prose repeats a figure/table label immediately after the formal caption")
+        if _attr(pstyle, "val").lower() == "caption":
+            issues.append("caption-following body prose still uses Caption style")
+        if _attr(jc, "val").lower() in {"center", "right"}:
+            issues.append("caption-following body prose is still centered/right-aligned")
+        if _attr(ind, "firstLine") in {"", "0"}:
+            issues.append("caption-following body prose lacks body first-line indent")
+        if _attr(spacing, "line") in {"240", "300"} and _attr(ind, "firstLine") in {"", "0"}:
+            issues.append("caption-following body prose keeps caption-like line spacing")
+        if ppr is not None and ppr.find("./w:keepNext", NS) is not None:
+            issues.append("caption-following body prose keeps keepNext from a figure/caption block")
+        return issues
+    return []
 
 
 def build_caption_paragraph(document_root: ET.Element, caption: str) -> ET.Element:
@@ -806,6 +871,13 @@ def patch_docx(
     members["[Content_Types].xml"] = ensure_content_type(members["[Content_Types].xml"], image_path.suffix)
     if svg_image_path is not None:
         members["[Content_Types].xml"] = ensure_content_type(members["[Content_Types].xml"], svg_image_path.suffix)
+    if caption:
+        issues = caption_following_body_safety_issues(document_root, caption)
+        if issues:
+            raise RuntimeError(
+                "caption-following body prose failed safety checks after picture sync for "
+                f"{caption}: " + "; ".join(issues)
+            )
 
     with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as zout:
         for name, data in members.items():

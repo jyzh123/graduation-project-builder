@@ -71,6 +71,7 @@ Use this checklist for every thesis figure before and after insertion.
 - [ ] caption matches the figure
 - [ ] captions and nearby prose do not falsely call a real screenshot `示意图` or `样例图`
 - [ ] figure, caption, and required explanatory paragraph remain adjacent and in the intended order
+- [ ] the first explanatory paragraph after the caption is normal body prose, matches the body donor format, and does not begin by repeating the figure/table label such as `图5-1`, `图 5-1`, or `表4-1`
 - [ ] insertion did not break surrounding paragraph readability
 - [ ] figure is actually embedded in the final document
 - [ ] screenshot insertion decisions match chapter semantics rather than the mistaken assumption that every authentic screenshot must be inserted

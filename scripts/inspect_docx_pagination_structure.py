@@ -39,6 +39,15 @@ CONTENT_GROWTH_DIFFERENCES = {
     "hard_page_break_section_break_map",
     "footer_page_field_map",
 }
+DEFAULT_IMUST_MARGIN_PROFILE = {
+    "top": "1417",
+    "right": "1134",
+    "bottom": "1417",
+    "left": "1701",
+    "header": "850",
+    "footer": "992",
+    "gutter": "0",
+}
 
 
 def sha256_file(path: Path) -> str:
@@ -200,7 +209,7 @@ def inspect_docx(path: Path) -> dict[str, object]:
 
 
 def compact(value: object) -> str:
-    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return json.dumps(value, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
 
 
 def rendered_page_images(directory: Path | None) -> list[Path]:
@@ -248,6 +257,8 @@ def min_ratio_text(metrics: list[dict[str, object]]) -> str:
 def content_growth_guard_problems(
     baseline: dict[str, object],
     actual: dict[str, object],
+    *,
+    allowed_margin_profiles: list[dict[str, str]] | None = None,
 ) -> list[str]:
     """Guardrails for allowing topology drift caused by a longer real thesis.
 
@@ -267,6 +278,7 @@ def content_growth_guard_problems(
 
     baseline_pg_sizes = [section.get("pgSz") for section in baseline_sections]
     baseline_pg_margins = [section.get("pgMar") for section in baseline_sections]
+    baseline_pg_margins.extend(allowed_margin_profiles or [])
     for idx, section in enumerate(actual_sections, start=1):
         if section.get("pgSz") not in baseline_pg_sizes:
             problems.append(f"content_growth_guard:section_{idx}_page_size_drift")
@@ -564,6 +576,7 @@ def build_payload(
     final_pages_dir: Path | None = None,
     require_live_toc: bool = False,
     allowed_near_empty_pages: set[int] | None = None,
+    allowed_margin_profiles: list[dict[str, str]] | None = None,
 ) -> tuple[dict[str, object], list[str]]:
     baseline = inspect_docx(template)
     actual = inspect_docx(final)
@@ -626,7 +639,15 @@ def build_payload(
     allowed_content_growth_problems = [
         name for name in problems if allow_content_growth and name in CONTENT_GROWTH_DIFFERENCES
     ]
-    guard_problems = content_growth_guard_problems(baseline, actual) if allow_content_growth else []
+    guard_problems = (
+        content_growth_guard_problems(
+            baseline,
+            actual,
+            allowed_margin_profiles=allowed_margin_profiles,
+        )
+        if allow_content_growth
+        else []
+    )
     if guard_problems and all(problem.endswith("_margin_drift") for problem in guard_problems):
         header_ok, _header_summary = sample_detector_passed(sample_self_check, "header.presence-contract")
         page_number_ok, _page_number_summary = sample_detector_passed(
@@ -685,6 +706,7 @@ def build_payload(
             "all_differences": problems,
             "fatal_differences": fatal_problems,
             "allowed_content_growth_differences": allowed_content_growth_problems,
+            "allowed_margin_profiles": allowed_margin_profiles or [],
             "content_growth_guard_problems": guard_problems,
             "content_growth_guard_verdict": "pass" if not guard_problems else "fail",
             "section_count_verdict": "pass" if "section_count" not in fatal_problems else "fail",
@@ -739,6 +761,14 @@ def main() -> int:
     parser.add_argument("--final-docx", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--fail-on-drift", action="store_true")
+    parser.add_argument(
+        "--no-fail-on-drift",
+        action="store_true",
+        help=(
+            "Diagnostic only: write the evidence report but return zero even when the pagination verdict fails. "
+            "Reports created with this flag are not final-acceptance evidence."
+        ),
+    )
     parser.add_argument("--allow-content-growth", action="store_true")
     parser.add_argument("--template-page-count", type=int)
     parser.add_argument("--final-page-count", type=int)
@@ -752,6 +782,15 @@ def main() -> int:
         type=int,
         default=[],
         help="Explicitly allow a rendered near-empty page by physical page number after independent review.",
+    )
+    parser.add_argument(
+        "--allow-imust-margin-profile",
+        action="store_true",
+        help=(
+            "Allow the official IMUST thesis prose margin profile "
+            "(top/bottom 25mm, left 30mm, right 20mm, header 15mm, footer 17.5mm) "
+            "when the converted rule-sheet DOCX uses different section margins."
+        ),
     )
     args = parser.parse_args()
     template = Path(args.template_docx).resolve()
@@ -769,10 +808,20 @@ def main() -> int:
         final_pages_dir=Path(args.final_pages).resolve() if args.final_pages else None,
         require_live_toc=args.require_live_toc,
         allowed_near_empty_pages=set(args.allow_near_empty_page or []),
+        allowed_margin_profiles=[DEFAULT_IMUST_MARGIN_PROFILE] if args.allow_imust_margin_profile else [],
     )
+    if args.no_fail_on_drift:
+        payload["diagnostic_no_fail_on_drift"] = True
+        payload["final_acceptance_eligible"] = False
+        payload["diagnostic_disposition"] = (
+            "diagnostic-only; cannot clear whole-document pagination or final acceptance"
+        )
+    else:
+        payload["diagnostic_no_fail_on_drift"] = False
+        payload["final_acceptance_eligible"] = not bool(problems)
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    if problems and args.fail_on_drift:
+    output.write_text(json.dumps(payload, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+    if problems and not args.no_fail_on_drift:
         print("DOCX pagination structure drift: " + ", ".join(problems), file=sys.stderr)
         return 1
     return 0

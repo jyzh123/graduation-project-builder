@@ -10,7 +10,7 @@ import re
 import zipfile
 from xml.etree import ElementTree as ET
 
-from toc_leader_audit import NS, W, audit_docx_toc_dotted_leaders, choose_right_tab, collect_toc_entry_paragraphs, load_styles, paragraph_style_id, run_tab_segments, w_attr
+from toc_leader_audit import NS, W, audit_docx_toc_dotted_leaders, choose_right_tab, collect_toc_entry_paragraphs, is_toc_title, load_styles, page_number_after_last_tab, paragraph_style_id, run_tab_segments, w_attr
 
 
 def ensure_child(parent: ET.Element, tag: str, *, first: bool = False) -> ET.Element:
@@ -273,6 +273,67 @@ def split_static_toc_text(text: str) -> tuple[str, str] | None:
     return label, page
 
 
+def split_tabbed_toc_text_with_trailing_page(paragraph: ET.Element) -> bool:
+    tab_count, segments = run_tab_segments(paragraph)
+    if not tab_count or page_number_after_last_tab(paragraph):
+        return False
+    if not segments:
+        return False
+    leading = "".join(segments[:-1]).strip() or segments[0].strip()
+    split = split_static_toc_text(leading)
+    if split is None:
+        return False
+    label, page = split
+    base_rpr = rpr_without_underline(first_text_run_rpr(paragraph))
+    for child in list(paragraph):
+        if child.tag != W + "pPr":
+            paragraph.remove(child)
+    append_run(paragraph, label, base_rpr)
+    append_run(paragraph, rpr=base_rpr, tab=True)
+    append_run(paragraph, page, base_rpr)
+    return True
+
+
+def append_repairable_tabbed_toc_candidates(
+    root: ET.Element,
+    styles: dict[str, object],
+    entries: list[ET.Element],
+) -> list[ET.Element]:
+    body = root.find(".//w:body", NS)
+    if body is None:
+        return []
+    children = list(body)
+    title_index: int | None = None
+    for index, child in enumerate(children):
+        if child.tag == W + "p" and is_toc_title(child, styles):  # type: ignore[arg-type]
+            title_index = index
+            break
+    if title_index is None:
+        return []
+    added: list[ET.Element] = []
+    known = {id(paragraph) for paragraph in entries}
+    for child in children[title_index + 1 :]:
+        if child.tag != W + "p":
+            continue
+        if id(child) in known:
+            continue
+        text = paragraph_text(child)
+        if not text.strip():
+            continue
+        if re.match(r"^\s*(?:\d{1,2}\s+|第\s*\d+\s*章|第\d+章|绗)", text) and not tab_count_has_missing_page(child):
+            break
+        if tab_count_has_missing_page(child) and split_static_toc_text(text) is not None:
+            entries.append(child)
+            added.append(child)
+            known.add(id(child))
+    return added
+
+
+def tab_count_has_missing_page(paragraph: ET.Element) -> bool:
+    tab_count, _segments = run_tab_segments(paragraph)
+    return bool(tab_count) and not bool(page_number_after_last_tab(paragraph))
+
+
 def append_run(paragraph: ET.Element, text: str = "", rpr: ET.Element | None = None, *, tab: bool = False) -> None:
     run = ET.Element(W + "r")
     if rpr is not None:
@@ -287,6 +348,8 @@ def append_run(paragraph: ET.Element, text: str = "", rpr: ET.Element | None = N
 
 
 def split_concatenated_entry_runs(paragraph: ET.Element) -> bool:
+    if split_tabbed_toc_text_with_trailing_page(paragraph):
+        return True
     tab_count, _segments = run_tab_segments(paragraph)
     text = paragraph_text(paragraph)
     if tab_count and "\t" not in text:
@@ -325,6 +388,7 @@ def repair_document_xml(
     root = ET.fromstring(document_xml)
     styles = load_styles_from_xml(styles_xml)
     entries, collection_issues = collect_toc_entry_paragraphs(root, styles)
+    added_repairable_entries = append_repairable_tabbed_toc_candidates(root, styles, entries)
     used_style_ids = {paragraph_style_id(paragraph) for paragraph in entries if paragraph_style_id(paragraph)}
     template_ppr_donors = template_toc_ppr_by_style(reference_document_xml, reference_styles_xml)
     template_style_ppr_donors = template_toc_style_ppr_by_style(reference_styles_xml)
@@ -354,6 +418,7 @@ def repair_document_xml(
         "template_metric_replayed_paragraph_indexes": template_metric_indexes,
         "split_concatenated_entry_indexes": split_indexes,
         "entry_count": len(entries),
+        "repairable_tabbed_missing_page_entry_count": len(added_repairable_entries),
         "collection_issues": collection_issues,
         "leader": leader,
         "default_right_tab_pos": default_pos,

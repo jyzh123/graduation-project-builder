@@ -45,7 +45,8 @@ def is_explicit_or_none(value: str) -> bool:
 
 
 def is_explicit_none(value: str) -> bool:
-    return value in EXPLICIT_VALUES
+    normalized = normalize(value).lower()
+    return value in EXPLICIT_VALUES or normalized.startswith("not-applicable-with-reason")
 
 
 def find_lines_with_prefix(lines: list[str], prefix: str) -> list[str]:
