@@ -301,9 +301,10 @@ before acting.
 ### EXEC-MAINT-030 (legacy 101). Thesis Structural Figures Must Use Draw.io As The Final Authoring Source (Mandatory)
 
 - For thesis structural figures such as architecture diagrams, ER diagrams, business flowcharts, pricing flowcharts, use-case diagrams, sequence diagrams, module trees, and similar designed figures, the final authoring source must be a draw.io file.
-- The final inserted image must come from a draw.io export that corresponds to that draw.io source.
+- The preceding line is the default structural-figure path; the only supported exception is a current-user `CORE-FIGURE-019` material-only reuse lock.
+- The final inserted image must come from a draw.io export that corresponds to that draw.io source unless material-only reuse is locked.
 - Mermaid, ad hoc drawing scripts, quick sketch tools, and other non-draw.io paths may be used only for temporary planning and must not be accepted as final structural-figure assets.
-- If a structural figure has no draw.io source file, the figure task is incomplete even if a PNG or SVG already exists.
+- If a default-path structural figure has no draw.io source file, the figure task is incomplete even if a PNG or SVG already exists. If material-only reuse is locked, the figure task is incomplete unless the primary/supplemental material source and final embedded media SHA256 are bound.
 
 ### EXEC-MAINT-031 (legacy 102). Drawn Thesis Structural Figures Must Default To SVG-Primary DOCX Insertion, And Child Boxes Must Stay Inside Parent Frames (Mandatory)
 
@@ -468,6 +469,7 @@ before acting.
   - must not be synthetic pseudocode panels or fake editor cards
   - should keep line numbers and enough code context to read the fragment
   - must follow the current crop rule from the user or approved sample, including code-pane-only crops when explicitly requested
+- When the user reports that required algorithm code was not visible in the thesis, final acceptance must bind an algorithm-code visibility evidence record with the exact final DOCX SHA256, real source-code file path and SHA256, visible line range, visible code line count, and pass DOCX-binding and code-visibility verdicts. A dummy evidence file or pass-shaped prose cannot close this complaint.
 - If the user changes the preferred code-screenshot crop during the run, treat that as the active override immediately instead of clinging to the earlier default capture framing.
 
 ### EXEC-MAINT-048. Skill Changes Must End With Unified Rule And Workflow Consolidation (Mandatory)
@@ -534,7 +536,7 @@ before acting.
 - Runtime screenshot evidence is a required evidence class whenever chapter text, captions, or figure inventories claim real system screenshots.
 - Runtime screenshot evidence must also prove full-window capture geometry: expected application window or viewport size, capture/window bbox, actual image width and height, coverage ratio, and a full-window capture verdict. A top-left client crop, partial-window bitmap, stale small thumbnail, or missing geometry verdict is failed evidence even when the image file exists.
 - `source-preserved`, `preserved-existing`, or `no_image_mutation` only proves that the embedded media was not changed. It does not prove that a runtime screenshot is authentic. If the caption, figure family, nearby prose, or inventory says runtime/system/UI screenshot, the runtime evidence fields above remain mandatory even when the image is preserved from the source DOCX.
-- Structural diagrams still require draw.io source, SVG primary export, and raster fallback instead of PIL, Mermaid, or hand-drawn PNG as the final source of truth.
+- Structural diagrams still require draw.io source, SVG primary export, and raster fallback instead of PIL, Mermaid, or hand-drawn PNG as the final source of truth unless the current user explicitly locks `CORE-FIGURE-019` material-only reuse.
 - Table, front-matter, abstract, TOC, heading, reference, acknowledgement, and body-style pollution regressions must have validator or selftest coverage. A rule that only exists as prose is not enough for these repeat-failure surfaces.
 - Front-matter and end-matter coverage matrices must be validated as surface-bound records with required rows and per-surface evidence, not accepted as generic path placeholders.
 - Blank-page and near-empty-page evidence must come from rendered page-image ink metrics. A page-count-only statement cannot pass whole-document pagination.
@@ -909,6 +911,7 @@ before acting.
 - `--strict-direct-visible-metrics` or equivalent strict visible metrics must be enabled for user-reported body typography repairs. A disabled strict-direct-visible-metrics status cannot close a user-reported body pollution complaint.
 - Citation runs, bookmarks, hyperlinks, fields, drawings, TOC rows, captions, tables, references, headers, and footers remain protected while body typography is repaired.
 - If TOC is a protected sibling during such a repair, the transaction must prove the TOC field/cache rows, hyperlinks/bookmarks, page-number column, and rendered TOC/body heading sync were unchanged or intentionally refreshed under TOC ownership.
+- When the user reports TOC digits, cached rows, page-number columns, bookmarks, or hyperlink anchors were damaged, final acceptance must bind a TOC digits/cache preservation evidence record for the exact final DOCX SHA256 with passing digit-spacing, page-number-column, bookmark-anchor, hyperlink-anchor, and before/after-cache verdicts. A dummy evidence file or pass-shaped prose cannot close the complaint.
 - `scripts/validate_thesis_mutation_transaction.py` must reject mutating body-format transactions whose `chapter_format_preservation_report` lacks passing `effective_font_slot_verdict`, `strict_direct_visible_metrics_verdict`, `rendered_body_typography_comparison_verdict`, and `neighbor_body_baseline_comparison_verdict`, or whose TOC-protected transaction lacks TOC field/cache preservation evidence.
 
 ### EXEC-MAINT-090. Protected-Surface Diff And Review/Citation Evidence Must Be Parsed (Mandatory)
@@ -972,7 +975,10 @@ before acting.
 
 - When the user reports that flowchart, diagram, table, draw.io, generated-image, or table-format rules were bypassed, the next skill-maintenance or thesis run must wire the complaint through `SKILL.md`, `references/thesis/figure-rules/workflow-and-checklists.md`, `references/thesis-table-style-memory.md`, `scripts/thesis_figure_contract.py`, agent task cards, the run manifest, selftests, and final acceptance fields before claiming repair.
 - Any thesis figure whose caption, title, nearby prose, manifest fields, teacher comment, or user comment contains workflow, process, step, chain, sequence, or flowchart semantics must be treated as a `flowchart` structural figure unless a stronger approved sample explicitly proves a different family. It cannot be recorded as a loose raster image, generic chart, AI-generated PNG, Mermaid final export, Pillow image, or unclassified screenshot.
-- Every flowchart must have a draw.io source file, SVG export, raster fallback, source-scale geometry validation report, source-to-inserted geometry evidence, post-insertion rendered-page evidence, final DOCX relationship evidence, visible start/end terminators, orthogonal boundary-to-boundary connectors, pass collision verdict, pass insertion status, and exact final DOCX binding. Missing any required field fails closed.
+- A `.drawio` file that only contains an imported bitmap/SVG image, `shape=image`, `data:image`, image URL cells, or pasted raster artwork is not a valid draw.io structural source. Native mxGraph shape vertices and boundary-bound orthogonal connectors are mandatory; wrapping a generated PNG inside draw.io is a hard failure.
+- User-provided material such as `素材.doc` is provenance or style/source evidence only unless the current user explicitly locks `CORE-FIGURE-019` material-only reuse. In the default structural-figure path it does not replace the required draw.io source, SVG export, raster fallback, geometry report, rendered-page evidence, and final DOCX relationship binding for flowcharts and other structural figures.
+- Every default-path flowchart must have a draw.io source file, SVG export, raster fallback, source-scale geometry validation report, source-to-inserted geometry evidence, post-insertion rendered-page evidence, final DOCX relationship evidence, visible start/end terminators, orthogonal boundary-to-boundary connectors, pass collision verdict, pass insertion status, and exact final DOCX binding. Missing any required field fails closed.
+- Every material-only flowchart or structural figure must instead bind the primary material source, any approved supplemental source, missing-primary-source reason for supplemental use, extracted image SHA256, final embedded media SHA256, generated-substitute rejection verdict, and paragraph-width placement evidence. In that mode, requiring draw.io/native reconstruction is the bypass.
 - Every real body table present in scope, generated, repaired, preserved, or detected in the final DOCX must have a table manifest row. A row containing only a caption, title, table number, or row count is not evidence and must fail validation.
 - Each table manifest row must record active table authority lock, authority source type/path or pass no-template authority verdict, manuscript-binding proof, title/caption mode, border-family verdict, header separator verdict, vertical separator verdict, body-row separator verdict, table-local structure verdict, rendered table evidence, pagination/continuation verdict, insertion status, rendered-page status, final DOCX table evidence, and exact-output SHA binding.
 - If the final DOCX contains any `w:tbl` body table or table caption, the acceptance gate must treat the table lane as touched even when a format task card forgot to mark `table`. The table evidence fields, table manifest path, and per-table inventory are then mandatory.

@@ -49,8 +49,10 @@ try:
     from .validate_skill_gate_record_format import check_format_repair_task_record
     from .thesis_figure_contract import (
         docx_figure_surface_summary,
+        drawio_structural_geometry_issues,
         final_docx_manifest_requirement_issues,
         final_docx_figure_surface_issues,
+        validate_structural_geometry_report,
         validate_figure_manifest,
     )
     from .validate_thesis_mutation_transaction import (
@@ -125,8 +127,10 @@ except ImportError:
     from validate_skill_gate_record_format import check_format_repair_task_record
     from thesis_figure_contract import (
         docx_figure_surface_summary,
+        drawio_structural_geometry_issues,
         final_docx_manifest_requirement_issues,
         final_docx_figure_surface_issues,
+        validate_structural_geometry_report,
         validate_figure_manifest,
     )
     from validate_thesis_mutation_transaction import (
@@ -752,6 +756,117 @@ FIGURE_REPORT_TOKENS = (
     "\u793a\u610f\u56fe",
     "\u68c0\u6d4b\u6548\u679c",
     "\u8bc6\u522b\u7ed3\u679c",
+)
+FIGURE_WIDTH_USER_REPORTED_TOKENS = (
+    "screenshot",
+    "system screenshot",
+    "figure width",
+    "image width",
+    "image indent",
+    "figure indent",
+    "image-holder",
+    "image holder",
+    "holder indent",
+    "too small",
+    "not readable",
+    "display incomplete",
+    "incomplete display",
+    "clipped",
+    "cropped",
+    "truncated",
+    "paragraph margin",
+    "text width",
+    "width/text-width",
+    "\u7cfb\u7edf\u622a\u56fe",
+    "\u622a\u56fe",
+    "\u56fe\u7247",
+    "\u56fe\u7247\u7f29\u8fdb",
+    "\u56fe\u7247\u6bb5\u843d",
+    "\u56fe\u50cf\u7f29\u8fdb",
+    "\u56fe\u6bb5\u843d\u7f29\u8fdb",
+    "\u5c3a\u5bf8",
+    "\u592a\u5c0f",
+    "\u770b\u4e0d\u6e05",
+    "\u663e\u793a\u4e0d\u5168",
+    "\u663e\u793a\u4e0d\u5b8c\u6574",
+    "\u88ab\u88c1\u5207",
+    "\u88c1\u5207",
+    "\u88c1\u526a",
+    "\u8de8\u9875",
+    "\u6587\u5b57\u6bb5\u843d",
+    "\u9f50\u5e73",
+    "\u6bb5\u843d\u5bbd\u5ea6",
+)
+ALGORITHM_CODE_USER_REPORTED_TOKENS = (
+    "algorithm code",
+    "code visibility",
+    "source code",
+    "real code",
+    "missing code",
+    "\u7b97\u6cd5\u4ee3\u7801",
+    "\u65b0\u589e\u4ee3\u7801",
+    "\u4ee3\u7801\u6ca1\u770b\u89c1",
+    "\u771f\u5b9e\u4ee3\u7801",
+    "\u6e90\u4ee3\u7801",
+)
+TOC_DIGITS_CACHE_USER_REPORTED_TOKENS = (
+    "toc digits",
+    "toc cache",
+    "toc number",
+    "toc page",
+    "bookmark",
+    "anchor",
+    "1. 1",
+    "2. 1",
+    "broken toc",
+    "\u76ee\u5f55\u6570\u5b57",
+    "\u76ee\u5f55\u9875\u7801",
+    "\u76ee\u5f55",
+    "\u6570\u5b57",
+    "\u951a\u70b9",
+    "\u4e66\u7b7e",
+    "\u6539\u574f",
+)
+FIGURE_MATERIAL_GENERATED_USER_REPORTED_TOKENS = (
+    "material.doc",
+    "source material",
+    "material source",
+    "generated image",
+    "generated substitute",
+    "ai generated",
+    "draw.io",
+    "drawio",
+    "impostor",
+    "wrapped image",
+    "\u7d20\u6750.doc",
+    "\u7d20\u6750",
+    "\u751f\u6210\u56fe",
+    "\u5192\u5145",
+    "\u4f2a draw.io",
+    "\u4e0d\u662fdraw.io",
+    "\u4e0d\u662f draw.io",
+    "\u6d41\u7a0b\u56fe",
+    "\u753b\u7684\u56fe",
+)
+FIGURE_MATERIAL_ONLY_USER_REPORTED_TOKENS = (
+    "material-only",
+    "material only",
+    "source-only",
+    "source only",
+    "no redraw",
+    "no redrawn",
+    "do not redraw",
+    "do not generate",
+    "supplemental docx",
+    "\u53ea\u4ece\u7d20\u6750",
+    "\u53ea\u9700\u8981\u4ece\u7d20\u6750",
+    "\u4ece\u7d20\u6750.doc\u62c9\u53d6",
+    "\u4e0d\u9700\u8981\u81ea\u5df1\u91cd\u65b0\u753b",
+    "\u4e0d\u8981\u81ea\u5df1\u91cd\u65b0\u753b",
+    "\u4e0d\u5f97\u91cd\u753b",
+    "\u4e0d\u5f97\u751f\u6210",
+    "\u7f3a\u7684\u56fe",
+    "\u8865\u5145 docx",
 )
 BODY_OPENER_HEADER_TITLE_TOKENS = (
     "title/header",
@@ -1540,6 +1655,27 @@ AGENT_RUN_MANIFEST_REQUIRED_PREFIXES = (
     "- content_mutation_machine_vision_verdict:",
     "- inserted_body_heading_contamination_verdict:",
     "- caption_table_sibling_body_contamination_verdict:",
+    "- figure_user_material_source_path:",
+    "- figure_user_material_source_sha256:",
+    "- figure_material_source_inventory_path:",
+    "- figure_material_source_binding_verdict:",
+    "- figure_generated_substitute_rejection_verdict:",
+    "- figure_extents_audit_path:",
+    "- figure_paragraph_margin_width_verdict:",
+    "- runtime_screenshot_full_window_geometry_evidence_paths:",
+    "- runtime_screenshot_full_window_capture_verdict:",
+    "- flowchart_semantic_trigger_inventory_path:",
+    "- flowchart_drawio_source_evidence_paths:",
+    "- flowchart_svg_export_evidence_paths:",
+    "- flowchart_raster_fallback_evidence_paths:",
+    "- flowchart_geometry_report_paths:",
+    "- flowchart_rendered_page_evidence_paths:",
+    "- flowchart_final_docx_relationship_evidence_paths:",
+    "- flowchart_manifest_contract_verdict:",
+    "- algorithm_code_visibility_evidence_path:",
+    "- algorithm_code_visibility_verdict:",
+    "- toc_digits_cache_preservation_evidence_path:",
+    "- toc_digits_cache_preservation_verdict:",
     "- touched_page_blast_radius_machine_vision_evidence_paths:",
     "- format_lane_post_mutation_rendered_audit_verdict:",
     "- protected_surface_reviewed_output_sha256:",
@@ -1583,6 +1719,27 @@ AGENT_TASK_CARD_REQUIRED_PREFIXES = (
     "- action_cycles:",
     "- audit_verdict:",
     "- supervised_by:",
+    "- figure_user_material_source_path:",
+    "- figure_user_material_source_sha256:",
+    "- figure_material_source_inventory_path:",
+    "- figure_material_source_binding_verdict:",
+    "- figure_generated_substitute_rejection_verdict:",
+    "- figure_extents_audit_path:",
+    "- figure_paragraph_margin_width_verdict:",
+    "- runtime_screenshot_full_window_geometry_evidence_paths:",
+    "- runtime_screenshot_full_window_capture_verdict:",
+    "- flowchart_semantic_trigger_inventory_path:",
+    "- flowchart_drawio_source_evidence_paths:",
+    "- flowchart_svg_export_evidence_paths:",
+    "- flowchart_raster_fallback_evidence_paths:",
+    "- flowchart_geometry_report_paths:",
+    "- flowchart_rendered_page_evidence_paths:",
+    "- flowchart_final_docx_relationship_evidence_paths:",
+    "- flowchart_manifest_contract_verdict:",
+    "- algorithm_code_visibility_evidence_path:",
+    "- algorithm_code_visibility_verdict:",
+    "- toc_digits_cache_preservation_evidence_path:",
+    "- toc_digits_cache_preservation_verdict:",
     "- evidence_required:",
     "- evidence_paths:",
 )
@@ -1631,6 +1788,27 @@ FORMAT_TASK_CARD_REQUIRED_PREFIXES = (
     "- content_mutation_rendered_review_path:",
     "- content_mutation_machine_vision_verdict:",
     "- inserted_body_heading_contamination_verdict:",
+    "- figure_user_material_source_path:",
+    "- figure_user_material_source_sha256:",
+    "- figure_material_source_inventory_path:",
+    "- figure_material_source_binding_verdict:",
+    "- figure_generated_substitute_rejection_verdict:",
+    "- figure_extents_audit_path:",
+    "- figure_paragraph_margin_width_verdict:",
+    "- runtime_screenshot_full_window_geometry_evidence_paths:",
+    "- runtime_screenshot_full_window_capture_verdict:",
+    "- flowchart_semantic_trigger_inventory_path:",
+    "- flowchart_drawio_source_evidence_paths:",
+    "- flowchart_svg_export_evidence_paths:",
+    "- flowchart_raster_fallback_evidence_paths:",
+    "- flowchart_geometry_report_paths:",
+    "- flowchart_rendered_page_evidence_paths:",
+    "- flowchart_final_docx_relationship_evidence_paths:",
+    "- flowchart_manifest_contract_verdict:",
+    "- algorithm_code_visibility_evidence_path:",
+    "- algorithm_code_visibility_verdict:",
+    "- toc_digits_cache_preservation_evidence_path:",
+    "- toc_digits_cache_preservation_verdict:",
     "- touched_page_blast_radius_machine_vision_evidence_paths:",
     "- format_lane_post_mutation_rendered_audit_verdict:",
     "- protected_surface_reviewed_output_sha256:",
@@ -1667,6 +1845,32 @@ AGENT_PROTECTED_FIELD_TO_GATE_PREFIX = {
     "- content_mutation_machine_vision_verdict:": "- content mutation machine-vision verdict:",
     "- inserted_body_heading_contamination_verdict:": "- inserted body heading-contamination verdict:",
     "- caption_table_sibling_body_contamination_verdict:": "- caption/table sibling body contamination verdict:",
+    "- figure_user_material_source_path:": "- figure user material source path:",
+    "- figure_user_material_source_sha256:": "- figure user material source SHA256:",
+    "- figure_material_source_inventory_path:": "- figure material-source inventory path:",
+    "- figure_material_source_binding_verdict:": "- figure material-source binding verdict:",
+    "- figure_generated_substitute_rejection_verdict:": "- figure generated-substitute rejection verdict:",
+    "- figure_extents_audit_path:": "- figure extents audit path:",
+    "- figure_paragraph_margin_width_verdict:": "- figure paragraph-margin width verdict:",
+    "- figure_visible_content_completeness_verdict:": "- figure visible-content completeness verdict:",
+    "- figure_nonzero_crop_count:": "- figure nonzero crop count:",
+    "- figure_exact_line_spacing_clipping_count:": "- figure exact-line-spacing clipping count:",
+    "- figure_image_holder_layout_verdict:": "- figure image-holder layout verdict:",
+    "- figure_image_holder_layout_issue_count:": "- figure image-holder layout issue count:",
+    "- runtime_screenshot_full_window_geometry_evidence_paths:": "- runtime screenshot full-window geometry evidence paths:",
+    "- runtime_screenshot_full_window_capture_verdict:": "- runtime screenshot full-window capture verdict:",
+    "- flowchart_semantic_trigger_inventory_path:": "- flowchart semantic trigger inventory path:",
+    "- flowchart_drawio_source_evidence_paths:": "- flowchart draw.io source evidence paths:",
+    "- flowchart_svg_export_evidence_paths:": "- flowchart SVG export evidence paths:",
+    "- flowchart_raster_fallback_evidence_paths:": "- flowchart raster fallback evidence paths:",
+    "- flowchart_geometry_report_paths:": "- flowchart source-scale geometry report paths:",
+    "- flowchart_rendered_page_evidence_paths:": "- flowchart rendered-page evidence paths:",
+    "- flowchart_final_docx_relationship_evidence_paths:": "- flowchart final DOCX relationship evidence paths:",
+    "- flowchart_manifest_contract_verdict:": "- flowchart manifest contract verdict:",
+    "- algorithm_code_visibility_evidence_path:": "- algorithm code visibility evidence path:",
+    "- algorithm_code_visibility_verdict:": "- algorithm code visibility verdict:",
+    "- toc_digits_cache_preservation_evidence_path:": "- TOC digits/cache preservation evidence path:",
+    "- toc_digits_cache_preservation_verdict:": "- TOC digits/cache preservation verdict:",
     "- touched_page_blast_radius_machine_vision_evidence_paths:": "- touched-page/blast-radius machine-vision evidence paths:",
     "- format_lane_post_mutation_rendered_audit_verdict:": "- format lane post-mutation rendered audit verdict:",
     "- protected_surface_reviewed_output_sha256:": "- protected-surface reviewed output sha256:",
@@ -1694,6 +1898,19 @@ AGENT_PROTECTED_PATH_PREFIXES = {
     "- toc_visible_run_typography_evidence_paths:",
     "- whole_document_pagination_evidence_path:",
     "- content_mutation_rendered_review_path:",
+    "- figure_user_material_source_path:",
+    "- figure_material_source_inventory_path:",
+    "- figure_extents_audit_path:",
+    "- runtime_screenshot_full_window_geometry_evidence_paths:",
+    "- flowchart_semantic_trigger_inventory_path:",
+    "- flowchart_drawio_source_evidence_paths:",
+    "- flowchart_svg_export_evidence_paths:",
+    "- flowchart_raster_fallback_evidence_paths:",
+    "- flowchart_geometry_report_paths:",
+    "- flowchart_rendered_page_evidence_paths:",
+    "- flowchart_final_docx_relationship_evidence_paths:",
+    "- algorithm_code_visibility_evidence_path:",
+    "- toc_digits_cache_preservation_evidence_path:",
     "- touched_page_blast_radius_machine_vision_evidence_paths:",
     "- protected-surface evidence contract path:",
     "- protected-surface evidence map:",
@@ -4297,6 +4514,20 @@ def validate_agent_records(
             issues.append(f"agent task card attendance_status must be active/not-applicable/skipped-with-reason/blocked: {card_path}")
         if card_values["- attendance_status:"] in {"not-applicable", "skipped-with-reason"} and not (is_explicit(card_values["- not_applicable_reason:"]) or is_explicit(card_values["- skip_reason:"])):
             issues.append(f"inactive agent task card must record not_applicable_reason or skip_reason: {card_path}")
+        for card_prefix in AGENT_PROTECTED_FIELD_TO_GATE_PREFIX:
+            if card_prefix not in card_values:
+                continue
+            compare_agent_record_field_to_gate(
+                issues,
+                kind=f"agent task card {card_path}",
+                record_path_for_values=card_path,
+                record_values=card_values,
+                record_raw_values=card_raw_values,
+                record_prefix=card_prefix,
+                gate_values=gate_values,
+                gate_raw_values=gate_raw_values,
+                gate_record_path=record_path,
+            )
 
         if card_values["- attendance_status:"] != "active":
             continue
@@ -5223,6 +5454,45 @@ def surface_verdict_passes(value: str, *, allow_not_applicable_with_reason: bool
     return False
 
 
+def user_reported_field_gate_required(context: str, tokens: tuple[str, ...]) -> bool:
+    lowered = context.lower()
+    return contains_any(lowered, set(tokens))
+
+
+def require_gate_path_field(
+    issues: list[str],
+    *,
+    gate_values: dict[str, str],
+    gate_raw_values: dict[str, str],
+    record_path: Path,
+    prefix: str,
+    label: str,
+) -> None:
+    value = gate_values.get(prefix, "")
+    if not is_explicit(value) or is_explicit_none(value):
+        issues.append(f"gate record lacks {label}: {prefix}")
+        return
+    raw_value = gate_raw_values.get(prefix, value)
+    for raw_path in split_path_values(raw_value):
+        resolved = resolve_record_path(raw_path, record_path)
+        issues.extend(validate_existing_path(resolved, require_nonempty_file=True))
+
+
+def require_gate_pass_verdict(
+    issues: list[str],
+    *,
+    gate_values: dict[str, str],
+    prefix: str,
+    label: str,
+) -> None:
+    value = gate_values.get(prefix, "")
+    if not surface_verdict_passes(value) or contains_any(
+        value,
+        {"not-applicable", "none", "missing", "not checked", "stale", "pending", "blocked"},
+    ):
+        issues.append(f"gate record {label} must be pass: {prefix}")
+
+
 BLOCKING_CONSISTENCY_FIELDS = (
     ("- protected-surface evidence contract verdict:", False),
     ("- surface paragraph-and-typography verdict:", False),
@@ -5876,6 +6146,350 @@ def validate_figure_contract_manifest(
         )
     )
     return issues
+
+
+def _path_equivalent(left: str | Path | None, right: str | Path | None) -> bool:
+    if left is None or right is None:
+        return False
+    try:
+        return str(Path(left).resolve()).lower() == str(Path(right).resolve()).lower()
+    except Exception:
+        return str(left).strip().lower() == str(right).strip().lower()
+
+
+def _load_json_evidence(path: Path, label: str) -> tuple[dict[str, object] | None, list[str]]:
+    issues: list[str] = []
+    issues.extend(validate_existing_path(path, require_nonempty_file=True))
+    if issues:
+        return None, issues
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return None, [f"{label} evidence must be readable JSON: {path} ({exc})"]
+    if not isinstance(payload, dict):
+        return None, [f"{label} evidence JSON must be an object: {path}"]
+    return payload, []
+
+
+def _json_passes(payload: dict[str, object]) -> bool:
+    passed = payload.get("passed")
+    if passed is True:
+        return True
+    for key in ("result", "verdict", "status"):
+        value = payload.get(key)
+        if isinstance(value, str) and surface_verdict_passes(value):
+            return True
+    return False
+
+
+def _validate_bound_final_docx(
+    payload: dict[str, object],
+    *,
+    evidence_path: Path,
+    label: str,
+    final_docx: Path | None,
+) -> list[str]:
+    issues: list[str] = []
+    final_path_value = str(
+        payload.get("final_docx_path")
+        or payload.get("reviewed_output_path")
+        or payload.get("docx_path")
+        or ""
+    ).strip()
+    final_sha_value = str(
+        payload.get("final_docx_sha256")
+        or payload.get("reviewed_output_sha256")
+        or payload.get("docx_sha256")
+        or ""
+    ).strip()
+    if not final_path_value:
+        issues.append(f"{label} evidence lacks final_docx_path: {evidence_path}")
+    if not re.fullmatch(r"[0-9a-fA-F]{64}", final_sha_value or ""):
+        issues.append(f"{label} evidence lacks 64-hex final_docx_sha256: {evidence_path}")
+    if final_docx is not None and final_docx.exists():
+        if final_path_value and not _path_equivalent(final_path_value, final_docx):
+            issues.append(f"{label} evidence final_docx_path does not match exact final DOCX: {evidence_path}")
+        expected_sha = sha256_file(final_docx)
+        if final_sha_value and final_sha_value.upper() != expected_sha.upper():
+            issues.append(f"{label} evidence final_docx_sha256 does not match exact final DOCX: {evidence_path}")
+    return issues
+
+
+def validate_figure_extents_user_evidence(
+    evidence_path: Path,
+    record_path: Path,
+    *,
+    final_docx: Path | None = None,
+) -> list[str]:
+    payload, issues = _load_json_evidence(evidence_path, "figure extents")
+    if payload is None:
+        return issues
+    if payload.get("schema") not in {
+        "graduation-project-builder.figure-extents-audit.v2",
+        "graduation-project-builder.figure-extents-audit.v3",
+    }:
+        issues.append(f"figure extents evidence has wrong schema in {record_path}: {evidence_path}")
+    if not _json_passes(payload):
+        issues.append(f"figure extents evidence must pass in {record_path}: {evidence_path}")
+    issues.extend(
+        _validate_bound_final_docx(payload, evidence_path=evidence_path, label="figure extents", final_docx=final_docx)
+    )
+    try:
+        text_width_cm = float(payload.get("text_width_cm") or 0)
+    except (TypeError, ValueError):
+        text_width_cm = 0.0
+    if text_width_cm <= 0:
+        issues.append(f"figure extents evidence must record text_width_cm > 0: {evidence_path}")
+    try:
+        body_figure_count = int(payload.get("body_figure_count") or 0)
+    except (TypeError, ValueError):
+        body_figure_count = 0
+    if body_figure_count <= 0:
+        issues.append(f"figure extents evidence must include body figures for width repair: {evidence_path}")
+    try:
+        drift_count = int(payload.get("paragraph_margin_width_drift_count") or 0)
+    except (TypeError, ValueError):
+        drift_count = -1
+    if drift_count != 0:
+        issues.append(f"figure extents evidence paragraph_margin_width_drift_count must be 0: {evidence_path}")
+    for key, label in (
+        ("nonzero_crop_count", "nonzero crop count"),
+        ("exact_line_spacing_clip_count", "exact-line-spacing clipping count"),
+        ("image_holder_layout_issue_count", "image-holder layout issue count"),
+        ("image_holder_abnormal_indent_count", "image-holder abnormal indent count"),
+        ("image_holder_noncenter_alignment_count", "image-holder noncenter alignment count"),
+        ("safe_page_height_risk_count", "safe page-height risk count"),
+    ):
+        if key not in payload:
+            issues.append(f"figure extents evidence missing {label}: {evidence_path}")
+            continue
+        try:
+            count = int(payload.get(key) or 0)
+        except (TypeError, ValueError):
+            count = -1
+        if count != 0:
+            issues.append(f"figure extents evidence {label} must be 0: {evidence_path}")
+    visible_verdict = str(payload.get("visible_content_completeness_verdict") or "pass").strip().lower()
+    if visible_verdict not in {"pass", "passed"}:
+        issues.append(f"figure extents evidence visible_content_completeness_verdict must pass: {evidence_path}")
+    layout_verdict = str(payload.get("image_holder_layout_verdict") or "").strip().lower()
+    if layout_verdict not in {"pass", "passed"}:
+        issues.append(f"figure extents evidence image_holder_layout_verdict must pass: {evidence_path}")
+    figures = payload.get("figures")
+    if not isinstance(figures, list) or not figures:
+        issues.append(f"figure extents evidence must include per-figure rows: {evidence_path}")
+    else:
+        for index, row in enumerate(figures, start=1):
+            if not isinstance(row, dict):
+                issues.append(f"figure extents row {index} is not an object: {evidence_path}")
+                continue
+            if "width_text_ratio" not in row:
+                issues.append(f"figure extents row {index} lacks width_text_ratio: {evidence_path}")
+            if row.get("paragraph_margin_width_drift") is True:
+                issues.append(f"figure extents row {index} still has paragraph_margin_width_drift=true: {evidence_path}")
+            if row.get("nonzero_crop") is True:
+                issues.append(f"figure extents row {index} still has nonzero_crop=true: {evidence_path}")
+            if row.get("exact_line_spacing_clips_inline_image") is True:
+                issues.append(f"figure extents row {index} still has exact_line_spacing_clips_inline_image=true: {evidence_path}")
+            if "holder_effective_alignment" not in row:
+                issues.append(f"figure extents row {index} lacks holder_effective_alignment: {evidence_path}")
+            if "holder_effective_indent" not in row:
+                issues.append(f"figure extents row {index} lacks holder_effective_indent: {evidence_path}")
+            if row.get("image_holder_layout_issue") is True:
+                issues.append(f"figure extents row {index} still has image_holder_layout_issue=true: {evidence_path}")
+    if payload.get("issues") not in ([], None):
+        issues.append(f"figure extents evidence carries unresolved issues: {evidence_path}")
+    return issues
+
+
+def validate_algorithm_code_visibility_evidence(
+    evidence_path: Path,
+    record_path: Path,
+    *,
+    final_docx: Path | None = None,
+) -> list[str]:
+    payload, issues = _load_json_evidence(evidence_path, "algorithm code visibility")
+    if payload is None:
+        return issues
+    if payload.get("schema") != "graduation-project-builder.algorithm-code-visibility.v1":
+        issues.append(f"algorithm code visibility evidence has wrong schema in {record_path}: {evidence_path}")
+    if not _json_passes(payload):
+        issues.append(f"algorithm code visibility evidence must pass in {record_path}: {evidence_path}")
+    issues.extend(
+        _validate_bound_final_docx(payload, evidence_path=evidence_path, label="algorithm code visibility", final_docx=final_docx)
+    )
+    code_file_value = str(payload.get("code_file_path") or payload.get("source_code_path") or "").strip()
+    if not code_file_value:
+        issues.append(f"algorithm code visibility evidence lacks code_file_path: {evidence_path}")
+    else:
+        code_file = Path(code_file_value)
+        issues.extend(validate_existing_path(code_file, require_nonempty_file=True))
+        recorded_sha = str(payload.get("code_file_sha256") or payload.get("source_code_sha256") or "").strip()
+        if not re.fullmatch(r"[0-9a-fA-F]{64}", recorded_sha or ""):
+            issues.append(f"algorithm code visibility evidence lacks 64-hex code_file_sha256: {evidence_path}")
+        elif code_file.exists() and recorded_sha.lower() != sha256_file(code_file):
+            issues.append(f"algorithm code visibility evidence code_file_sha256 mismatch: {evidence_path}")
+    line_start = payload.get("visible_line_start") or payload.get("line_start")
+    line_end = payload.get("visible_line_end") or payload.get("line_end")
+    try:
+        start_int = int(line_start)
+        end_int = int(line_end)
+    except (TypeError, ValueError):
+        issues.append(f"algorithm code visibility evidence must record numeric visible line range: {evidence_path}")
+    else:
+        if start_int <= 0 or end_int < start_int:
+            issues.append(f"algorithm code visibility evidence visible line range is invalid: {evidence_path}")
+    try:
+        visible_count = int(payload.get("visible_code_line_count") or 0)
+    except (TypeError, ValueError):
+        visible_count = 0
+    if visible_count <= 0:
+        issues.append(f"algorithm code visibility evidence must record visible_code_line_count > 0: {evidence_path}")
+    for key, label in (
+        ("docx_binding_verdict", "DOCX binding"),
+        ("code_visibility_verdict", "code visibility"),
+    ):
+        if not surface_verdict_passes(str(payload.get(key) or "")):
+            issues.append(f"algorithm code visibility evidence {label} verdict must pass: {evidence_path}")
+    return issues
+
+
+def validate_toc_digits_cache_evidence(
+    evidence_path: Path,
+    record_path: Path,
+    *,
+    final_docx: Path | None = None,
+) -> list[str]:
+    payload, issues = _load_json_evidence(evidence_path, "TOC digits/cache preservation")
+    if payload is None:
+        return issues
+    if payload.get("schema") != "graduation-project-builder.toc-digits-cache-preservation.v1":
+        issues.append(f"TOC digits/cache preservation evidence has wrong schema in {record_path}: {evidence_path}")
+    if not _json_passes(payload):
+        issues.append(f"TOC digits/cache preservation evidence must pass in {record_path}: {evidence_path}")
+    issues.extend(
+        _validate_bound_final_docx(payload, evidence_path=evidence_path, label="TOC digits/cache preservation", final_docx=final_docx)
+    )
+    try:
+        row_count = int(payload.get("toc_cache_row_count") or 0)
+    except (TypeError, ValueError):
+        row_count = 0
+    if row_count <= 0:
+        issues.append(f"TOC digits/cache evidence must record toc_cache_row_count > 0: {evidence_path}")
+    for key, label in (
+        ("digit_spacing_verdict", "digit spacing"),
+        ("page_number_column_verdict", "page-number column"),
+        ("bookmark_anchor_verdict", "bookmark anchor"),
+        ("hyperlink_anchor_verdict", "hyperlink anchor"),
+        ("before_after_cache_verdict", "before/after cache"),
+    ):
+        if not surface_verdict_passes(str(payload.get(key) or "")):
+            issues.append(f"TOC digits/cache evidence {label} verdict must pass: {evidence_path}")
+    for key, label in (
+        ("broken_digit_row_count", "broken digit row"),
+        ("missing_page_number_count", "missing page-number"),
+        ("missing_bookmark_anchor_count", "missing bookmark anchor"),
+        ("missing_hyperlink_anchor_count", "missing hyperlink anchor"),
+    ):
+        try:
+            count = int(payload.get(key) or 0)
+        except (TypeError, ValueError):
+            issues.append(f"TOC digits/cache evidence {label} count must be numeric: {evidence_path}")
+            continue
+        if count != 0:
+            issues.append(f"TOC digits/cache evidence {label} count must be 0: {evidence_path}")
+    return issues
+
+
+def validate_flowchart_acceptance_fields(
+    *,
+    issues: list[str],
+    gate_values: dict[str, str],
+    gate_raw_values: dict[str, str],
+    record_path: Path,
+    final_docx: Path | None,
+) -> None:
+    required_path_fields = (
+        ("- flowchart semantic trigger inventory path:", "flowchart semantic trigger inventory path"),
+        ("- flowchart draw.io source evidence paths:", "flowchart draw.io source evidence paths"),
+        ("- flowchart SVG export evidence paths:", "flowchart SVG export evidence paths"),
+        ("- flowchart raster fallback evidence paths:", "flowchart raster fallback evidence paths"),
+        ("- flowchart source-scale geometry report paths:", "flowchart source-scale geometry report paths"),
+        ("- flowchart rendered-page evidence paths:", "flowchart rendered-page evidence paths"),
+        ("- flowchart final DOCX relationship evidence paths:", "flowchart final DOCX relationship evidence paths"),
+    )
+    for prefix, label in required_path_fields:
+        require_gate_path_field(
+            issues,
+            gate_values=gate_values,
+            gate_raw_values=gate_raw_values,
+            record_path=record_path,
+            prefix=prefix,
+            label=label,
+        )
+    require_gate_pass_verdict(
+        issues,
+        gate_values=gate_values,
+        prefix="- flowchart manifest contract verdict:",
+        label="flowchart manifest contract verdict",
+    )
+
+    drawio_paths = [
+        resolve_record_path(raw_path, record_path)
+        for raw_path in split_path_values(gate_raw_values.get("- flowchart draw.io source evidence paths:", ""))
+    ]
+    geometry_paths = [
+        resolve_record_path(raw_path, record_path)
+        for raw_path in split_path_values(gate_raw_values.get("- flowchart source-scale geometry report paths:", ""))
+    ]
+    for drawio_path in drawio_paths:
+        if drawio_path.suffix.lower() != ".drawio":
+            issues.append(f"flowchart draw.io source evidence must use .drawio files: {drawio_path}")
+            continue
+        issues.extend(validate_existing_path(drawio_path, require_nonempty_file=True))
+        if drawio_path.exists():
+            for issue in drawio_structural_geometry_issues(drawio_path, family="flowchart"):
+                issues.append(f"flowchart draw.io source invalid: {issue}")
+    for geometry_path in geometry_paths:
+        issues.extend(validate_existing_path(geometry_path, require_nonempty_file=True))
+        if not geometry_path.exists() or not drawio_paths:
+            continue
+        matching_drawio = drawio_paths[0]
+        issues.extend(
+            f"flowchart source-scale geometry report invalid: {issue}"
+            for issue in validate_structural_geometry_report(geometry_path, matching_drawio)
+        )
+    for prefix, suffixes, label in (
+        ("- flowchart SVG export evidence paths:", {".svg"}, "flowchart SVG export"),
+        ("- flowchart raster fallback evidence paths:", IMAGE_EXTENSIONS, "flowchart raster fallback"),
+        ("- flowchart rendered-page evidence paths:", IMAGE_EXTENSIONS | PDF_EXTENSIONS | {".md", ".json"}, "flowchart rendered-page evidence"),
+        ("- flowchart final DOCX relationship evidence paths:", {".json", ".md", ".txt"}, "flowchart final DOCX relationship evidence"),
+        ("- flowchart semantic trigger inventory path:", {".json", ".md", ".txt", ".csv"}, "flowchart semantic trigger inventory"),
+    ):
+        for raw_path in split_path_values(gate_raw_values.get(prefix, "")):
+            path = resolve_record_path(raw_path, record_path)
+            issues.extend(validate_existing_path(path, require_nonempty_file=True))
+            if path.exists() and suffixes and path.suffix.lower() not in suffixes:
+                issues.append(f"{label} has unsupported file type: {path}")
+    if final_docx is not None and final_docx.exists():
+        for raw_path in split_path_values(gate_raw_values.get("- flowchart final DOCX relationship evidence paths:", "")):
+            path = resolve_record_path(raw_path, record_path)
+            if path.suffix.lower() != ".json" or not path.exists():
+                continue
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except Exception as exc:
+                issues.append(f"flowchart final DOCX relationship evidence JSON is unreadable: {path} ({exc})")
+                continue
+            if isinstance(payload, dict):
+                issues.extend(
+                    _validate_bound_final_docx(
+                        payload,
+                        evidence_path=path,
+                        label="flowchart final DOCX relationship",
+                        final_docx=final_docx,
+                    )
+                )
 
 
 def figure_manifest_has_er_diagrams(manifest_path: Path | None) -> bool:
@@ -7711,10 +8325,263 @@ def check_gate_record(record_path: Path) -> list[str]:
             ):
                 issues.append("gate record body opener/header title consistency verdict must be pass when title/header drift is user-reported")
 
+        user_reported_acceptance_context = "\n".join([explicit_override_text, subtask_context]).lower()
+        if user_reported_field_gate_required(
+            user_reported_acceptance_context,
+            FIGURE_WIDTH_USER_REPORTED_TOKENS,
+        ):
+            require_gate_path_field(
+                issues,
+                gate_values=gate_values,
+                gate_raw_values=gate_raw_values,
+                record_path=record_path,
+                prefix="- figure extents audit path:",
+                label="figure extents audit path for user-reported screenshot/body-figure width repair",
+            )
+            for raw_path in split_path_values(gate_raw_values.get("- figure extents audit path:", "")):
+                evidence_path = resolve_record_path(raw_path, record_path)
+                issues.extend(
+                    validate_figure_extents_user_evidence(
+                        evidence_path,
+                        record_path,
+                        final_docx=rendered_docx_path,
+                    )
+                )
+            require_gate_pass_verdict(
+                issues,
+                gate_values=gate_values,
+                prefix="- figure paragraph-margin width verdict:",
+                label="figure paragraph-margin width verdict",
+            )
+            require_gate_pass_verdict(
+                issues,
+                gate_values=gate_values,
+                prefix="- figure visible-content completeness verdict:",
+                label="figure visible-content completeness verdict",
+            )
+
+        if user_reported_field_gate_required(
+            user_reported_acceptance_context,
+            ALGORITHM_CODE_USER_REPORTED_TOKENS,
+        ):
+            require_gate_path_field(
+                issues,
+                gate_values=gate_values,
+                gate_raw_values=gate_raw_values,
+                record_path=record_path,
+                prefix="- algorithm code visibility evidence path:",
+                label="algorithm code visibility evidence path for user-reported missing code",
+            )
+            for raw_path in split_path_values(gate_raw_values.get("- algorithm code visibility evidence path:", "")):
+                evidence_path = resolve_record_path(raw_path, record_path)
+                issues.extend(
+                    validate_algorithm_code_visibility_evidence(
+                        evidence_path,
+                        record_path,
+                        final_docx=rendered_docx_path,
+                    )
+                )
+            require_gate_pass_verdict(
+                issues,
+                gate_values=gate_values,
+                prefix="- algorithm code visibility verdict:",
+                label="algorithm code visibility verdict",
+            )
+
+        if user_reported_field_gate_required(
+            user_reported_acceptance_context,
+            TOC_DIGITS_CACHE_USER_REPORTED_TOKENS,
+        ):
+            require_gate_path_field(
+                issues,
+                gate_values=gate_values,
+                gate_raw_values=gate_raw_values,
+                record_path=record_path,
+                prefix="- TOC digits/cache preservation evidence path:",
+                label="TOC digits/cache preservation evidence path for user-reported TOC numbering/cache repair",
+            )
+            for raw_path in split_path_values(gate_raw_values.get("- TOC digits/cache preservation evidence path:", "")):
+                evidence_path = resolve_record_path(raw_path, record_path)
+                issues.extend(
+                    validate_toc_digits_cache_evidence(
+                        evidence_path,
+                        record_path,
+                        final_docx=rendered_docx_path,
+                    )
+                )
+            require_gate_pass_verdict(
+                issues,
+                gate_values=gate_values,
+                prefix="- TOC digits/cache preservation verdict:",
+                label="TOC digits/cache preservation verdict",
+            )
+
+        material_or_generated_required = (
+            contains_any(
+                user_reported_acceptance_context,
+                {
+                    "material.doc",
+                    "source material",
+                    "material source",
+                    "\u7d20\u6750.doc",
+                    "\u7d20\u6750",
+                },
+            )
+            or (
+                contains_any(
+                    user_reported_acceptance_context,
+                    {
+                        "generated image",
+                        "generated substitute",
+                        "ai generated",
+                        "impostor",
+                        "wrapped image",
+                        "\u751f\u6210\u56fe",
+                        "\u5192\u5145",
+                        "\u4f2a draw.io",
+                        "\u4e0d\u662fdraw.io",
+                        "\u4e0d\u662f draw.io",
+                    },
+                )
+                and contains_any(
+                    user_reported_acceptance_context,
+                    {
+                        "draw.io",
+                        "drawio",
+                        "figure",
+                        "diagram",
+                        "flowchart",
+                        "\u56fe",
+                        "\u6d41\u7a0b\u56fe",
+                        "\u753b\u7684\u56fe",
+                    },
+                )
+            )
+        )
+        material_only_required = contains_any(
+            user_reported_acceptance_context,
+            FIGURE_MATERIAL_ONLY_USER_REPORTED_TOKENS,
+        )
+        drawio_impostor_required = (
+            contains_any(
+                user_reported_acceptance_context,
+                {
+                    "generated image",
+                    "generated substitute",
+                    "ai generated",
+                    "impostor",
+                    "wrapped image",
+                    "not draw.io",
+                    "not drawio",
+                    "not a draw.io",
+                    "\u751f\u6210\u56fe",
+                    "\u5192\u5145",
+                    "\u4f2a draw.io",
+                    "\u4e0d\u662fdraw.io",
+                    "\u4e0d\u662f draw.io",
+                },
+            )
+            and contains_any(
+                user_reported_acceptance_context,
+                {
+                    "draw.io",
+                    "drawio",
+                    "flowchart",
+                    "diagram",
+                    "figure",
+                    "\u6d41\u7a0b\u56fe",
+                    "\u753b\u7684\u56fe",
+                    "\u56fe",
+                },
+            )
+        )
+        if material_or_generated_required:
+            require_gate_path_field(
+                issues,
+                gate_values=gate_values,
+                gate_raw_values=gate_raw_values,
+                record_path=record_path,
+                prefix="- figure user material source path:",
+                label="figure user material source path for material/generated-substitute complaint",
+            )
+            material_sha_value = gate_values.get("- figure user material source SHA256:", "")
+            if not re.fullmatch(r"[0-9a-fA-F]{64}", material_sha_value or ""):
+                issues.append("gate record figure user material source SHA256 must be a 64-hex value")
+            require_gate_path_field(
+                issues,
+                gate_values=gate_values,
+                gate_raw_values=gate_raw_values,
+                record_path=record_path,
+                prefix="- figure material-source inventory path:",
+                label="figure material-source inventory path for material/generated-substitute complaint",
+            )
+            require_gate_pass_verdict(
+                issues,
+                gate_values=gate_values,
+                prefix="- figure material-source binding verdict:",
+                label="figure material-source binding verdict",
+            )
+            require_gate_pass_verdict(
+                issues,
+                gate_values=gate_values,
+                prefix="- figure generated-substitute rejection verdict:",
+                label="figure generated-substitute rejection verdict",
+            )
+            if material_only_required:
+                require_gate_pass_verdict(
+                    issues,
+                    gate_values=gate_values,
+                    prefix="- figure material-only reuse verdict:",
+                    label="figure material-only reuse verdict",
+                )
+                supplemental_value = gate_values.get("- figure supplemental material source path:", "")
+                supplemental_ledger_value = gate_values.get("- figure supplemental missing-figure ledger path:", "")
+                if is_explicit(supplemental_value) and not is_explicit_none(supplemental_value):
+                    require_gate_path_field(
+                        issues,
+                        gate_values=gate_values,
+                        gate_raw_values=gate_raw_values,
+                        record_path=record_path,
+                        prefix="- figure supplemental material source path:",
+                        label="figure supplemental material source path for material-only missing figures",
+                    )
+                    supplemental_sha_value = gate_values.get("- figure supplemental material source SHA256:", "")
+                    if not re.fullmatch(r"[0-9a-fA-F]{64}", supplemental_sha_value or ""):
+                        issues.append("gate record figure supplemental material source SHA256 must be a 64-hex value when supplemental source is used")
+                    require_gate_path_field(
+                        issues,
+                        gate_values=gate_values,
+                        gate_raw_values=gate_raw_values,
+                        record_path=record_path,
+                        prefix="- figure supplemental missing-figure ledger path:",
+                        label="figure supplemental missing-figure ledger path",
+                    )
+                    require_gate_pass_verdict(
+                        issues,
+                        gate_values=gate_values,
+                        prefix="- figure supplemental missing-source verdict:",
+                        label="figure supplemental missing-source verdict",
+                    )
+                elif is_explicit(supplemental_ledger_value) and not is_explicit_none(supplemental_ledger_value):
+                    issues.append("gate record supplemental missing-figure ledger is present but supplemental material source path is missing")
+        if drawio_impostor_required and not material_only_required:
+            validate_flowchart_acceptance_fields(
+                issues=issues,
+                gate_values=gate_values,
+                gate_raw_values=gate_raw_values,
+                record_path=record_path,
+                final_docx=rendered_docx_path,
+            )
+
         figure_contract_failed = contains_any(
             figure_contract_summary,
             {"failed", "missing", "generic", "png-only", "raster-only", "no manifest", "no svg", "no draw.io"},
         )
+        if material_only_required and figure_contract_failed and "no draw.io" in figure_contract_summary:
+            figure_contract_failed = contains_any(
+                figure_contract_summary,
+                {"failed", "missing", "generic", "png-only", "raster-only", "no manifest", "no svg"},
+            )
         if figure_contract_failed:
             issues.append("gate record figure source/style contract summary indicates unresolved figure contract drift")
         final_docx_manifest_issues = (

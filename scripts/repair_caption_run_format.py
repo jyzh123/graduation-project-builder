@@ -17,9 +17,25 @@ W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 W = f"{{{W_NS}}}"
 NS = {"w": W_NS}
 XML_SPACE = "{http://www.w3.org/XML/1998/namespace}space"
-CAPTION_RE = re.compile(r"^\s*(图|表|续表)\s*[0-9A-Za-z一二三四五六七八九十\-\.]+")
-
-CAPTION_RE = re.compile(r"^\s*(图|表|续表)\s*[0-9A-Za-z一二三四五六七八九十零〇壹贰叁肆伍陆柒捌玖\-\.]+")
+CAPTION_RE = re.compile(
+    r"^\s*(?P<label>图|表|续表)\s*"
+    r"(?P<number>[0-9A-Za-z一二三四五六七八九十零〇壹贰叁肆伍陆柒捌玖]+"
+    r"(?:[\-－\.．][0-9A-Za-z一二三四五六七八九十零〇壹贰叁肆伍陆柒捌玖]+)*)"
+    r"\s*(?P<title>.+?)\s*$"
+)
+CAPTION_PROSE_PREFIXES = (
+    "中的",
+    "中",
+    "所示",
+    "显示",
+    "展示",
+    "体现",
+    "说明",
+    "可以",
+    "可见",
+    "为",
+    "是",
+)
 
 ET.register_namespace("w", W_NS)
 
@@ -106,14 +122,15 @@ def caption_kind(text: str) -> str | None:
     match = CAPTION_RE.match(text.strip())
     if not match:
         return None
-    return "figure" if match.group(1) == "图" else "table"
-
-
-def caption_kind(text: str) -> str | None:
-    match = CAPTION_RE.match(text.strip())
-    if not match:
+    title = (match.group("title") or "").strip()
+    if not title:
         return None
-    return "figure" if match.group(1) == "图" else "table"
+    compact_title = re.sub(r"\s+", "", title)
+    if compact_title.startswith(CAPTION_PROSE_PREFIXES):
+        return None
+    if len(title) > 80 and re.search(r"[\u3002\uff0c\uff1b,;]", title):
+        return None
+    return "figure" if match.group("label") == "图" else "table"
 
 
 def clone_rpr(run: ET.Element | None) -> ET.Element | None:
@@ -184,68 +201,98 @@ def insert_before_any(parent: ET.Element, child: ET.Element, later_tags: set[str
     parent.append(child)
 
 
-def ensure_caption_direct_metrics(ppr: ET.Element) -> ET.Element:
-    remove_children(ppr, {w("spacing"), w("ind"), w("jc")})
-    spacing = ET.Element(w("spacing"))
-    spacing.set(w("before"), "120")
-    spacing.set(w("after"), "120")
-    spacing.set(w("line"), "240")
-    spacing.set(w("lineRule"), "auto")
-    ind = ET.Element(w("ind"))
-    ind.set(w("left"), "0")
-    ind.set(w("firstLine"), "0")
-    jc = ET.Element(w("jc"))
-    jc.set(w("val"), "center")
-    after_spacing = {
-        w("ind"),
-        w("contextualSpacing"),
-        w("mirrorIndents"),
-        w("suppressOverlap"),
-        w("jc"),
-        w("textDirection"),
-        w("textAlignment"),
-        w("textboxTightWrap"),
-        w("outlineLvl"),
-        w("divId"),
-        w("cnfStyle"),
-        w("rPr"),
-        w("sectPr"),
-        w("pPrChange"),
-    }
-    after_ind = after_spacing - {w("ind")}
-    after_jc = {
-        w("textDirection"),
-        w("textAlignment"),
-        w("textboxTightWrap"),
-        w("outlineLvl"),
-        w("divId"),
-        w("cnfStyle"),
-        w("rPr"),
-        w("sectPr"),
-        w("pPrChange"),
-    }
-    insert_before_any(ppr, spacing, after_spacing)
-    insert_before_any(ppr, ind, after_ind)
-    insert_before_any(ppr, jc, after_jc)
-    return ppr
-
-
-def ensure_caption_run_size(rpr: ET.Element | None) -> ET.Element:
-    fixed = copy.deepcopy(rpr) if rpr is not None else ET.Element(w("rPr"))
-    sz = ensure_child(fixed, w("sz"))
-    sz.set(w("val"), "21")
-    sz_cs = ensure_child(fixed, w("szCs"))
-    sz_cs.set(w("val"), "21")
-    return fixed
-
-
 def caption_ppr_without_wrapping(donor: ET.Element) -> ET.Element | None:
     ppr = donor.find("w:pPr", NS)
     cloned = copy.deepcopy(ppr) if ppr is not None else ET.Element(w("pPr"))
-    for tag in ("w:framePr", "w:ind", "w:outlineLvl", "w:numPr"):
+    for tag in ("w:framePr", "w:outlineLvl", "w:numPr"):
         for node in list(cloned.findall(tag, NS)):
             cloned.remove(node)
-    return ensure_caption_direct_metrics(cloned)
+    return cloned
+
+
+def style_id_from_paragraph(paragraph: ET.Element) -> str | None:
+    style = paragraph.find("w:pPr/w:pStyle", NS)
+    return style.get(w("val")) if style is not None else None
+
+
+def ensure_pstyle(ppr: ET.Element, style_id: str) -> None:
+    pstyle = ppr.find("w:pStyle", NS)
+    if pstyle is None:
+        pstyle = ET.Element(w("pStyle"))
+        ppr.insert(0, pstyle)
+    pstyle.set(w("val"), style_id)
+
+
+def find_style(styles_root: ET.Element, style_id: str) -> ET.Element | None:
+    for style in styles_root.findall("w:style", NS):
+        if style.get(w("styleId")) == style_id:
+            return style
+    return None
+
+
+def find_caption_style_by_name(styles_root: ET.Element) -> ET.Element | None:
+    for style in styles_root.findall("w:style", NS):
+        name = style.find("w:name", NS)
+        name_value = (name.get(w("val")) if name is not None else "") or ""
+        if name_value.strip().lower() in {"caption", "题注", "图题", "表题", "图名", "表名"}:
+            return style
+    return None
+
+
+def load_styles(members: dict[str, bytes]) -> ET.Element | None:
+    payload = members.get("word/styles.xml")
+    if payload is None:
+        return None
+    return ET.fromstring(payload)
+
+
+def write_styles(members: dict[str, bytes], styles_root: ET.Element) -> None:
+    members["word/styles.xml"] = ET.tostring(styles_root, encoding="utf-8", xml_declaration=True)
+
+
+def clone_caption_style(
+    members: dict[str, bytes],
+    template_members: dict[str, bytes],
+    donors: dict[str, ET.Element],
+) -> dict[str, object]:
+    donor_styles_root = load_styles(template_members)
+    target_styles_root = load_styles(members)
+    copied: list[str] = []
+    missing: list[str] = []
+    caption_style_ids = sorted({style_id_from_paragraph(donor) or "Caption" for donor in donors.values()})
+    if donor_styles_root is None:
+        missing = caption_style_ids
+        return {"copied_style_ids": copied, "missing_donor_style_ids": missing, "styles_changed": False}
+    if target_styles_root is None:
+        target_styles_root = copy.deepcopy(donor_styles_root)
+        write_styles(members, target_styles_root)
+        return {
+            "copied_style_ids": caption_style_ids,
+            "missing_donor_style_ids": [],
+            "styles_changed": True,
+            "styles_copy_mode": "copied-template-styles-part",
+        }
+    for style_id in caption_style_ids:
+        donor_style = find_style(donor_styles_root, style_id)
+        if donor_style is None and style_id == "Caption":
+            donor_style = find_caption_style_by_name(donor_styles_root)
+            if donor_style is not None:
+                style_id = donor_style.get(w("styleId")) or style_id
+        if donor_style is None:
+            missing.append(style_id)
+            continue
+        existing = find_style(target_styles_root, style_id)
+        cloned = copy.deepcopy(donor_style)
+        if existing is not None:
+            index = list(target_styles_root).index(existing)
+            target_styles_root.remove(existing)
+            target_styles_root.insert(index, cloned)
+        else:
+            target_styles_root.append(cloned)
+        copied.append(style_id)
+    if copied:
+        write_styles(members, target_styles_root)
+    return {"copied_style_ids": copied, "missing_donor_style_ids": missing, "styles_changed": bool(copied)}
 
 
 def direct_bookmarks(paragraph: ET.Element) -> list[ET.Element]:
@@ -259,6 +306,10 @@ def direct_bookmarks(paragraph: ET.Element) -> list[ET.Element]:
 def set_caption_from_donor(target: ET.Element, donor: ET.Element, kind: str) -> int:
     text = paragraph_text(target)
     ppr = caption_ppr_without_wrapping(donor)
+    style_id = style_id_from_paragraph(donor) or "Caption"
+    if ppr is None:
+        ppr = ET.Element(w("pPr"))
+    ensure_pstyle(ppr, style_id)
     kept = direct_bookmarks(target)
     target[:] = []
     if ppr is not None:
@@ -269,7 +320,7 @@ def set_caption_from_donor(target: ET.Element, donor: ET.Element, kind: str) -> 
     run_count = 0
     for segment_kind, payload in split_caption_text(text):
         rpr = latin_rpr if segment_kind == "latin" else cjk_rpr
-        target.append(make_run(payload, ensure_caption_run_size(rpr or fallback_rpr)))
+        target.append(make_run(payload, rpr or fallback_rpr))
         run_count += 1
     if kind == "table":
         ensure_keep_next(target)
@@ -307,7 +358,9 @@ def repair_captions(source_docx: Path, template_docx: Path, output_docx: Path) -
     donors = caption_donors(template_docx)
     if not donors:
         raise RuntimeError(f"no figure/table caption donor found in template: {template_docx}")
+    template_members, _template_root = load_document(template_docx)
     members, root = load_document(source_docx)
+    style_copy_report = clone_caption_style(members, template_members, donors)
     body = root.find("w:body", NS)
     if body is None:
         raise RuntimeError("word/document.xml has no w:body")
@@ -344,6 +397,9 @@ def repair_captions(source_docx: Path, template_docx: Path, output_docx: Path) -
         raise RuntimeError(f"no body figure/table captions found in source DOCX: {source_docx}")
 
     members["word/document.xml"] = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+    changed_zip_parts = ["word/document.xml"]
+    if style_copy_report.get("styles_changed"):
+        changed_zip_parts.append("word/styles.xml")
     output_docx.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output_docx, "w", zipfile.ZIP_DEFLATED) as zout:
         for name, data in members.items():
@@ -357,7 +413,9 @@ def repair_captions(source_docx: Path, template_docx: Path, output_docx: Path) -
         "template_sha256": sha256_file(template_docx),
         "output_docx": str(output_docx),
         "output_sha256": sha256_file(output_docx),
-        "touched_scope": "word/document.xml figure/table caption paragraphs only",
+        "touched_scope": "word/document.xml figure/table caption paragraphs and donor caption style definitions only",
+        "changed_zip_parts": changed_zip_parts,
+        "caption_style_copy": style_copy_report,
         "caption_count": len(touched),
         "captions": touched,
         "verdict": "pass",

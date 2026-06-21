@@ -68,6 +68,30 @@ STYLE_BEARING_PART_PATTERNS = (
 )
 
 NS = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+CJK_NUMERAL_CLASS = "\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341"
+FORMAL_CAPTION_RE = re.compile(
+    rf"^\s*(?:\u56fe|\u8868)\s*"
+    rf"(?:\d+|[{CJK_NUMERAL_CLASS}]+)"
+    rf"(?:[-.\uff0d\uff0e](?:\d+|[{CJK_NUMERAL_CLASS}]+))*"
+    rf"\s*(?:[\u3000:：]\s*)?(?P<title>\S.*)$",
+    re.I,
+)
+CAPTION_PROSE_PREFIXES = (
+    "\u5c55\u793a",
+    "\u663e\u793a",
+    "\u6240\u793a",
+    "\u8fdb\u4e00\u6b65",
+    "\u8865\u5145",
+    "\u7ed9\u51fa",
+    "\u8bf4\u660e",
+    "\u53cd\u6620",
+    "\u8868\u660e",
+    "\u4f53\u73b0",
+    "\u63cf\u8ff0",
+    "\u4fdd\u7559",
+    "\u6309\u7167",
+    "\u91cc",
+)
 
 
 def qn(tag: str) -> str:
@@ -104,6 +128,9 @@ def paragraph_text(paragraph: ET.Element) -> str:
 
 def paragraph_signature(paragraph: ET.Element) -> dict[str, Any]:
     ppr = paragraph.find("./w:pPr", NS)
+    style = ppr.find("./w:pStyle", NS) if ppr is not None else None
+    drawings = paragraph.findall(".//w:drawing", NS)
+    picts = paragraph.findall(".//w:pict", NS)
     runs = []
     for run in paragraph.findall("./w:r", NS):
         rpr = run.find("./w:rPr", NS)
@@ -122,7 +149,14 @@ def paragraph_signature(paragraph: ET.Element) -> dict[str, Any]:
         )
     return {
         "text": paragraph_text(paragraph),
+        "style_id": style.get(qn("w:val")) if style is not None else None,
         "ppr_sha256": sha256_bytes(ET.tostring(ppr, encoding="utf-8")) if ppr is not None else None,
+        "drawing_count": len(drawings),
+        "drawing_sha256": sha256_bytes(b"".join(ET.tostring(node, encoding="utf-8") for node in drawings))
+        if drawings
+        else None,
+        "pict_count": len(picts),
+        "pict_sha256": sha256_bytes(b"".join(ET.tostring(node, encoding="utf-8") for node in picts)) if picts else None,
         "run_count": len(runs),
         "runs": runs,
     }
@@ -148,6 +182,59 @@ def first_matching(paragraphs: list[dict[str, Any]], patterns: tuple[re.Pattern[
         if any(pattern.search(text) or pattern.search(compact) for pattern in patterns):
             return paragraph
     return None
+
+
+def is_formal_caption_text(text: str) -> bool:
+    match = FORMAL_CAPTION_RE.match(text or "")
+    if not match:
+        return False
+    title = (match.group("title") or "").strip()
+    if not title:
+        return False
+    compact_title = text_key(title)
+    if compact_title.startswith(CAPTION_PROSE_PREFIXES):
+        return False
+    if len(title) > 80 and re.search(r"[\u3002\uff0c\uff1b,;]", title):
+        return False
+    return True
+
+
+def figure_table_caption_holder_signature(paragraphs: list[dict[str, Any]]) -> dict[str, Any] | None:
+    records: list[dict[str, Any]] = []
+    for paragraph_index, paragraph in enumerate(paragraphs, start=1):
+        text = str(paragraph.get("text", ""))
+        is_caption = is_formal_caption_text(text)
+        is_holder = bool(paragraph.get("drawing_count") or paragraph.get("pict_count"))
+        if not is_caption and not is_holder:
+            continue
+        records.append(
+            {
+                "paragraph_index": paragraph_index,
+                "kind": (
+                    "figure-caption"
+                    if is_caption and text.lstrip().startswith("\u56fe")
+                    else "table-caption"
+                    if is_caption
+                    else "image-holder"
+                ),
+                "text": text,
+                "style_id": paragraph.get("style_id"),
+                "ppr_sha256": paragraph.get("ppr_sha256"),
+                "drawing_count": paragraph.get("drawing_count"),
+                "drawing_sha256": paragraph.get("drawing_sha256"),
+                "pict_count": paragraph.get("pict_count"),
+                "pict_sha256": paragraph.get("pict_sha256"),
+                "run_count": paragraph.get("run_count"),
+                "runs": paragraph.get("runs", []),
+            }
+        )
+    if not records:
+        return None
+    return {
+        "caption_count": sum(1 for record in records if str(record.get("kind", "")).endswith("caption")),
+        "holder_count": sum(1 for record in records if record.get("kind") == "image-holder"),
+        "paragraphs": records,
+    }
 
 
 SURFACE_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
@@ -176,6 +263,7 @@ def infer_surface_signatures(paragraphs: list[dict[str, Any]]) -> dict[str, dict
         ),
         None,
     )
+    out["figure_table_captions_and_holders"] = figure_table_caption_holder_signature(paragraphs)
     out["whole_document_pagination"] = {"paragraph_count": len(paragraphs)}
     return out
 
@@ -211,7 +299,15 @@ def _keyword_expected_labels(surface: str) -> set[str]:
     return {":", "："}
 
 
-def keyword_run_split_verdict(surface_diffs: dict[str, dict[str, Any]]) -> str:
+def keyword_run_split_verdict(surface_diffs: dict[str, dict[str, Any]], target_surfaces: set[str]) -> str:
+    keyword_surfaces = {"zh_keyword_line", "en_keyword_line"}
+    keyword_targeted = bool(keyword_surfaces & target_surfaces)
+    keyword_changed = any(
+        (surface_diffs.get(surface, {}) or {}).get("status") not in {None, "unchanged", "not-present"}
+        for surface in keyword_surfaces
+    )
+    if not keyword_targeted and not keyword_changed:
+        return "not-applicable keyword surfaces unchanged and not targeted"
     blockers = []
     for surface in ("zh_keyword_line", "en_keyword_line"):
         item = surface_diffs.get(surface, {})
@@ -349,12 +445,12 @@ def build_report(
         if diff["status"] == "changed":
             unauthorized_surface_changes.append(surface)
 
-    keyword_verdict = keyword_run_split_verdict(surface_diffs)
+    keyword_verdict = keyword_run_split_verdict(surface_diffs, target_surfaces)
     verdict = (
         "pass"
         if not unauthorized_surface_changes
         and not unauthorized_style_parts
-        and keyword_verdict.startswith("pass")
+        and (keyword_verdict.startswith("pass") or keyword_verdict.startswith("not-applicable"))
         and review_verdict.startswith("pass")
         and citation_verdict.startswith("pass")
         else "fail"

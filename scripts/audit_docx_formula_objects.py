@@ -62,6 +62,21 @@ CODE_TOKEN_RE = re.compile(
     r"\bif\s+.+:|\bfor\s+.+:|\btry:|\bexcept\b|=>|</?\w+)",
     re.I,
 )
+PY_CODE_ASSIGNMENT_RE = re.compile(
+    r"^\s*[a-z_][a-z0-9_]{2,}\s*=\s*"
+    r"(?:\{|\[|\(|None\b|True\b|False\b|float\s*\(|sorted\s*\(|abs\s*\(|"
+    r"estimate_[a-z0-9_]*\s*\(|[a-z_][a-z0-9_]*\s*\(|[a-z_][a-z0-9_]{2,}\b|"
+    r"[-+]?\d+(?:\.\d+)?\b)",
+    re.I,
+)
+PY_CODE_CONTINUATION_RE = re.compile(
+    r"^\s*(?:[+\-*/]\s*)?"
+    r"(?:[a-z_][a-z0-9_]*\[[^\]]+\]|[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*\(|"
+    r"and\s+|or\s+|key\s*=\s*lambda\b|if\s+.+:|for\s+.+:|while\s+.+:|"
+    r"continue\b|break\b|else:|elif\s+.+:|return\b)",
+    re.I,
+)
+PY_CODE_PUNCTUATION_RE = re.compile(r"^\s*[\])}]+\s*,?\s*$")
 STATUS_ASSIGNMENT_RE = re.compile(r"^[\u4e00-\u9fffA-Za-z\s]*(?:status|code|message|url|id|api|path)\s*=\s*[\w./:-]+$", re.I)
 BODY_START_RE = re.compile(
     r"^\s*(?:第[一二三四五六七八九十]+章|[1-9]\d?(?:\s|[\.．、])|绪论|引言|设计计算|结构设计)"
@@ -1168,10 +1183,24 @@ def is_formula_like_text(text: str) -> tuple[bool, list[str]]:
     )
     if STATUS_ASSIGNMENT_RE.fullmatch(compact) and not formula_like:
         return False, ["status-or-api-assignment"]
-    code_like = bool(CODE_LINE_RE.search(compact) or CODE_TOKEN_RE.search(compact))
+    code_like = is_code_like_text(compact)
     if code_like and not (formula_like and re.search(r"[\u4e00-\u9fff]", compact)):
         return False, ["code-or-api-line"]
     return formula_like, reasons
+
+
+def is_code_like_text(text: str) -> bool:
+    compact = re.sub(r"\s+", " ", text).strip()
+    if not compact:
+        return False
+    return bool(
+        CODE_LINE_RE.search(compact)
+        or CODE_TOKEN_RE.search(compact)
+        or PY_CODE_ASSIGNMENT_RE.search(compact)
+        or PY_CODE_CONTINUATION_RE.search(compact)
+        or PY_CODE_PUNCTUATION_RE.search(compact)
+        or compact.startswith(('"""', "'''"))
+    )
 
 
 def cjk_char_count(text: str) -> int:
@@ -1250,6 +1279,7 @@ def audit_docx(
 
     formula_like_paragraphs: list[dict[str, object]] = []
     pseudo_formula_paragraphs: list[dict[str, object]] = []
+    code_like_formula_exclusions: list[dict[str, object]] = []
     real_formula_paragraphs: list[dict[str, object]] = []
     unit_math_paragraphs: list[dict[str, object]] = []
     missing_formula_after_leadin: list[dict[str, object]] = []
@@ -1279,6 +1309,24 @@ def audit_docx(
 
     for index, paragraph in enumerate(paragraphs):
         text = paragraph_text(paragraph)
+        code_like = is_code_like_text(text)
+        code_formula_signal = bool(
+            ASSIGNMENT_RE.search(text)
+            and (
+                OPERATOR_RE.search(text)
+                or TEXT_FORMULA_TOKEN_RE.search(text)
+                or INEQUALITY_RE.search(text)
+            )
+        )
+        if code_like and code_formula_signal and not has_math(paragraph):
+            code_like_formula_exclusions.append(
+                {
+                    "paragraph_index": index,
+                    "text": text.strip(),
+                    "reason": "code-like algorithm/program line excluded from pseudo-formula audit",
+                }
+            )
+            continue
         formula_like, reasons = is_formula_like_text(text)
         contains_math = has_math(paragraph)
         paragraph_math_count = math_count(paragraph)
@@ -1422,6 +1470,8 @@ def audit_docx(
         "formula_like_paragraph_count": len(formula_like_paragraphs),
         "real_formula_paragraph_count": len(real_formula_paragraphs),
         "pseudo_formula_count": len(pseudo_formula_paragraphs),
+        "code_like_formula_exclusion_count": len(code_like_formula_exclusions),
+        "code_like_formula_exclusions": code_like_formula_exclusions,
         "missing_formula_after_leadin_count": len(missing_formula_after_leadin),
         "formula_number_table_count": number_layout["formula_number_table_count"],
         "formula_number_cell_count": number_layout["formula_number_cell_count"],

@@ -1556,6 +1556,14 @@ def body_surface_direct_metric_records(docx_path: Path) -> list[dict[str, object
                 "jc": "center",
                 "line": "360",
                 "lineRule": "auto",
+                "firstLine": "0",
+                "left": "0",
+                "right": "0",
+                "hanging": "0",
+                "firstLineChars": "0",
+                "leftChars": "0",
+                "rightChars": "0",
+                "hangingChars": "0",
             }
         elif text and is_formal_caption_text(text):
             kind = "figure-caption" if is_figure_caption_text(text) else "table-caption"
@@ -1588,6 +1596,8 @@ def body_surface_direct_metric_records(docx_path: Path) -> list[dict[str, object
                 reasons.append(f"{kind} direct font size expected `21` found `{max_size or 'missing'}`")
         if kind == "table-caption" and not paragraph_has_keep_next(child):
             reasons.append("table-caption expected keepNext")
+        if kind == "image-holder" and not paragraph_has_keep_next(child):
+            reasons.append("image-holder expected keepNext")
         if reasons:
             records.append(
                 {

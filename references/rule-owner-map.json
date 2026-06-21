@@ -2686,6 +2686,32 @@
         "Figure Holder And Figure Caption Paragraphs Must Clear Direct Indent And List Residues"
       ],
       "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/template-and-layout.md`: namespace `FB-LAYOUT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_body_style.py::body_surface_direct_metric_records",
+        "scripts/audit_docx_figure_extents.py::audit_figure_extents",
+        "scripts/validate_skill_gate_record_gate.py::validate_figure_extents_user_evidence"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_audit_figure_extents_image_holder_indent_rejected",
+        "scripts/selftest_skill_flow.py::case_repair_figure_extents_clears_image_holder_indent_valid"
+      ],
+      "template_owner": [
+        "assets/final-acceptance-template.md"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "figure extents audit path",
+        "figure image-holder layout verdict",
+        "figure image-holder layout issue count",
+        "figure visible-content completeness verdict"
+      ],
       "status": "active"
     },
     {
@@ -3244,7 +3270,9 @@
         "scripts/audit_docx_figure_extents.py::audit_figure_extents"
       ],
       "selftest_owner": [
-        "scripts/selftest_skill_flow.py::case_figure_width_not_paragraph_margin_aligned_rejected"
+        "scripts/selftest_skill_flow.py::case_figure_width_not_paragraph_margin_aligned_rejected",
+        "scripts/selftest_skill_flow.py::case_user_reported_figure_width_gate_fields_missing_rejected",
+        "scripts/selftest_skill_flow.py::case_user_reported_figure_width_dummy_evidence_rejected"
       ],
       "required_load_modes": [
         "thesis-only",
@@ -3254,7 +3282,9 @@
       ],
       "acceptance_fields": [
         "figure inventory path",
-        "per-figure rendered evidence paths"
+        "per-figure rendered evidence paths",
+        "figure extents audit path",
+        "figure paragraph-margin width verdict"
       ],
       "status": "active"
     },
@@ -3437,6 +3467,30 @@
         "Image Paragraphs Must Not Inherit Body Line Spacing"
       ],
       "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/final-qa-and-tooling.md`: namespace `QA-FINAL-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_body_style.py::body_surface_direct_metric_records",
+        "scripts/audit_docx_figure_extents.py::audit_figure_extents"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_audit_figure_extents_exact_line_spacing_clip_rejected",
+        "scripts/selftest_skill_flow.py::case_repair_figure_extents_clears_exact_line_spacing_valid"
+      ],
+      "template_owner": [
+        "assets/final-acceptance-template.md"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "figure extents audit path",
+        "figure visible-content completeness verdict",
+        "figure exact-line-spacing clipping count"
+      ],
       "status": "active"
     },
     {
@@ -3489,6 +3543,31 @@
         "Figure Pagination Must Keep The Image Paragraph And Caption On The Same Page"
       ],
       "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/final-qa-and-tooling.md`: namespace `QA-FINAL-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_body_style.py::body_surface_direct_metric_records",
+        "scripts/audit_docx_figure_extents.py::audit_figure_extents"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_audit_figure_extents_image_holder_indent_rejected",
+        "scripts/selftest_skill_flow.py::case_repair_figure_extents_clears_image_holder_indent_valid"
+      ],
+      "template_owner": [
+        "assets/final-acceptance-template.md"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "figure extents audit path",
+        "figure image-holder layout verdict",
+        "figure image-holder layout issue count",
+        "per-figure rendered evidence paths"
+      ],
       "status": "active"
     },
     {
@@ -3541,6 +3620,32 @@
         "Image Holders, Figure Captions, Table Captions, Continuation Titles, And Table Cells Must Clear Body First-Line Indent Residue"
       ],
       "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/final-qa-and-tooling.md`: namespace `QA-FINAL-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_body_style.py::body_surface_direct_metric_records",
+        "scripts/audit_docx_figure_extents.py::audit_figure_extents",
+        "scripts/validate_skill_gate_record_gate.py::validate_figure_extents_user_evidence"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_audit_figure_extents_image_holder_indent_rejected",
+        "scripts/selftest_skill_flow.py::case_repair_figure_extents_clears_image_holder_indent_valid"
+      ],
+      "template_owner": [
+        "assets/final-acceptance-template.md"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "figure extents audit path",
+        "figure image-holder layout verdict",
+        "figure image-holder layout issue count",
+        "figure visible-content completeness verdict"
+      ],
       "status": "active"
     },
     {
@@ -4549,6 +4654,25 @@
         "Runtime Screenshots And Code Screenshots Must Be Governed As Separate Figure Families"
       ],
       "router_file": "references/user-feedback-persistence.md",
+      "router_anchor": "- `references/user-feedback/maintenance-and-structure.md`: namespace `EXEC-MAINT-*`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_user_reported_algorithm_code_visibility_fields_missing_rejected",
+        "scripts/selftest_skill_flow.py::case_user_reported_algorithm_code_visibility_dummy_evidence_rejected"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "algorithm code visibility evidence path",
+        "algorithm code visibility verdict"
+      ],
       "status": "active"
     },
     {
@@ -6711,6 +6835,46 @@
         "source-to-final controlled-change ledger"
       ],
       "router_file": "references/thesis/thesis-format-rules.md",
+      "status": "active"
+    },
+    {
+      "id": "FMT-EVID-016",
+      "legacy_id": null,
+      "owner_file": "references/thesis/format-rules/protected-surface-evidence-contract.md",
+      "owner_group": "protected-surface-evidence-contract",
+      "heading": "## FMT-EVID-016. Figure And Table Caption Style Drift Must Be Source-Relative",
+      "required_keywords": [
+        "FMT-EVID-016",
+        "Figure And Table Caption Style Drift",
+        "figure_table_captions_and_holders",
+        "formal figure-caption paragraphs",
+        "formal table-caption",
+        "image-holder paragraphs"
+      ],
+      "router_file": "SKILL.md",
+      "router_anchor": "- `references/thesis/format-rules/protected-surface-evidence-contract.md`",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_protected_surface_diff.py::figure_table_caption_holder_signature",
+        "scripts/validate_thesis_mutation_transaction.py::validate_protected_surface_diff_report"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_protected_surface_diff_caption_style_drift_rejected",
+        "scripts/selftest_skill_flow.py::case_protected_surface_diff_caption_style_drift_keyword_not_applicable_valid",
+        "scripts/selftest_skill_flow.py::case_repair_caption_run_format_uses_donor_style_valid"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "post_mutation_surface_diff path",
+        "post-mutation surface diff verdict",
+        "non-target protected surface change verdict",
+        "final_docx_sha256"
+      ],
       "status": "active"
     },
     {
@@ -9125,10 +9289,13 @@
       "enforcement_required": true,
       "validator_owner": [
         "scripts/validate_thesis_mutation_transaction.py::validate_transaction_record",
-        "scripts/audit_docx_body_style.py"
+        "scripts/audit_docx_body_style.py",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
       ],
       "selftest_owner": [
-        "scripts/selftest_skill_flow.py::case_transaction_body_visual_evidence_field_missing_rejected"
+        "scripts/selftest_skill_flow.py::case_transaction_body_visual_evidence_field_missing_rejected",
+        "scripts/selftest_skill_flow.py::case_user_reported_toc_digits_cache_fields_missing_rejected",
+        "scripts/selftest_skill_flow.py::case_user_reported_toc_digits_cache_dummy_evidence_rejected"
       ],
       "required_load_modes": [
         "thesis-only",
@@ -9144,7 +9311,9 @@
         "neighbor_body_baseline_comparison_verdict",
         "toc_field_cache_preservation_verdict",
         "toc_package_diff_verdict",
-        "toc_rendered_sync_verdict"
+        "toc_rendered_sync_verdict",
+        "TOC digits/cache preservation evidence path",
+        "TOC digits/cache preservation verdict"
       ],
       "status": "active"
     },
@@ -9430,6 +9599,10 @@
       "selftest_owner": [
         "scripts/selftest_skill_flow.py::case_figure_manifest_flowchart_geometry_report_required_rejected",
         "scripts/selftest_skill_flow.py::case_figure_manifest_flowchart_geometry_report_valid",
+        "scripts/selftest_skill_flow.py::case_figure_manifest_structural_material_source_still_requires_drawio_rejected",
+        "scripts/selftest_skill_flow.py::case_figure_manifest_drawio_image_only_impostor_rejected",
+        "scripts/selftest_skill_flow.py::case_user_reported_drawio_impostor_flowchart_fields_missing_rejected",
+        "scripts/selftest_skill_flow.py::case_user_reported_drawio_impostor_image_only_source_rejected",
         "scripts/selftest_skill_flow.py::case_figure_manifest_table_caption_rows_only_rejected",
         "scripts/selftest_skill_flow.py::case_figure_manifest_table_authority_rendered_evidence_valid"
       ],
@@ -9453,12 +9626,129 @@
         "flowchart rendered-page evidence paths",
         "flowchart final DOCX relationship evidence paths",
         "flowchart manifest contract verdict",
+        "figure material-source binding verdict",
+        "figure material-only reuse verdict",
+        "figure generated-substitute rejection verdict",
         "table surface inventory path",
         "table manifest path",
         "table manifest contract verdict",
         "table per-table evidence rows",
         "table exact-output DOCX binding evidence path",
         "table final DOCX SHA256 binding"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "CORE-FIGURE-019",
+      "legacy_id": null,
+      "owner_file": "references/thesis/figure-rules/baseline-and-sourcing.md",
+      "owner_group": "thesis-figure-baseline-and-sourcing",
+      "heading": "### CORE-FIGURE-019. User-Directed Material-Only Figure Reuse Overrides Redraw (Mandatory)",
+      "required_keywords": [
+        "CORE-FIGURE-019",
+        "User-Directed Material-Only Figure Reuse Overrides Redraw",
+        "material-only-reuse",
+        "material_only_reuse",
+        "no_redraw_user_override",
+        "final embedded media SHA256"
+      ],
+      "router_file": "references/thesis/thesis-figure-generation-rules.md",
+      "router_anchor": "- For a current-user `material-only-reuse` instruction such as \"only pull images from the material document\", \"do not redraw\", \"do not generate\", or \"use the supplemental DOCX only for missing figures\", load:",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/thesis_figure_contract.py::validate_user_material_source_contract",
+        "scripts/validate_skill_gate_record_gate.py::check_gate_record"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_figure_manifest_material_only_structural_valid"
+      ],
+      "template_owner": [
+        "assets/final-acceptance-template.md"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "figure user material source path",
+        "figure user material source SHA256",
+        "figure supplemental material source path",
+        "figure supplemental missing-figure ledger path",
+        "figure material-source inventory path",
+        "figure material-source binding verdict",
+        "figure material-only reuse verdict",
+        "figure generated-substitute rejection verdict",
+        "figure extents audit path",
+        "figure paragraph-margin width verdict"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "CORE-FIGURE-020",
+      "legacy_id": null,
+      "owner_file": "references/thesis/figure-rules/baseline-and-sourcing.md",
+      "owner_group": "thesis-figure-baseline-and-sourcing",
+      "heading": "### CORE-FIGURE-020. Horizontal Body Figures Default To Paragraph Width (Mandatory)",
+      "required_keywords": [
+        "CORE-FIGURE-020",
+        "Horizontal Body Figures Default To Paragraph Width",
+        "paragraph width",
+        "width-to-text ratio",
+        "system screenshots",
+        "native PPI",
+        "native-resolution constrained width",
+        "image-holder layout",
+        "body first-line indent",
+        "all drawing-holder paragraphs",
+        "abnormal image-holder indent"
+      ],
+      "router_file": "references/thesis/thesis-figure-generation-rules.md",
+      "router_anchor": "- For a current-user `material-only-reuse` instruction such as \"only pull images from the material document\", \"do not redraw\", \"do not generate\", or \"use the supplemental DOCX only for missing figures\", load:",
+      "enforcement_required": true,
+      "validator_owner": [
+        "scripts/audit_docx_figure_extents.py::audit_figure_extents",
+        "scripts/validate_skill_gate_record_gate.py::validate_figure_extents_user_evidence"
+      ],
+      "selftest_owner": [
+        "scripts/selftest_skill_flow.py::case_figure_width_not_paragraph_margin_aligned_rejected",
+        "scripts/selftest_skill_flow.py::case_audit_figure_extents_low_native_ppi_rejected",
+        "scripts/selftest_skill_flow.py::case_audit_figure_extents_native_constrained_width_valid",
+        "scripts/selftest_skill_flow.py::case_audit_figure_extents_src_rect_crop_rejected",
+        "scripts/selftest_skill_flow.py::case_audit_figure_extents_exact_line_spacing_clip_rejected",
+        "scripts/selftest_skill_flow.py::case_audit_figure_extents_image_holder_indent_rejected",
+        "scripts/selftest_skill_flow.py::case_repair_figure_extents_clears_image_holder_indent_valid",
+        "scripts/selftest_skill_flow.py::case_repair_figure_extents_shrinks_low_native_ppi_valid",
+        "scripts/selftest_skill_flow.py::case_audit_figure_extents_frontmatter_holder_indent_source_preserved_rejected",
+        "scripts/selftest_skill_flow.py::case_repair_figure_extents_clears_frontmatter_holder_indent_valid"
+      ],
+      "template_owner": [
+        "assets/final-acceptance-template.md"
+      ],
+      "required_load_modes": [
+        "thesis-only",
+        "program-plus-thesis",
+        "format-repair-only",
+        "skill-maintenance"
+      ],
+      "acceptance_fields": [
+        "figure extents audit path",
+        "figure paragraph-margin width verdict",
+        "figure native PPI threshold",
+        "figure native PPI target binding",
+        "figure native PPI enforcement verdict",
+        "figure native PPI issue count",
+        "figure native-resolution constrained width count",
+        "figure target pixel size and inserted PPI",
+        "figure visible-content completeness verdict",
+        "figure nonzero crop count",
+        "figure exact-line-spacing clipping count",
+        "figure image-holder layout verdict",
+        "figure image-holder layout issue count",
+        "figure all-drawing holder layout issue count",
+        "figure image-holder noncenter alignment count",
+        "figure image-holder abnormal indent count"
       ],
       "status": "active"
     },

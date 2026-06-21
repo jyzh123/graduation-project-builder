@@ -241,7 +241,9 @@ Use this file for durable template-following, TOC, heading, front-matter, and la
 
 - Do not treat the minimum readable width (`8.0 cm` for runtime/UI images and `9.0 cm` for structural figures) as the default insertion width.
 - Unless the active school template, locked sample, or current user instruction explicitly sets a smaller accepted width, body figures must be inserted close to the available text width between the paragraph left and right margins.
+- Landscape and near-landscape body figures are paragraph-width figures by default for every thesis run. When width is greater than height, set the displayed width to the available text width and preserve aspect ratio; do not leave horizontal screenshots or diagrams at a small mid-page width merely because the image is already legible in the raw media file.
 - The final-DOCX display audit must record the body text width and each body figure's width/text-width ratio; figures below the default ratio gate are compressed evidence, not acceptable repaired figures.
+- When the user reports screenshots or body figures are too small, final acceptance must bind the canonical figure-extents JSON for the exact final DOCX SHA256 and a pass paragraph-margin width verdict. A path-only or prose-only evidence file is not enough.
 - Source readability repair remains mandatory for dense structural figures. A paragraph-width insertion cannot compensate for unreadable source typography, connector collisions, or crowded labels.
 - A final handoff that claims "figures fixed" must include rendered-page review after the width change so captions, page breaks, and nearby paragraphs are not broken by reflow.
 

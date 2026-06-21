@@ -23,11 +23,12 @@ Thesis figure generation is not optional polish. If the thesis topic, template, 
 
 When deciding how a figure should look, use this order of authority:
 
-1. user-provided figure samples or screenshots
-2. actual figure/image samples inside the active school template or accepted sample thesis
-3. current school template or accepted sample thesis rules for caption, image-holder, spacing, and pagination
-4. stored skill samples and stable thesis format rules in this skill
-5. conservative default academic diagram style
+1. explicit current-user source instructions, including material-only reuse and no-redraw instructions
+2. user-provided figure samples or screenshots
+3. actual figure/image samples inside the active school template or accepted sample thesis
+4. current school template or accepted sample thesis rules for caption, image-holder, spacing, and pagination
+5. stored skill samples and stable thesis format rules in this skill
+6. conservative default academic diagram style
 
 Do not skip a higher-priority visual source just because a lower-priority default already exists.
 
@@ -52,6 +53,35 @@ Do not skip a higher-priority visual source just because a lower-priority defaul
 - If source and final DOCX media relationship manifests differ, the run is an image mutation even when the task text only says `format repair`, `content cleanup`, or similar wording.
 - If source and final DOCX drawing object manifests differ by size, inline/anchor mode, relationship set, or caption adjacency, the run is an image mutation even when media relationship manifests are identical.
 - Structural replacement figures must still use draw.io source, SVG export, and raster fallback. Mermaid, Pillow/PIL, hand-drawn PNG, fixed-coordinate quick drawings, or other draft-only raster paths cannot be accepted as final structural figure sources.
+
+### CORE-FIGURE-019. User-Directed Material-Only Figure Reuse Overrides Redraw (Mandatory)
+
+- When the current user explicitly says that thesis images must be pulled only from a material document, source DOCX, supplied screenshot bundle, or a named supplemental document, the active run must enter `material-only-reuse` mode for that paper.
+- In `material-only-reuse` mode, do not generate, redraw, reinterpret, trace, or rebuild figures, even when a caption or nearby prose has flowchart, workflow, architecture, ER, use-case, sequence, or other structural semantics.
+- A material-only structural or flowchart figure is accepted as a source-preserved raster figure. The validator must check material provenance and final embedded-media binding instead of demanding draw.io, SVG, geometry, or native reconstruction evidence.
+- Approved sources must be locked in priority order. The primary material document is searched first. A supplemental document may be used only for figure slots that are missing from the primary material source, and the evidence must record the missing-figure reason.
+- Each material-only figure row must record `material_only_reuse=true`, `no_redraw_user_override=true`, the current user override, material source path and SHA256, inventory path, material anchor/caption/index, extracted image path and SHA256, final embedded media SHA256, source-match verdict, generated-substitute rejection verdict, and material-only reuse verdict.
+- A draw.io file, SVG, generated PNG, AI-created bitmap, screenshot of a redrawn diagram, or draw.io wrapper containing an imported material image is not a valid substitute for this mode. If such an asset is present, the run must record it as rejected rather than use it for the final DOCX.
+- If the run cannot prove that the final embedded image hash came from the primary material document or an allowed supplemental source, the figure fails even if it is visually clear.
+
+### CORE-FIGURE-020. Horizontal Body Figures Default To Paragraph Width (Mandatory)
+
+- For all thesis DOCX work, horizontal/landscape figures, wide screenshots, system-interface screenshots, and other readable raster figures must default to the正文 usable paragraph width.
+- The expected width is the section text width, computed from page width minus left and right margins, not a hard-coded centimeter value.
+- Preserve aspect ratio. A tall portrait figure may be constrained by safe page height, but a horizontal figure or system screenshot that can fit at paragraph width must not be left as a small centered thumbnail.
+- Paragraph-width placement must not override native raster readability. Before enlarging a raster figure to the正文 usable width, compute the inserted native PPI from the embedded image pixel dimensions and the displayed size. If the source pixels would fall below the active native-PPI threshold at正文 width, the run must first look for a higher-resolution image in the locked material source. If no higher-resolution source exists, do not stretch the low-resolution raster; constrain the displayed extent to the largest size that satisfies the native-PPI threshold, record `native_resolution_constrained_width=true`, and bind the missing-high-resolution-source evidence.
+- User-reported blurry figures must enable native-PPI enforcement in `scripts/audit_docx_figure_extents.py`. A figure inserted at low native PPI is failed even when its outer selection frame reaches正文 width, because the visible text remains unreadable after PDF conversion.
+- Figure extent evidence must report text width, actual inserted width, width-to-text ratio, and whether any height constraint prevented paragraph-width placement.
+- Figure extent evidence for blurry-image complaints must also report pixel width/height, inserted PPI, native PPI at正文 width, native-resolution constraint verdict, and native-PPI issue count.
+- The acceptance keyword for low-pixel raster shrinkage is `native-resolution constrained width`; records may expose it as `native_resolution_constrained_width`, but the rule owner remains this paragraph.
+- The image-holder paragraph itself must be part of the insertion-stage audit. Body figures must be centered in a dedicated holder paragraph or an equivalent direct-format holder baseline with zero effective first-line, left, right, hanging, and character-unit indents. A body first-line indent, body-text first-line indent, hanging indent, list residue, or non-centered alignment that shifts the picture body away from the paragraph margins is a hard failure even when the drawing extent is correct.
+- The insertion-stage audit must cover all drawing-holder paragraphs, including front matter, body, appendix, headers/footers when present, and any non-caption holder paragraph that carries a real drawing.
+- The acceptance keyword for unsafe holder indentation is `abnormal image-holder indent`; records may expose it through abnormal-indent counts or holder effective-indent fields.
+- Width/height evidence alone is not enough. The same insertion-stage audit must also reject hidden visible-content clipping, including nonzero DrawingML `a:srcRect` crop rectangles, legacy/VML crop attributes when present, image-holder paragraphs whose exact line spacing is smaller than the inline image extent, and drawing extents that exceed the safe page-height threshold.
+- A figure whose outer Word selection frame is paragraph-width but whose visible picture body is offset by inherited body indentation, cropped, clipped, truncated, shown as a thin strip, or split across pages is failed. Clear the holder layout/crop/paragraph-safety defect or resize/move the figure block, then rerender the touched page and adjacent page before handoff.
+- For user-reported image display-incomplete or image indentation complaints, final evidence must include a visible-content completeness verdict, image-holder layout verdict, image-holder layout issue count, nonzero crop count, exact-line-spacing clipping count, safe page-height verdict, and rendered page or page-region review for each affected figure.
+- Source preservation does not exempt holder layout safety. Every real drawing-holder paragraph in `word/document.xml`, including cover, front-matter, logo, banner, body, appendix, and other non-caption image paragraphs, must be audited for zero effective abnormal indentation, centered or donor-authorized effective alignment, non-clipping line spacing, and zero visible crop. Front-matter/template images are not resized by the paragraph-width rule unless explicitly authorized, but their holder paragraph must not inherit body first-line/hanging/list indentation or clipping line spacing.
+- Final acceptance for user-reported small-image complaints must bind `scripts/audit_docx_figure_extents.py` evidence with a passing paragraph-margin width verdict.
 
 ## Figure Types That Usually Must Be Covered
 
@@ -161,6 +191,8 @@ When relevant to the thesis, generate or capture these by default:
 - For comment-driven, replacement, or incidental figure generation, the same manifest must also record task-card path and evidence paths for every planned or touched figure.
 - Figure family is not only a manifest field supplied by the caller. The canonical figure contract must infer family from title, caption, and explanation text; wording such as `流程`, `链路`, `步骤`, `过程`, `处理`, `pipeline`, or `workflow` routes the figure to the flowchart contract even if the manifest declares `structure`.
 - A structural thesis figure cannot be accepted from a plain `image_path` alone. It must have a draw.io source, an SVG export, and a raster fallback; the PNG may only serve as fallback evidence.
+- A draw.io structural source must contain native mxGraph shapes and connectors. Imported `shape=image` cells, `data:image` payloads, image URLs, pasted material screenshots, or generated PNG/SVG artwork inside a draw.io wrapper are raster impostors and must fail validation.
+- When a user-provided material document is the source authority, bind the material file SHA256, inventory row, anchor/caption, extracted-preview SHA when available, and source-match verdict. This proves provenance only; it never waives the draw.io/SVG/raster fallback contract for structural figures.
 - Every final-DOCX figure or embedded media relationship must be covered by the structured `figure.scope-manifest-contract` detector in the exact `sample_self_check` report used for handoff. A manifest row must include the per-figure task card, caption-to-asset mapping, final-DOCX relationship evidence, post-insertion rendered-page evidence, insertion status, and rendered-page status. Missing evidence, a stale source image that was never inserted, or a DOCX image without a manifest row blocks acceptance.
 - An ER structural thesis figure cannot be accepted until the canonical figure contract validates its draw.io source against `scripts/validate_structural_figure_geometry.py` and the geometry report verdict is `pass`.
 - A PNG fallback or renderer-generated fallback image may exist inside the DOCX package, but it must not be the only surviving insertion path for a structural figure when an approved SVG source exists.

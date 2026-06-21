@@ -12,7 +12,9 @@ Use this file for connector geometry, ER layout, tree layout, text containment, 
 For ordinary body figures, runtime screenshots, result screenshots, and structural diagrams, the default final DOCX display width is the available paragraph text width, not a small readability floor.
 
 - Compute the body text width from section page width minus left and right margins; if the specific figure paragraph has narrower left/right indent, use that paragraph content width as the stricter baseline.
+- A narrower figure paragraph caused by inherited body first-line, left, right, hanging, character-unit indent, list residue, or non-centered alignment is not an accepted smaller baseline. Repair the image-holder paragraph to the body paragraph margins first, then compute the display-width evidence.
 - Insert final body figures near the paragraph margin width unless the active template, locked sample, or current user instruction explicitly records a smaller accepted width.
+- Treat landscape or near-landscape body images as paragraph-width figures by default. If an embedded image is wider than it is tall, or only moderately tall relative to its width, set the final display width to the available paragraph text width, then preserve aspect ratio. A smaller width is allowed only when a current instruction, template sample, or page-height constraint is recorded as the stronger authority.
 - Treat `8.0 cm` and `9.0 cm` as minimum readability floors only. They do not authorize a figure that is visibly compressed relative to the surrounding paragraph width.
 - Final evidence must report text width, displayed figure width, width/text-width ratio, and rendered-page review after reflow.
 

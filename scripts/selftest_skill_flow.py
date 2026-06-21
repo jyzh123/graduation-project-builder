@@ -57,6 +57,7 @@ SURFACE_REPAIR_SCRIPT = SKILL_ROOT / "scripts" / "repair_thesis_surface_format.p
 COMMENT_CONTENT_REPAIR_SCRIPT = SKILL_ROOT / "scripts" / "repair_thesis_comment_content_surfaces.py"
 FRONTMATTER_TOC_REPAIR_SCRIPT = SKILL_ROOT / "scripts" / "repair_thesis_frontmatter_toc_structure.py"
 FRONT_MATTER_PAGE_NUMBERING_REPAIR_SCRIPT = SKILL_ROOT / "scripts" / "repair_front_matter_page_numbering.py"
+CAPTION_RUN_FORMAT_REPAIR_SCRIPT = SKILL_ROOT / "scripts" / "repair_caption_run_format.py"
 LIBREOFFICE_EXE = r"C:\Program Files\LibreOffice\program\soffice.exe"
 GHOSTSCRIPT_EXE = r"C:\Program Files\gs\gs10.07.0\bin\gswin64c.exe"
 PNG_1X1 = base64.b64decode(
@@ -4298,7 +4299,7 @@ def make_gate_record(
     task_mode: str,
     subtask: str,
     output_path: Path,
-    format_task_path: str,
+    format_task_path: str = "none",
     rendered_pdf: str,
     page_images: str,
     toc_restoration_paths: str = "none",
@@ -4516,9 +4517,41 @@ def make_gate_record(
     figure_asset_manifest_path: str = "none",
     figure_source_docx_path: str = "AUTO",
     figure_source_docx_sha256: str = "AUTO",
+    figure_user_material_source_path: str = "none",
+    figure_user_material_source_sha256: str = "none",
+    figure_material_source_inventory_path: str = "none",
+    figure_material_source_binding_verdict: str = "not-applicable",
+    figure_generated_substitute_rejection_verdict: str = "not-applicable",
     figure_inventory_path: str = "none",
     figure_manifest_contract_verdict: str = "not-applicable-with-reason",
+    figure_extents_audit_path: str = "none",
+    figure_paragraph_margin_width_verdict: str = "not-applicable",
+    figure_visible_content_completeness_verdict: str = "not-applicable",
+    figure_nonzero_crop_count: str = "not-applicable",
+    figure_exact_line_spacing_clipping_count: str = "not-applicable",
+    figure_image_holder_layout_verdict: str = "not-applicable",
+    figure_image_holder_layout_issue_count: str = "not-applicable",
     per_figure_rendered_evidence_paths: str = "none",
+    runtime_screenshot_full_window_geometry_evidence_paths: str = "none",
+    runtime_screenshot_full_window_capture_verdict: str = "not-applicable",
+    algorithm_result_authenticity_evidence_paths: str = "none",
+    algorithm_result_source_provenance_evidence_paths: str = "none",
+    algorithm_result_caption_to_asset_map_path: str = "none",
+    algorithm_result_system_search_startup_attempt_path: str = "none",
+    algorithm_result_provenance_verdict: str = "not-applicable",
+    code_screenshot_authenticity_evidence_paths: str = "none",
+    flowchart_semantic_trigger_inventory_path: str = "none",
+    flowchart_drawio_source_evidence_paths: str = "none",
+    flowchart_svg_export_evidence_paths: str = "none",
+    flowchart_raster_fallback_evidence_paths: str = "none",
+    flowchart_source_scale_geometry_report_paths: str = "none",
+    flowchart_rendered_page_evidence_paths: str = "none",
+    flowchart_final_docx_relationship_evidence_paths: str = "none",
+    flowchart_manifest_contract_verdict: str = "not-applicable",
+    algorithm_code_visibility_evidence_path: str = "none",
+    algorithm_code_visibility_verdict: str = "not-applicable",
+    toc_digits_cache_preservation_evidence_path: str = "none",
+    toc_digits_cache_preservation_verdict: str = "not-applicable",
     skips: str = "none",
     selected_thesis_workflow: str = "local-surface-repair",
     thesis_mutation_transaction_record_path: str = "AUTO",
@@ -5689,6 +5722,32 @@ def make_gate_record(
             - content_mutation_machine_vision_verdict: {content_mutation_machine_vision_verdict}
             - inserted_body_heading_contamination_verdict: {inserted_body_heading_contamination_verdict}
             - caption_table_sibling_body_contamination_verdict: {caption_table_sibling_body_contamination_verdict}
+            - figure_user_material_source_path: {figure_user_material_source_path}
+            - figure_user_material_source_sha256: {figure_user_material_source_sha256}
+            - figure_material_source_inventory_path: {figure_material_source_inventory_path}
+            - figure_material_source_binding_verdict: {figure_material_source_binding_verdict}
+            - figure_generated_substitute_rejection_verdict: {figure_generated_substitute_rejection_verdict}
+            - figure_extents_audit_path: {figure_extents_audit_path}
+            - figure_paragraph_margin_width_verdict: {figure_paragraph_margin_width_verdict}
+            - figure_visible_content_completeness_verdict: {figure_visible_content_completeness_verdict}
+            - figure_nonzero_crop_count: {figure_nonzero_crop_count}
+            - figure_exact_line_spacing_clipping_count: {figure_exact_line_spacing_clipping_count}
+            - figure_image_holder_layout_verdict: {figure_image_holder_layout_verdict}
+            - figure_image_holder_layout_issue_count: {figure_image_holder_layout_issue_count}
+            - runtime_screenshot_full_window_geometry_evidence_paths: {runtime_screenshot_full_window_geometry_evidence_paths}
+            - runtime_screenshot_full_window_capture_verdict: {runtime_screenshot_full_window_capture_verdict}
+            - flowchart_semantic_trigger_inventory_path: {flowchart_semantic_trigger_inventory_path}
+            - flowchart_drawio_source_evidence_paths: {flowchart_drawio_source_evidence_paths}
+            - flowchart_svg_export_evidence_paths: {flowchart_svg_export_evidence_paths}
+            - flowchart_raster_fallback_evidence_paths: {flowchart_raster_fallback_evidence_paths}
+            - flowchart_geometry_report_paths: {flowchart_source_scale_geometry_report_paths}
+            - flowchart_rendered_page_evidence_paths: {flowchart_rendered_page_evidence_paths}
+            - flowchart_final_docx_relationship_evidence_paths: {flowchart_final_docx_relationship_evidence_paths}
+            - flowchart_manifest_contract_verdict: {flowchart_manifest_contract_verdict}
+            - algorithm_code_visibility_evidence_path: {algorithm_code_visibility_evidence_path}
+            - algorithm_code_visibility_verdict: {algorithm_code_visibility_verdict}
+            - toc_digits_cache_preservation_evidence_path: {toc_digits_cache_preservation_evidence_path}
+            - toc_digits_cache_preservation_verdict: {toc_digits_cache_preservation_verdict}
             - touched_page_blast_radius_machine_vision_evidence_paths: {touched_page_blast_radius_machine_vision_evidence_paths}
             - format_lane_post_mutation_rendered_audit_verdict: {format_lane_post_mutation_rendered_audit_verdict}
             - protected_surface_reviewed_output_sha256: {protected_surface_reviewed_output_sha256}
@@ -5764,6 +5823,32 @@ def make_gate_record(
                 - toc_visible_run_typography_verdict: {toc_paragraph_typography_verdict}
                 - whole_document_pagination_evidence_path: {whole_document_pagination_evidence_path}
                 - whole_document_pagination_verdict: {whole_document_pagination_verdict}
+                - figure_user_material_source_path: {figure_user_material_source_path}
+                - figure_user_material_source_sha256: {figure_user_material_source_sha256}
+                - figure_material_source_inventory_path: {figure_material_source_inventory_path}
+                - figure_material_source_binding_verdict: {figure_material_source_binding_verdict}
+                - figure_generated_substitute_rejection_verdict: {figure_generated_substitute_rejection_verdict}
+                - figure_extents_audit_path: {figure_extents_audit_path}
+                - figure_paragraph_margin_width_verdict: {figure_paragraph_margin_width_verdict}
+                - figure_visible_content_completeness_verdict: {figure_visible_content_completeness_verdict}
+                - figure_nonzero_crop_count: {figure_nonzero_crop_count}
+                - figure_exact_line_spacing_clipping_count: {figure_exact_line_spacing_clipping_count}
+                - figure_image_holder_layout_verdict: {figure_image_holder_layout_verdict}
+                - figure_image_holder_layout_issue_count: {figure_image_holder_layout_issue_count}
+                - runtime_screenshot_full_window_geometry_evidence_paths: {runtime_screenshot_full_window_geometry_evidence_paths}
+                - runtime_screenshot_full_window_capture_verdict: {runtime_screenshot_full_window_capture_verdict}
+                - flowchart_semantic_trigger_inventory_path: {flowchart_semantic_trigger_inventory_path}
+                - flowchart_drawio_source_evidence_paths: {flowchart_drawio_source_evidence_paths}
+                - flowchart_svg_export_evidence_paths: {flowchart_svg_export_evidence_paths}
+                - flowchart_raster_fallback_evidence_paths: {flowchart_raster_fallback_evidence_paths}
+                - flowchart_geometry_report_paths: {flowchart_source_scale_geometry_report_paths}
+                - flowchart_rendered_page_evidence_paths: {flowchart_rendered_page_evidence_paths}
+                - flowchart_final_docx_relationship_evidence_paths: {flowchart_final_docx_relationship_evidence_paths}
+                - flowchart_manifest_contract_verdict: {flowchart_manifest_contract_verdict}
+                - algorithm_code_visibility_evidence_path: {algorithm_code_visibility_evidence_path}
+                - algorithm_code_visibility_verdict: {algorithm_code_visibility_verdict}
+                - toc_digits_cache_preservation_evidence_path: {toc_digits_cache_preservation_evidence_path}
+                - toc_digits_cache_preservation_verdict: {toc_digits_cache_preservation_verdict}
                 - protected_surface_reviewed_output_sha256: {protected_surface_reviewed_output_sha256}
                 - protected_surface_contract_verdict: {protected_surface_contract_verdict}
                 - audit_verdict: {audit_verdict}
@@ -6077,9 +6162,41 @@ def make_gate_record(
             - figure asset manifest path: {figure_asset_manifest_path}
             - figure source DOCX path: {figure_source_docx_path}
             - figure source DOCX SHA256: {figure_source_docx_sha256}
+            - figure user material source path: {figure_user_material_source_path}
+            - figure user material source SHA256: {figure_user_material_source_sha256}
+            - figure material-source inventory path: {figure_material_source_inventory_path}
+            - figure material-source binding verdict: {figure_material_source_binding_verdict}
+            - figure generated-substitute rejection verdict: {figure_generated_substitute_rejection_verdict}
             - figure inventory path: {figure_inventory_path}
             - figure manifest contract verdict: {figure_manifest_contract_verdict}
+            - figure extents audit path: {figure_extents_audit_path}
+            - figure paragraph-margin width verdict: {figure_paragraph_margin_width_verdict}
+            - figure visible-content completeness verdict: {figure_visible_content_completeness_verdict}
+            - figure nonzero crop count: {figure_nonzero_crop_count}
+            - figure exact-line-spacing clipping count: {figure_exact_line_spacing_clipping_count}
+            - figure image-holder layout verdict: {figure_image_holder_layout_verdict}
+            - figure image-holder layout issue count: {figure_image_holder_layout_issue_count}
             - per-figure rendered evidence paths: {per_figure_rendered_evidence_paths}
+            - runtime screenshot full-window geometry evidence paths: {runtime_screenshot_full_window_geometry_evidence_paths}
+            - runtime screenshot full-window capture verdict: {runtime_screenshot_full_window_capture_verdict}
+            - algorithm result authenticity evidence paths: {algorithm_result_authenticity_evidence_paths}
+            - algorithm result source/provenance evidence paths: {algorithm_result_source_provenance_evidence_paths}
+            - algorithm result caption-to-asset map path: {algorithm_result_caption_to_asset_map_path}
+            - algorithm result system search / startup attempt path: {algorithm_result_system_search_startup_attempt_path}
+            - algorithm result provenance verdict: {algorithm_result_provenance_verdict}
+            - code screenshot authenticity evidence paths: {code_screenshot_authenticity_evidence_paths}
+            - flowchart semantic trigger inventory path: {flowchart_semantic_trigger_inventory_path}
+            - flowchart draw.io source evidence paths: {flowchart_drawio_source_evidence_paths}
+            - flowchart SVG export evidence paths: {flowchart_svg_export_evidence_paths}
+            - flowchart raster fallback evidence paths: {flowchart_raster_fallback_evidence_paths}
+            - flowchart source-scale geometry report paths: {flowchart_source_scale_geometry_report_paths}
+            - flowchart rendered-page evidence paths: {flowchart_rendered_page_evidence_paths}
+            - flowchart final DOCX relationship evidence paths: {flowchart_final_docx_relationship_evidence_paths}
+            - flowchart manifest contract verdict: {flowchart_manifest_contract_verdict}
+            - algorithm code visibility evidence path: {algorithm_code_visibility_evidence_path}
+            - algorithm code visibility verdict: {algorithm_code_visibility_verdict}
+            - TOC digits/cache preservation evidence path: {toc_digits_cache_preservation_evidence_path}
+            - TOC digits/cache preservation verdict: {toc_digits_cache_preservation_verdict}
             - toc restoration evidence paths: {toc_restoration_paths}
             - toc rendered baseline comparison evidence paths: {toc_rendered_comparison_paths}
             - toc visual geometry evidence paths: {toc_visual_geometry_paths}
@@ -15109,6 +15226,275 @@ def case_user_reported_visual_geometry_valid(td: Path) -> tuple[int, str]:
     return proc.returncode, proc.stdout
 
 
+def case_user_reported_figure_width_gate_fields_missing_rejected(td: Path) -> tuple[int, str]:
+    review_copy, rendered_pdf, page_images, thesis_ev, para_ev, touched_ev, figure_ev, citation_audit = build_thesis_bundle(td, "thesis-only")
+    record = td / "user_reported_figure_width_gate_fields_missing.acceptance.md"
+    make_gate_record(
+        record,
+        task_mode="thesis-only",
+        subtask="user reported system screenshot too small not readable and should align with paragraph margin text width",
+        output_path=review_copy,
+        rendered_pdf=str(rendered_pdf),
+        page_images="; ".join(str(p) for p in page_images),
+        citation_audit_path=str(citation_audit),
+        thesis_paths=str(thesis_ev),
+        figure_paths=str(figure_ev),
+        paragraph_paths=str(para_ev),
+        touched_page_paths=str(touched_ev),
+        renderer_path=str(PYTHON_EXE),
+        rasterizer_path=str(PYTHON_EXE),
+        review_copy_path=str(review_copy),
+    )
+    proc = run_validator(record)
+    return proc.returncode, proc.stdout + proc.stderr
+
+
+def case_user_reported_algorithm_code_visibility_fields_missing_rejected(td: Path) -> tuple[int, str]:
+    review_copy, rendered_pdf, page_images, thesis_ev, para_ev, touched_ev, figure_ev, citation_audit = build_thesis_bundle(td, "thesis-only")
+    record = td / "user_reported_algorithm_code_visibility_fields_missing.acceptance.md"
+    make_gate_record(
+        record,
+        task_mode="thesis-only",
+        subtask="user reported algorithm code visibility missing and requested new real source code in the algorithm section",
+        output_path=review_copy,
+        rendered_pdf=str(rendered_pdf),
+        page_images="; ".join(str(p) for p in page_images),
+        citation_audit_path=str(citation_audit),
+        thesis_paths=str(thesis_ev),
+        figure_paths=str(figure_ev),
+        paragraph_paths=str(para_ev),
+        touched_page_paths=str(touched_ev),
+        renderer_path=str(PYTHON_EXE),
+        rasterizer_path=str(PYTHON_EXE),
+        review_copy_path=str(review_copy),
+    )
+    proc = run_validator(record)
+    return proc.returncode, proc.stdout + proc.stderr
+
+
+def case_user_reported_toc_digits_cache_fields_missing_rejected(td: Path) -> tuple[int, str]:
+    review_copy, rendered_pdf, page_images, thesis_ev, para_ev, touched_ev, figure_ev, citation_audit = build_thesis_bundle(td, "format-repair-only")
+    record = td / "user_reported_toc_digits_cache_fields_missing.acceptance.md"
+    make_gate_record(
+        record,
+        task_mode="format-repair-only",
+        subtask="user reported TOC digits/cache broken: 1.1 changed to 1. 1 and bookmark anchors were damaged",
+        output_path=review_copy,
+        rendered_pdf=str(rendered_pdf),
+        page_images="; ".join(str(p) for p in page_images),
+        citation_audit_path=str(citation_audit),
+        thesis_paths=str(thesis_ev),
+        figure_paths=str(figure_ev),
+        paragraph_paths=str(para_ev),
+        touched_page_paths=str(touched_ev),
+        renderer_path=str(PYTHON_EXE),
+        rasterizer_path=str(PYTHON_EXE),
+        review_copy_path=str(review_copy),
+    )
+    proc = run_validator(record)
+    return proc.returncode, proc.stdout + proc.stderr
+
+
+def case_user_reported_material_generated_substitute_fields_missing_rejected(td: Path) -> tuple[int, str]:
+    review_copy, rendered_pdf, page_images, thesis_ev, para_ev, touched_ev, figure_ev, citation_audit = build_thesis_bundle(td, "thesis-only")
+    record = td / "user_reported_material_generated_substitute_fields_missing.acceptance.md"
+    make_gate_record(
+        record,
+        task_mode="thesis-only",
+        subtask="user reported flowchart is not draw.io but an AI generated image impostor; figures must bind to material.doc source material",
+        output_path=review_copy,
+        rendered_pdf=str(rendered_pdf),
+        page_images="; ".join(str(p) for p in page_images),
+        citation_audit_path=str(citation_audit),
+        thesis_paths=str(thesis_ev),
+        figure_paths=str(figure_ev),
+        paragraph_paths=str(para_ev),
+        touched_page_paths=str(touched_ev),
+        renderer_path=str(PYTHON_EXE),
+        rasterizer_path=str(PYTHON_EXE),
+        review_copy_path=str(review_copy),
+    )
+    proc = run_validator(record)
+    return proc.returncode, proc.stdout + proc.stderr
+
+
+def case_user_reported_figure_width_dummy_evidence_rejected(td: Path) -> tuple[int, str]:
+    review_copy, rendered_pdf, page_images, thesis_ev, para_ev, touched_ev, figure_ev, citation_audit = build_thesis_bundle(td, "thesis-only")
+    dummy_evidence = td / "figure-width-dummy.md"
+    write_text(dummy_evidence, "result: pass\n")
+    record = td / "user_reported_figure_width_dummy_evidence.acceptance.md"
+    make_gate_record(
+        record,
+        task_mode="thesis-only",
+        subtask="user reported system screenshot too small not readable and should align with paragraph margin text width",
+        output_path=review_copy,
+        rendered_pdf=str(rendered_pdf),
+        page_images="; ".join(str(p) for p in page_images),
+        citation_audit_path=str(citation_audit),
+        thesis_paths=str(thesis_ev),
+        figure_paths=str(figure_ev),
+        paragraph_paths=str(para_ev),
+        touched_page_paths=str(touched_ev),
+        renderer_path=str(PYTHON_EXE),
+        rasterizer_path=str(PYTHON_EXE),
+        review_copy_path=str(review_copy),
+        figure_extents_audit_path=str(dummy_evidence),
+        figure_paragraph_margin_width_verdict="passed paragraph-margin width evidence bound to exact final DOCX",
+        figure_visible_content_completeness_verdict="passed visible-content completeness evidence bound to exact final DOCX",
+        figure_nonzero_crop_count="0",
+        figure_exact_line_spacing_clipping_count="0",
+        figure_image_holder_layout_verdict="passed image-holder layout evidence bound to exact final DOCX",
+        figure_image_holder_layout_issue_count="0",
+    )
+    proc = run_validator(record)
+    return proc.returncode, proc.stdout + proc.stderr
+
+
+def case_user_reported_algorithm_code_visibility_dummy_evidence_rejected(td: Path) -> tuple[int, str]:
+    review_copy, rendered_pdf, page_images, thesis_ev, para_ev, touched_ev, figure_ev, citation_audit = build_thesis_bundle(td, "thesis-only")
+    dummy_evidence = td / "algorithm-code-dummy.md"
+    write_text(dummy_evidence, "result: pass\n")
+    record = td / "user_reported_algorithm_code_visibility_dummy.acceptance.md"
+    make_gate_record(
+        record,
+        task_mode="thesis-only",
+        subtask="user reported algorithm code visibility missing and requested new real source code in the algorithm section",
+        output_path=review_copy,
+        rendered_pdf=str(rendered_pdf),
+        page_images="; ".join(str(p) for p in page_images),
+        citation_audit_path=str(citation_audit),
+        thesis_paths=str(thesis_ev),
+        figure_paths=str(figure_ev),
+        paragraph_paths=str(para_ev),
+        touched_page_paths=str(touched_ev),
+        renderer_path=str(PYTHON_EXE),
+        rasterizer_path=str(PYTHON_EXE),
+        review_copy_path=str(review_copy),
+        algorithm_code_visibility_evidence_path=str(dummy_evidence),
+        algorithm_code_visibility_verdict="passed real algorithm code visible in final DOCX",
+    )
+    proc = run_validator(record)
+    return proc.returncode, proc.stdout + proc.stderr
+
+
+def case_user_reported_toc_digits_cache_dummy_evidence_rejected(td: Path) -> tuple[int, str]:
+    review_copy, rendered_pdf, page_images, thesis_ev, para_ev, touched_ev, figure_ev, citation_audit = build_thesis_bundle(td, "format-repair-only")
+    dummy_evidence = td / "toc-digits-cache-dummy.md"
+    write_text(dummy_evidence, "result: pass\n")
+    record = td / "user_reported_toc_digits_cache_dummy.acceptance.md"
+    make_gate_record(
+        record,
+        task_mode="format-repair-only",
+        subtask="user reported TOC digits/cache broken: 1.1 changed to 1. 1 and bookmark anchors were damaged",
+        output_path=review_copy,
+        rendered_pdf=str(rendered_pdf),
+        page_images="; ".join(str(p) for p in page_images),
+        citation_audit_path=str(citation_audit),
+        thesis_paths=str(thesis_ev),
+        figure_paths=str(figure_ev),
+        paragraph_paths=str(para_ev),
+        touched_page_paths=str(touched_ev),
+        renderer_path=str(PYTHON_EXE),
+        rasterizer_path=str(PYTHON_EXE),
+        review_copy_path=str(review_copy),
+        toc_digits_cache_preservation_evidence_path=str(dummy_evidence),
+        toc_digits_cache_preservation_verdict="passed TOC digits and cache preserved",
+    )
+    proc = run_validator(record)
+    return proc.returncode, proc.stdout + proc.stderr
+
+
+def case_user_reported_drawio_impostor_flowchart_fields_missing_rejected(td: Path) -> tuple[int, str]:
+    review_copy, rendered_pdf, page_images, thesis_ev, para_ev, touched_ev, figure_ev, citation_audit = build_thesis_bundle(td, "thesis-only")
+    material_doc = td / "素材.doc"
+    write_text(material_doc, "material source fixture\n")
+    material_inventory = td / "material-inventory.json"
+    write_text(material_inventory, json.dumps({"schema": "fixture", "anchors": ["flowchart"]}, ensure_ascii=False) + "\n")
+    record = td / "user_reported_drawio_impostor_flowchart_fields_missing.acceptance.md"
+    make_gate_record(
+        record,
+        task_mode="thesis-only",
+        subtask="user reported flowchart is not draw.io but an AI generated image impostor; figures must bind to material.doc source material",
+        output_path=review_copy,
+        rendered_pdf=str(rendered_pdf),
+        page_images="; ".join(str(p) for p in page_images),
+        citation_audit_path=str(citation_audit),
+        thesis_paths=str(thesis_ev),
+        figure_paths=str(figure_ev),
+        paragraph_paths=str(para_ev),
+        touched_page_paths=str(touched_ev),
+        renderer_path=str(PYTHON_EXE),
+        rasterizer_path=str(PYTHON_EXE),
+        review_copy_path=str(review_copy),
+        figure_user_material_source_path=str(material_doc),
+        figure_user_material_source_sha256=file_sha256(material_doc),
+        figure_material_source_inventory_path=str(material_inventory),
+        figure_material_source_binding_verdict="passed material source inventory and anchors bound to final figure plan",
+        figure_generated_substitute_rejection_verdict="passed generated substitute explicitly rejected",
+    )
+    proc = run_validator(record)
+    return proc.returncode, proc.stdout + proc.stderr
+
+
+def case_user_reported_drawio_impostor_image_only_source_rejected(td: Path) -> tuple[int, str]:
+    review_copy, rendered_pdf, page_images, thesis_ev, para_ev, touched_ev, figure_ev, citation_audit = build_thesis_bundle(td, "thesis-only")
+    material_doc = td / "素材.doc"
+    write_text(material_doc, "material source fixture\n")
+    material_inventory = td / "material-inventory.json"
+    write_text(material_inventory, json.dumps({"schema": "fixture", "anchors": ["flowchart"]}, ensure_ascii=False) + "\n")
+    drawio = make_raster_image_only_drawio(td / "image-only.drawio")
+    svg = write_svg(td / "image-only.svg")
+    png = make_png(td / "image-only.png", 800, 500)
+    geometry = write_flowchart_geometry_evidence(td, "image-only", drawio)
+    relationship = td / "flowchart-relationship.json"
+    write_text(
+        relationship,
+        json.dumps(
+            {
+                "final_docx_path": str(review_copy),
+                "final_docx_sha256": file_sha256(review_copy),
+                "relationship_verdict": "pass",
+                "flowchart_rid": "rId-flowchart",
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+    )
+    record = td / "user_reported_drawio_impostor_image_only_source.acceptance.md"
+    make_gate_record(
+        record,
+        task_mode="thesis-only",
+        subtask="user reported flowchart is not draw.io but an AI generated image impostor; figures must bind to material.doc source material",
+        output_path=review_copy,
+        rendered_pdf=str(rendered_pdf),
+        page_images="; ".join(str(p) for p in page_images),
+        citation_audit_path=str(citation_audit),
+        thesis_paths=str(thesis_ev),
+        figure_paths=str(figure_ev),
+        paragraph_paths=str(para_ev),
+        touched_page_paths=str(touched_ev),
+        renderer_path=str(PYTHON_EXE),
+        rasterizer_path=str(PYTHON_EXE),
+        review_copy_path=str(review_copy),
+        figure_user_material_source_path=str(material_doc),
+        figure_user_material_source_sha256=file_sha256(material_doc),
+        figure_material_source_inventory_path=str(material_inventory),
+        figure_material_source_binding_verdict="passed material source inventory and anchors bound to final figure plan",
+        figure_generated_substitute_rejection_verdict="passed generated substitute explicitly rejected",
+        flowchart_semantic_trigger_inventory_path=str(material_inventory),
+        flowchart_drawio_source_evidence_paths=str(drawio),
+        flowchart_svg_export_evidence_paths=str(svg),
+        flowchart_raster_fallback_evidence_paths=str(png),
+        flowchart_source_scale_geometry_report_paths=str(geometry),
+        flowchart_rendered_page_evidence_paths=str(page_images[0]),
+        flowchart_final_docx_relationship_evidence_paths=str(relationship),
+        flowchart_manifest_contract_verdict="passed native draw.io/source-scale geometry/DOCX relationship contract",
+    )
+    proc = run_validator(record)
+    return proc.returncode, proc.stdout + proc.stderr
+
+
 def case_user_reported_visual_path_docxml_only_valid(td: Path) -> tuple[int, str]:
     from validate_skill_gate_record_gate import validate_user_reported_visual_defect_evidence
 
@@ -16617,6 +17003,25 @@ def case_audit_figure_extents_runtime_screenshot_narrow_rejected(td: Path) -> tu
     return (0 if ok else 1, text)
 
 
+def case_audit_figure_extents_height_constrained_portrait_valid(td: Path) -> tuple[int, str]:
+    image = make_png(td / "height-constrained-portrait.png", 900, 3000)
+    docx = make_body_picture_docx(
+        td / "height-constrained-portrait.docx",
+        image,
+        caption="\u56fe4-5 \u4fee\u6539\u4e2a\u4eba\u4fe1\u606f\u6d41\u7a0b\u56fe",
+        width_inches=1.72,
+    )
+    report = td / "height-constrained-portrait-report.json"
+    proc = run_figure_extents_audit(docx, report)
+    text = proc.stdout + proc.stderr
+    ok = (
+        proc.returncode == 0
+        and '"height_constrained_width": true' in text
+        and "below readability threshold" not in text
+    )
+    return (0 if ok else 1, text)
+
+
 def case_figure_width_not_paragraph_margin_aligned_rejected(td: Path) -> tuple[int, str]:
     image = make_png(td / "paragraph-margin-too-narrow.png", 1200, 700)
     docx = make_body_picture_docx(
@@ -16629,6 +17034,117 @@ def case_figure_width_not_paragraph_margin_aligned_rejected(td: Path) -> tuple[i
     proc = run_figure_extents_audit(docx, report)
     text = proc.stdout + proc.stderr
     ok = proc.returncode != 0 and "below paragraph-margin width" in text and "min_text_width_ratio" in text
+    return (0 if ok else 1, text)
+
+
+def case_audit_figure_extents_low_native_ppi_rejected(td: Path) -> tuple[int, str]:
+    image = make_png(td / "low-native-ppi.png", 520, 520)
+    docx = make_body_picture_docx(
+        td / "low-native-ppi.docx",
+        image,
+        caption="\u56fe4-9 \u591a\u65e0\u4eba\u673a\u534f\u540c\u4efb\u52a1\u5206\u914d\u7b97\u6cd5\u6d41\u7a0b\u56fe",
+        width_inches=5.79,
+    )
+    report = td / "low-native-ppi-report.json"
+    proc = run_figure_extents_audit(docx, report, ["--min-native-ppi", "140", "--enforce-min-native-ppi"])
+    text = proc.stdout + proc.stderr
+    ok = proc.returncode != 0 and "below native-resolution readability threshold" in text and "min_native_ppi=140.0" in text
+    return (0 if ok else 1, text)
+
+
+def case_audit_figure_extents_native_constrained_width_valid(td: Path) -> tuple[int, str]:
+    image = make_png(td / "native-constrained-width.png", 520, 520)
+    docx = make_body_picture_docx(
+        td / "native-constrained-width.docx",
+        image,
+        caption="\u56fe4-9 \u591a\u65e0\u4eba\u673a\u534f\u540c\u4efb\u52a1\u5206\u914d\u7b97\u6cd5\u6d41\u7a0b\u56fe",
+        width_inches=3.71,
+    )
+    report = td / "native-constrained-width-report.json"
+    proc = run_figure_extents_audit(docx, report, ["--min-native-ppi", "140", "--enforce-min-native-ppi"])
+    text = proc.stdout + proc.stderr
+    payload = json.loads(report.read_text(encoding="utf-8")) if report.exists() else {}
+    figure = (payload.get("figures") or [{}])[0]
+    ok = (
+        proc.returncode == 0
+        and figure.get("native_resolution_constrained_width") is True
+        and payload.get("native_ppi_issue_count") == 0
+        and "below paragraph-margin width" not in text
+    )
+    return (0 if ok else 1, text)
+
+
+def case_audit_figure_extents_src_rect_crop_rejected(td: Path) -> tuple[int, str]:
+    image = make_png(td / "src-rect-cropped.png", 1200, 700)
+    docx = make_body_picture_docx(
+        td / "src-rect-cropped.docx",
+        image,
+        caption="\u56fe4-15 \u5728\u7ebf\u53cd\u9988\u754c\u9762",
+        width_inches=5.85,
+    )
+
+    def transform(raw: bytes) -> bytes:
+        text = raw.decode("utf-8")
+        text = text.replace("<a:stretch>", '<a:srcRect l="12000" t="0" r="0" b="0"/><a:stretch>', 1)
+        return text.encode("utf-8")
+
+    _rewrite_docx_document_xml(docx, transform)
+    report = td / "src-rect-cropped-report.json"
+    proc = run_figure_extents_audit(docx, report)
+    text = proc.stdout + proc.stderr
+    ok = proc.returncode != 0 and "nonzero picture crop a:srcRect" in text
+    return (0 if ok else 1, text)
+
+
+def case_audit_figure_extents_exact_line_spacing_clip_rejected(td: Path) -> tuple[int, str]:
+    image = make_png(td / "exact-line-clip.png", 1200, 700)
+    docx = make_body_picture_docx(
+        td / "exact-line-clip.docx",
+        image,
+        caption="\u56fe4-16 \u5de1\u68c0\u4efb\u52a1\u7ba1\u7406\u754c\u9762",
+        width_inches=5.85,
+    )
+
+    def transform(raw: bytes) -> bytes:
+        text = raw.decode("utf-8")
+        text = text.replace(
+            "<w:p><w:r><w:drawing",
+            '<w:p><w:pPr><w:spacing w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:drawing',
+            1,
+        )
+        return text.encode("utf-8")
+
+    _rewrite_docx_document_xml(docx, transform)
+    report = td / "exact-line-clip-report.json"
+    proc = run_figure_extents_audit(docx, report)
+    text = proc.stdout + proc.stderr
+    ok = proc.returncode != 0 and "exact line spacing smaller than image height" in text
+    return (0 if ok else 1, text)
+
+
+def case_audit_figure_extents_image_holder_indent_rejected(td: Path) -> tuple[int, str]:
+    image = make_png(td / "image-holder-indent.png", 1200, 700)
+    docx = make_body_picture_docx(
+        td / "image-holder-indent.docx",
+        image,
+        caption="\u56fe4-18 \u5de1\u68c0\u822a\u7ebf\u7ba1\u7406\u754c\u9762",
+        width_inches=5.85,
+    )
+
+    def transform(raw: bytes) -> bytes:
+        text = raw.decode("utf-8")
+        text = text.replace(
+            "<w:p><w:r><w:drawing",
+            '<w:p><w:pPr><w:spacing w:line="360" w:lineRule="auto"/><w:ind w:firstLine="420" w:left="120" w:right="0"/><w:jc w:val="both"/></w:pPr><w:r><w:drawing',
+            1,
+        )
+        return text.encode("utf-8")
+
+    _rewrite_docx_document_xml(docx, transform)
+    report = td / "image-holder-indent-report.json"
+    proc = run_figure_extents_audit(docx, report)
+    text = proc.stdout + proc.stderr
+    ok = proc.returncode != 0 and "unsafe paragraph layout" in text and "nonzero_indent_fields" in text
     return (0 if ok else 1, text)
 
 
@@ -16660,6 +17176,160 @@ def case_repair_figure_extents_shrinks_height_overflow_valid(td: Path) -> tuple[
         and int(row.get("new_cx") or 0) < int(row.get("old_cx") or 0)
     )
     return (0 if ok else 1, json.dumps({"max_safe_cy": max_safe_cy, "plan": plan}, ensure_ascii=False))
+
+
+def case_repair_figure_extents_clears_exact_line_spacing_valid(td: Path) -> tuple[int, str]:
+    image = make_png(td / "repair-exact-line-clip.png", 1200, 600)
+    source = make_body_picture_docx(
+        td / "repair-exact-line-clip-source.docx",
+        image,
+        caption="\u56fe4-20 \u4efb\u52a1\u6267\u884c\u7ba1\u7406\u754c\u9762",
+        width_inches=5.85,
+    )
+
+    def transform(raw: bytes) -> bytes:
+        text = raw.decode("utf-8")
+        text = text.replace(
+            "<w:p><w:r><w:drawing",
+            '<w:p><w:pPr><w:spacing w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:drawing',
+            1,
+        )
+        return text.encode("utf-8")
+
+    _rewrite_docx_document_xml(source, transform)
+    output = td / "repair-exact-line-clip-output.docx"
+    report = td / "repair-exact-line-clip-report.json"
+    proc = subprocess.run(
+        [
+            str(PYTHON_EXE),
+            str(SKILL_ROOT / "scripts" / "repair_docx_figure_extents.py"),
+            "--input-docx",
+            str(source),
+            "--output-docx",
+            str(output),
+            "--report-json",
+            str(report),
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout_seconds(120),
+    )
+    if proc.returncode != 0:
+        return proc.returncode, proc.stdout + proc.stderr
+    audit_report = td / "repair-exact-line-clip-audit.json"
+    audit = run_figure_extents_audit(output, audit_report)
+    if audit.returncode != 0:
+        return audit.returncode, audit.stdout + audit.stderr
+    payload = json.loads(audit_report.read_text(encoding="utf-8"))
+    repair_payload = json.loads(report.read_text(encoding="utf-8"))
+    ok = payload.get("exact_line_spacing_clip_count") == 0 and repair_payload.get("changed_holder_safety_count") == 1
+    return (0 if ok else 1, json.dumps({"repair": repair_payload, "audit": payload}, ensure_ascii=False))
+
+
+def case_repair_figure_extents_clears_image_holder_indent_valid(td: Path) -> tuple[int, str]:
+    image = make_png(td / "repair-image-holder-indent.png", 1200, 600)
+    source = make_body_picture_docx(
+        td / "repair-image-holder-indent-source.docx",
+        image,
+        caption="\u56fe4-21 \u65e0\u4eba\u673a\u5de1\u68c0\u4efb\u52a1\u6267\u884c\u754c\u9762",
+        width_inches=5.85,
+    )
+
+    def transform(raw: bytes) -> bytes:
+        text = raw.decode("utf-8")
+        text = text.replace(
+            "<w:p><w:r><w:drawing",
+            '<w:p><w:pPr><w:spacing w:line="360" w:lineRule="auto"/><w:ind w:firstLine="842" w:left="240" w:right="0"/><w:jc w:val="both"/></w:pPr><w:r><w:drawing',
+            1,
+        )
+        return text.encode("utf-8")
+
+    _rewrite_docx_document_xml(source, transform)
+    output = td / "repair-image-holder-indent-output.docx"
+    report = td / "repair-image-holder-indent-report.json"
+    proc = subprocess.run(
+        [
+            str(PYTHON_EXE),
+            str(SKILL_ROOT / "scripts" / "repair_docx_figure_extents.py"),
+            "--input-docx",
+            str(source),
+            "--output-docx",
+            str(output),
+            "--report-json",
+            str(report),
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout_seconds(120),
+    )
+    if proc.returncode != 0:
+        return proc.returncode, proc.stdout + proc.stderr
+    audit_report = td / "repair-image-holder-indent-audit.json"
+    audit = run_figure_extents_audit(output, audit_report)
+    if audit.returncode != 0:
+        return audit.returncode, audit.stdout + audit.stderr
+    payload = json.loads(audit_report.read_text(encoding="utf-8"))
+    repair_payload = json.loads(report.read_text(encoding="utf-8"))
+    ok = (
+        payload.get("image_holder_layout_issue_count") == 0
+        and payload.get("image_holder_layout_verdict") == "pass"
+        and repair_payload.get("changed_holder_layout_count") == 1
+    )
+    return (0 if ok else 1, json.dumps({"repair": repair_payload, "audit": payload}, ensure_ascii=False))
+
+
+def case_repair_figure_extents_shrinks_low_native_ppi_valid(td: Path) -> tuple[int, str]:
+    image = make_png(td / "repair-low-native-ppi.png", 520, 520)
+    source = make_body_picture_docx(
+        td / "repair-low-native-ppi-source.docx",
+        image,
+        caption="\u56fe4-9 \u591a\u65e0\u4eba\u673a\u534f\u540c\u4efb\u52a1\u5206\u914d\u7b97\u6cd5\u6d41\u7a0b\u56fe",
+        width_inches=5.79,
+    )
+    output = td / "repair-low-native-ppi-output.docx"
+    report = td / "repair-low-native-ppi-report.json"
+    proc = subprocess.run(
+        [
+            str(PYTHON_EXE),
+            str(SKILL_ROOT / "scripts" / "repair_docx_figure_extents.py"),
+            "--input-docx",
+            str(source),
+            "--output-docx",
+            str(output),
+            "--report-json",
+            str(report),
+            "--min-native-ppi",
+            "140",
+            "--target-media-name",
+            "image1.png",
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout_seconds(120),
+    )
+    if proc.returncode != 0:
+        return proc.returncode, proc.stdout + proc.stderr
+    audit_report = td / "repair-low-native-ppi-audit.json"
+    audit = run_figure_extents_audit(output, audit_report, ["--min-native-ppi", "140", "--enforce-min-native-ppi"])
+    if audit.returncode != 0:
+        return audit.returncode, audit.stdout + audit.stderr
+    payload = json.loads(audit_report.read_text(encoding="utf-8"))
+    repair_payload = json.loads(report.read_text(encoding="utf-8"))
+    change = (repair_payload.get("changes") or [{}])[0]
+    figure = (payload.get("figures") or [{}])[0]
+    ok = (
+        repair_payload.get("changed_resize_count") == 1
+        and change.get("resize_reason") == "below-min-native-ppi"
+        and payload.get("native_ppi_issue_count") == 0
+        and figure.get("native_resolution_constrained_width") is True
+    )
+    return (0 if ok else 1, json.dumps({"repair": repair_payload, "audit": payload}, ensure_ascii=False))
 
 
 def case_audit_figure_extents_structural_undersized_rejected(td: Path) -> tuple[int, str]:
@@ -16700,6 +17370,84 @@ def case_audit_figure_extents_frontmatter_image_rejected(td: Path) -> tuple[int,
     text = proc.stdout + proc.stderr
     ok = proc.returncode != 0 and "front-matter drawing is not source-preserved" in text
     return (0 if ok else 1, text)
+
+
+def case_audit_figure_extents_frontmatter_holder_indent_source_preserved_rejected(td: Path) -> tuple[int, str]:
+    image = make_png(td / "frontmatter-source-preserved-indent.png", 320, 180)
+    source = make_toc_picture_docx(td / "frontmatter-source-preserved-indent-source.docx", image)
+
+    def transform(raw: bytes) -> bytes:
+        text = raw.decode("utf-8")
+        text = text.replace(
+            "<w:p><w:r><w:drawing",
+            '<w:p><w:pPr><w:spacing w:line="360" w:lineRule="auto"/><w:ind w:firstLine="1300" w:left="0" w:right="0"/><w:jc w:val="both"/></w:pPr><w:r><w:drawing',
+            1,
+        )
+        return text.encode("utf-8")
+
+    _rewrite_docx_document_xml(source, transform)
+    final = td / "frontmatter-source-preserved-indent-final.docx"
+    shutil.copyfile(source, final)
+    report = td / "frontmatter-source-preserved-indent-report.json"
+    proc = run_figure_extents_audit(final, report, ["--source-docx", str(source)])
+    text = proc.stdout + proc.stderr
+    ok = (
+        proc.returncode != 0
+        and "front-matter image holder has unsafe paragraph layout" in text
+        and "nonzero_indent_fields" in text
+        and "front-matter drawing is not source-preserved" not in text
+    )
+    return (0 if ok else 1, text)
+
+
+def case_repair_figure_extents_clears_frontmatter_holder_indent_valid(td: Path) -> tuple[int, str]:
+    image = make_png(td / "repair-frontmatter-holder-indent.png", 320, 180)
+    source = make_toc_picture_docx(td / "repair-frontmatter-holder-indent-source.docx", image)
+
+    def transform(raw: bytes) -> bytes:
+        text = raw.decode("utf-8")
+        text = text.replace(
+            "<w:p><w:r><w:drawing",
+            '<w:p><w:pPr><w:spacing w:line="360" w:lineRule="auto"/><w:ind w:firstLine="1300" w:left="0" w:right="0"/><w:jc w:val="both"/></w:pPr><w:r><w:drawing',
+            1,
+        )
+        return text.encode("utf-8")
+
+    _rewrite_docx_document_xml(source, transform)
+    output = td / "repair-frontmatter-holder-indent-output.docx"
+    repair_report = td / "repair-frontmatter-holder-indent-report.json"
+    proc = subprocess.run(
+        [
+            str(PYTHON_EXE),
+            str(SKILL_ROOT / "scripts" / "repair_docx_figure_extents.py"),
+            "--input-docx",
+            str(source),
+            "--output-docx",
+            str(output),
+            "--report-json",
+            str(repair_report),
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout_seconds(120),
+    )
+    if proc.returncode != 0:
+        return proc.returncode, proc.stdout + proc.stderr
+    audit_report = td / "repair-frontmatter-holder-indent-audit.json"
+    audit = run_figure_extents_audit(output, audit_report, ["--source-docx", str(source)])
+    if audit.returncode != 0:
+        return audit.returncode, audit.stdout + audit.stderr
+    payload = json.loads(audit_report.read_text(encoding="utf-8"))
+    repair_payload = json.loads(repair_report.read_text(encoding="utf-8"))
+    ok = (
+        payload.get("all_drawing_holder_layout_issue_count") == 0
+        and payload.get("image_holder_layout_verdict") == "pass"
+        and repair_payload.get("changed_holder_layout_count") == 1
+        and repair_payload.get("changed_resize_count") == 0
+    )
+    return (0 if ok else 1, json.dumps({"repair": repair_payload, "audit": payload}, ensure_ascii=False))
 
 
 def case_audit_figure_extents_caption_overcount_guard_valid(td: Path) -> tuple[int, str]:
@@ -22887,6 +23635,76 @@ def case_toc_leader_audit_table_contamination_rejected(td: Path) -> tuple[int, s
     return (0 if ok else 1, output)
 
 
+def case_repair_toc_dotted_leaders_multicontent_missing_page_valid(td: Path) -> tuple[int, str]:
+    from repair_toc_dotted_leaders import repair_docx
+    from toc_leader_audit import audit_docx_toc_dotted_leaders, page_number_tail_after_last_tab
+
+    source = make_raw_docx(
+        td / "toc-multicontent-broken.docx",
+        '''
+    <w:sdt><w:sdtContent>
+      <w:p><w:r><w:t>\u76ee\u5f55</w:t></w:r></w:p>
+      <w:p><w:pPr><w:tabs><w:tab w:val="right" w:leader="dot" w:pos="8320"/></w:tabs></w:pPr><w:r><w:t>\u7b2c\u4e00\u7ae0 \u7eea\u8bba </w:t></w:r><w:r><w:tab/></w:r><w:r><w:t>1</w:t></w:r></w:p>
+      <w:p><w:pPr><w:tabs><w:tab w:val="right" w:leader="dot" w:pos="8320"/></w:tabs></w:pPr><w:hyperlink w:anchor="bookmark1"><w:r><w:t>1.1 \u7814\u7a76\u80cc\u666f  1</w:t></w:r><w:r><w:tab/></w:r><w:r><w:t> </w:t></w:r></w:hyperlink></w:p>
+      <w:p><w:pPr><w:tabs><w:tab w:val="right" w:leader="dot" w:pos="8320"/></w:tabs></w:pPr><w:r><w:t>1.2 \u7814\u7a76\u610f\u4e49 </w:t></w:r><w:r><w:tab/></w:r><w:r><w:t> </w:t></w:r><w:r><w:t>1</w:t></w:r></w:p>
+      <w:p><w:pPr><w:tabs><w:tab w:val="right" w:leader="dot" w:pos="8320"/></w:tabs></w:pPr><w:r><w:t>1.3 \u7814\u7a76\u73b0\u72b6\t 2</w:t></w:r></w:p>
+      <w:p><w:pPr><w:tabs><w:tab w:val="right" w:leader="dot" w:pos="8320"/></w:tabs></w:pPr><w:r><w:t>1.4 \u7814\u7a76\u65b9\u6cd5 </w:t></w:r><w:r><w:tab/></w:r><w:r><w:t> </w:t></w:r><w:r><w:t>1</w:t></w:r><w:r><w:t>6</w:t></w:r></w:p>
+      <w:p><w:pPr><w:tabs><w:tab w:val="right" w:leader="dot" w:pos="8320"/></w:tabs></w:pPr><w:r><w:t>1.5 \u7f29\u653e\u9875\u7801 </w:t></w:r><w:r><w:tab/></w:r><w:r><w:rPr><w:w w:val="11"/></w:rPr><w:t>3</w:t></w:r></w:p>
+    </w:sdtContent></w:sdt>
+    <w:sdt><w:sdtContent>
+      <w:p><w:pPr><w:tabs><w:tab w:val="right" w:leader="dot" w:pos="8320"/></w:tabs></w:pPr><w:r><w:t>\u53c2\u8003\u6587\u732e </w:t></w:r><w:r><w:tab/></w:r><w:r><w:t>55</w:t></w:r></w:p>
+      <w:p><w:pPr><w:tabs><w:tab w:val="right" w:leader="dot" w:pos="8320"/></w:tabs></w:pPr><w:r><w:t>\u81f4\u8c22 </w:t></w:r><w:r><w:tab/></w:r><w:r><w:t>57</w:t></w:r></w:p>
+    </w:sdtContent></w:sdt>
+    <w:p><w:r><w:t>\u7b2c\u4e00\u7ae0 \u7eea\u8bba</w:t></w:r></w:p>
+    <w:p><w:bookmarkStart w:id="1" w:name="bookmark1"/><w:r><w:t>1.1 \u7814\u7a76\u80cc\u666f</w:t></w:r><w:bookmarkEnd w:id="1"/></w:p>
+    <w:p><w:r><w:t>\u53c2\u8003\u6587\u732e</w:t></w:r></w:p>
+    <w:p><w:r><w:t>[1] Source.</w:t></w:r></w:p>
+    <w:p><w:r><w:t>\u81f4\u8c22</w:t></w:r></w:p>
+''',
+    )
+    before_payload, before_issues = audit_docx_toc_dotted_leaders(source)
+    output = td / "toc-multicontent-fixed.docx"
+    report = repair_docx(source, output, leader="dot", default_pos="8320", reference_docx=source)
+    after_payload, after_issues = audit_docx_toc_dotted_leaders(output)
+    with zipfile.ZipFile(output) as zf:
+        final_document_root = ET.fromstring(zf.read("word/document.xml"))
+    moved = bool(report.get("split_concatenated_entry_indexes"))
+    ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+    w_ns = ns["w"]
+    hyperlink_preserved = any(
+        hyperlink.attrib.get(f"{{{w_ns}}}anchor") == "bookmark1"
+        for hyperlink in final_document_root.findall(".//w:hyperlink", ns)
+    )
+    toc_tails = [
+        page_number_tail_after_last_tab(paragraph)
+        for paragraph in final_document_root.findall(".//w:p", ns)
+        if paragraph.find(".//w:tab", ns) is not None
+    ]
+    pure_tails = all(tail and tail == tail.strip() for tail in toc_tails)
+    output_text = json.dumps(
+        {
+            "before_entry_count": before_payload.get("entry_count"),
+            "before_issues": before_issues,
+            "repair_report": report,
+            "after_payload": after_payload,
+            "after_issues": after_issues,
+            "hyperlink_preserved": hyperlink_preserved,
+            "toc_tails": toc_tails,
+            "pure_tails": pure_tails,
+        },
+        ensure_ascii=False,
+    )
+    ok = (
+        "TOC candidate paragraph lacks page number after final tab" in "\n".join(before_issues)
+        and moved
+        and hyperlink_preserved
+        and pure_tails
+        and not after_issues
+        and after_payload.get("entry_count") == 8
+    )
+    return (0 if ok else 1, output_text)
+
+
 def case_toc_rendered_page_sync_mismatch_rejected(td: Path) -> tuple[int, str]:
     from audit_toc_rendered_page_sync import audit_toc_rendered_page_sync
 
@@ -27045,6 +27863,137 @@ def case_repair_thesis_reference_content_exact_valid(td: Path) -> tuple[int, str
     return (0 if ok else 1, proc.stdout + json.dumps(report, ensure_ascii=False))
 
 
+def make_caption_repair_fixture_docx(path: Path, body_xml: str, styles_xml: str | None = None) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    content_types = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+</Types>
+"""
+    rels = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>
+"""
+    if styles_xml is None:
+        styles_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:style w:type="paragraph" w:styleId="Normal"><w:name w:val="Normal"/></w:style>
+</w:styles>
+"""
+    document_xml = f'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+{body_xml}
+    <w:sectPr/>
+  </w:body>
+</w:document>'''
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("[Content_Types].xml", content_types)
+        zf.writestr("_rels/.rels", rels)
+        zf.writestr("word/document.xml", document_xml)
+        zf.writestr("word/styles.xml", styles_xml)
+    return path
+
+
+def case_repair_caption_run_format_uses_donor_style_valid(td: Path) -> tuple[int, str]:
+    donor_styles = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:style w:type="paragraph" w:styleId="Normal"><w:name w:val="Normal"/></w:style>
+  <w:style w:type="paragraph" w:styleId="Caption">
+    <w:name w:val="caption"/>
+    <w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0" w:line="300" w:lineRule="auto"/><w:ind w:left="0" w:right="0" w:firstLine="0"/></w:pPr>
+    <w:rPr><w:rFonts w:eastAsia="黑体" w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr>
+  </w:style>
+</w:styles>
+"""
+    donor = make_caption_repair_fixture_docx(
+        td / "caption-donor.docx",
+        '''
+    <w:p><w:r><w:t>1 绪论</w:t></w:r></w:p>
+    <w:p><w:pPr><w:pStyle w:val="Caption"/><w:jc w:val="center"/><w:spacing w:before="0" w:after="0" w:line="300" w:lineRule="auto"/><w:ind w:left="0" w:right="0" w:firstLine="0"/></w:pPr><w:r><w:rPr><w:rFonts w:eastAsia="黑体" w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:t>图1-1 系统结构图</w:t></w:r></w:p>
+    <w:p><w:pPr><w:pStyle w:val="Caption"/><w:keepNext/><w:jc w:val="center"/><w:spacing w:before="0" w:after="0" w:line="300" w:lineRule="auto"/><w:ind w:left="0" w:right="0" w:firstLine="0"/></w:pPr><w:r><w:rPr><w:rFonts w:eastAsia="黑体" w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:t>表1-1 参数表</w:t></w:r></w:p>
+''',
+        donor_styles,
+    )
+    source = make_caption_repair_fixture_docx(
+        td / "caption-source.docx",
+        '''
+    <w:p><w:r><w:t>1 绪论</w:t></w:r></w:p>
+    <w:p><w:pPr><w:pStyle w:val="Normal"/><w:ind w:left="420" w:firstLine="420"/><w:spacing w:line="219"/></w:pPr><w:r><w:rPr><w:sz w:val="24"/></w:rPr><w:t>图1-1 系统结构图</w:t></w:r></w:p>
+    <w:p><w:pPr><w:pStyle w:val="Normal"/><w:ind w:firstLine="420"/><w:spacing w:line="360"/></w:pPr><w:r><w:t>图1-1 中的系统结构用于说明模块依赖关系，该段是正文说明。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:pStyle w:val="Normal"/><w:ind w:left="840" w:firstLine="420"/><w:spacing w:line="228"/></w:pPr><w:r><w:rPr><w:sz w:val="19"/></w:rPr><w:t>表1-1 参数表</w:t></w:r></w:p>
+''',
+    )
+    output = td / "caption-output.docx"
+    report_path = td / "caption-report.json"
+    proc = subprocess.run(
+        [
+            str(PYTHON_EXE),
+            str(CAPTION_RUN_FORMAT_REPAIR_SCRIPT),
+            "--source-docx",
+            str(source),
+            "--template-docx",
+            str(donor),
+            "--output-docx",
+            str(output),
+            "--report",
+            str(report_path),
+        ],
+        cwd=str(SKILL_ROOT),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout_seconds(SHORT_SUBPROCESS_TIMEOUT),
+    )
+    if proc.returncode != 0:
+        return proc.returncode, proc.stdout
+    ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+    w_attr = lambda name: f"{{{ns['w']}}}{name}"
+    with zipfile.ZipFile(output) as zf:
+        document_root = ET.fromstring(zf.read("word/document.xml"))
+        styles_root = ET.fromstring(zf.read("word/styles.xml"))
+    paragraphs = document_root.findall(".//w:body/w:p", ns)
+
+    def pstyle(index: int) -> str | None:
+        node = paragraphs[index].find("w:pPr/w:pStyle", ns)
+        return node.get(w_attr("val")) if node is not None else None
+
+    def spacing_line(index: int) -> str | None:
+        node = paragraphs[index].find("w:pPr/w:spacing", ns)
+        return node.get(w_attr("line")) if node is not None else None
+
+    def first_run_size(index: int) -> str | None:
+        node = paragraphs[index].find("w:r/w:rPr/w:sz", ns)
+        return node.get(w_attr("val")) if node is not None else None
+
+    caption_style = next((style for style in styles_root.findall("w:style", ns) if style.get(w_attr("styleId")) == "Caption"), None)
+    caption_style_line = caption_style.find("w:pPr/w:spacing", ns).get(w_attr("line")) if caption_style is not None else None
+    caption_style_size = caption_style.find("w:rPr/w:sz", ns).get(w_attr("val")) if caption_style is not None else None
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    ok = (
+        report["caption_count"] == 2
+        and report["changed_zip_parts"] == ["word/document.xml", "word/styles.xml"]
+        and pstyle(1) == "Caption"
+        and spacing_line(1) == "300"
+        and first_run_size(1) == "20"
+        and pstyle(2) == "Normal"
+        and pstyle(3) == "Caption"
+        and spacing_line(3) == "300"
+        and first_run_size(3) == "20"
+        and caption_style_line == "300"
+        and caption_style_size == "20"
+        and "w:line=\"240\"" not in ET.tostring(document_root, encoding="unicode")
+        and "w:sz=\"21\"" not in ET.tostring(document_root, encoding="unicode")
+    )
+    return (0 if ok else 1, proc.stdout + json.dumps(report, ensure_ascii=False))
+
+
 def case_repair_thesis_surface_format_bounded_valid(td: Path) -> tuple[int, str]:
     zh_title = escape("\u6458\u8981")
     zh_body = escape("\u6a21\u677f\u6458\u8981\u6b63\u6587\u6bb5\u843d\u7528\u4e8e\u63d0\u4f9b\u9996\u884c\u7f29\u8fdb\u3001\u884c\u8ddd\u548c\u6b63\u6587\u5b57\u4f53\u57fa\u7ebf\uff0c\u957f\u5ea6\u8d85\u8fc7\u56db\u5341\u4e2a\u5b57\u3002")
@@ -28892,6 +29841,18 @@ def make_process_only_drawio(path: Path) -> Path:
     return path
 
 
+def make_raster_image_only_drawio(path: Path) -> Path:
+    write_text(
+        path,
+        """<mxfile><diagram><mxGraphModel><root>
+<mxCell id="0"/><mxCell id="1" parent="0"/>
+<mxCell id="2" value="" style="shape=image;html=1;image=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO6pF1cAAAAASUVORK5CYII=;" vertex="1" parent="1"><mxGeometry x="20" y="20" width="320" height="180" as="geometry"/></mxCell>
+</root></mxGraphModel></diagram></mxfile>
+""",
+    )
+    return path
+
+
 def write_svg(path: Path) -> Path:
     write_text(path, '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><rect width="120" height="80" fill="white" stroke="black"/></svg>\n')
     return path
@@ -29111,6 +30072,72 @@ def case_figure_manifest_structural_png_only_rejected(td: Path) -> tuple[int, st
     )
     issues = validate_figure_manifest(manifest)
     ok = any("missing draw.io source" in item for item in issues) and any("missing SVG export" in item for item in issues)
+    return (0 if ok else 1, "\n".join(issues))
+
+
+def case_figure_manifest_structural_material_source_still_requires_drawio_rejected(td: Path) -> tuple[int, str]:
+    from thesis_figure_contract import validate_figure_manifest
+
+    png = make_png(td / "material-structure.png", 1200, 800)
+    material_doc = td / "素材.doc"
+    write_text(material_doc, "fixture material document\n")
+    inventory = td / "material-inventory.md"
+    write_text(inventory, "- material media index: figure_3_2\n")
+    caption = "Figure 3-2 System structure"
+    manifest = {
+        "schema": "graduation-project-builder.figure-manifest.v2",
+        "user_material_source_path": str(material_doc),
+        "user_material_source_sha256": file_sha256(material_doc),
+        "figures": {
+            "figure_3_2": {
+                "family": "structure",
+                "source_kind": "user-material",
+                "caption": caption,
+                "path": str(png),
+                "material_source_path": str(material_doc),
+                "material_source_sha256": file_sha256(material_doc),
+                "material_source_inventory_path": str(inventory),
+                "material_source_anchor": "figure_3_2",
+                "material_extracted_image_path": str(png),
+                "material_extracted_image_sha256": file_sha256(png),
+                "source_material_match_verdict": "pass",
+                "no_generated_substitute_verdict": "pass",
+                "material_to_drawio_native_reconstruction_verdict": "pass",
+                **figure_manifest_common_evidence(td, "material-structure", caption, png),
+            }
+        },
+        "tables": {},
+        "diagrams": {},
+    }
+    issues = validate_figure_manifest(manifest)
+    ok = any("structural figure missing matching diagrams manifest entry" in item for item in issues) and any(
+        "structural figure missing draw.io source" in item for item in issues
+    )
+    return (0 if ok else 1, "\n".join(issues))
+
+
+def case_figure_manifest_drawio_image_only_impostor_rejected(td: Path) -> tuple[int, str]:
+    from thesis_figure_contract import build_figure_asset_manifest, validate_figure_manifest
+
+    png = make_png(td / "image-only-fallback.png", 1200, 800)
+    drawio = make_raster_image_only_drawio(td / "image-only.drawio")
+    svg = write_svg(td / "image-only.svg")
+    caption = "Figure 3-2 System structure"
+    manifest = build_figure_asset_manifest(
+        figure_content(
+            {
+                "family": "structure",
+                "caption": caption,
+                "image_path": str(png),
+                "drawio_path": str(drawio),
+                "svg_path": str(svg),
+                **figure_manifest_common_evidence(td, "image-only", caption, png),
+            }
+        ),
+        td,
+    )
+    issues = validate_figure_manifest(manifest)
+    ok = any("imported raster/image cells" in item for item in issues) and any("image-only" in item for item in issues)
     return (0 if ok else 1, "\n".join(issues))
 
 
@@ -30199,6 +31226,60 @@ def case_figure_manifest_source_preserved_structural_caption_no_diagram_valid(td
     issues = validate_figure_manifest(manifest, final_docx=final_docx, source_docx=source_docx)
     ok = not any("structural figure signals but manifest has no diagram entries" in item for item in issues)
     return (0 if ok else 1, "source-preserved structural caption accepted without diagram regeneration" if ok else "\n".join(issues))
+
+
+def case_figure_manifest_material_only_structural_valid(td: Path) -> tuple[int, str]:
+    from thesis_figure_contract import validate_figure_manifest
+
+    png = make_png(td / "material-flowchart.png", 1200, 650)
+    caption = "图4-2 多无人机巡检任务闭环流程图"
+    final_docx = make_body_picture_docx(td / "material-only-flowchart.docx", png, caption=caption)
+    material_doc = td / "素材.doc"
+    write_text(material_doc, "material document placeholder for source locking\n")
+    material_inventory = td / "material-inventory.json"
+    write_text(
+        material_inventory,
+        json.dumps({"schema": "fixture.material-source.v1", "captions": [caption]}, ensure_ascii=False) + "\n",
+    )
+    manifest = runtime_figure_manifest(td, png)
+    figures = manifest.get("figures")
+    if isinstance(figures, dict):
+        entry = next(entry for entry in figures.values() if isinstance(entry, dict))
+        entry.update(
+            {
+                "family": "flowchart",
+                "source_kind": "material-only",
+                "material_only_reuse": True,
+                "no_redraw_user_override": True,
+                "caption": caption,
+                "material_source_path": str(material_doc),
+                "material_source_sha256": file_sha256(material_doc),
+                "material_source_inventory_path": str(material_inventory),
+                "material_source_anchor": caption,
+                "material_extracted_image_path": str(png),
+                "material_extracted_image_sha256": file_sha256(png),
+                "final_embedded_media_sha256": file_sha256(png),
+                "source_material_match_verdict": "pass",
+                "no_generated_substitute_verdict": "pass",
+                "material_only_reuse_verdict": "pass",
+            }
+        )
+    manifest["material_only_reuse"] = True
+    manifest["user_material_source_path"] = str(material_doc)
+    manifest["user_material_source_sha256"] = file_sha256(material_doc)
+    manifest["material_source_inventory_path"] = str(material_inventory)
+    issues = validate_figure_manifest(manifest, final_docx=final_docx)
+    forbidden = [
+        item for item in issues
+        if "draw.io source" in item
+        or "SVG export" in item
+        or "native reconstruction" in item
+        or "matching diagrams manifest" in item
+    ]
+    return (
+        0 if not forbidden else 1,
+        "material-only structural figure accepted through source media binding" if not forbidden else "\n".join(forbidden),
+    )
 
 
 def case_figure_manifest_runtime_screenshot_top_left_crop_rejected(td: Path) -> tuple[int, str]:
@@ -33470,7 +34551,7 @@ def case_protected_surface_diff_script_citation_loss_rejected(td: Path) -> tuple
             "--output",
             str(report),
             "--target-surface",
-            "body_text",
+            "figure_table_captions_and_holders",
             "--json",
         ],
         capture_output=True,
@@ -33611,6 +34692,136 @@ def case_protected_surface_diff_new_thesis_disposition_valid(td: Path) -> tuple[
         timeout=timeout_seconds(SHORT_SUBPROCESS_TIMEOUT),
     )
     return proc.returncode, proc.stdout + proc.stderr
+
+
+def case_protected_surface_diff_caption_style_drift_rejected(td: Path) -> tuple[int, str]:
+    source_docx = make_raw_docx(
+        td / "protected-diff-caption-style-source.docx",
+        f'''
+    <w:p><w:r><w:t>{escape("目  录")}</w:t></w:r></w:p>
+    <w:p><w:r><w:t>{escape("1 绪论")}</w:t></w:r></w:p>
+    <w:p><w:r><w:t>{escape("本段正文用于触发 body_text 目标面，内容长度足够超过二十个字符。")}</w:t></w:r></w:p>
+    <w:p>
+      <w:pPr>
+        <w:jc w:val="center"/>
+        <w:spacing w:before="0" w:after="240" w:line="360" w:lineRule="auto"/>
+        <w:ind w:firstLine="0" w:left="0" w:right="0"/>
+      </w:pPr>
+      <w:r><w:rPr><w:sz w:val="21"/></w:rPr><w:t>{escape("图 1-1 系统架构图")}</w:t></w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:jc w:val="center"/>
+        <w:spacing w:before="240" w:after="0" w:line="360" w:lineRule="auto"/>
+        <w:keepNext/>
+      </w:pPr>
+      <w:r><w:rPr><w:sz w:val="21"/></w:rPr><w:t>{escape("表 1-1 功能模块表")}</w:t></w:r>
+    </w:p>
+        ''',
+    )
+    final_docx = make_raw_docx(
+        td / "protected-diff-caption-style-final.docx",
+        f'''
+    <w:p><w:r><w:t>{escape("目  录")}</w:t></w:r></w:p>
+    <w:p><w:r><w:t>{escape("1 绪论")}</w:t></w:r></w:p>
+    <w:p><w:r><w:t>{escape("本段正文用于触发 body_text 目标面，内容长度足够超过二十个字符。")}</w:t></w:r></w:p>
+    <w:p>
+      <w:pPr>
+        <w:jc w:val="left"/>
+        <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:ind w:firstLine="560"/>
+      </w:pPr>
+      <w:r><w:rPr><w:sz w:val="24"/></w:rPr><w:t>{escape("图 1-1 系统架构图")}</w:t></w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:jc w:val="left"/>
+        <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:ind w:firstLine="560"/>
+      </w:pPr>
+      <w:r><w:rPr><w:sz w:val="24"/></w:rPr><w:t>{escape("表 1-1 功能模块表")}</w:t></w:r>
+    </w:p>
+        ''',
+    )
+    report = td / "protected-diff-caption-style-report.json"
+    proc = subprocess.run(
+        [
+            str(PYTHON_EXE),
+            str(SKILL_ROOT / "scripts" / "audit_docx_protected_surface_diff.py"),
+            "--source-docx",
+            str(source_docx),
+            "--final-docx",
+            str(final_docx),
+            "--output",
+            str(report),
+            "--target-surface",
+            "body_text",
+            "--json",
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout_seconds(SHORT_SUBPROCESS_TIMEOUT),
+    )
+    return proc.returncode, proc.stdout + proc.stderr
+
+
+def case_protected_surface_diff_caption_style_drift_keyword_not_applicable_valid(td: Path) -> tuple[int, str]:
+    source_docx = make_raw_docx(
+        td / "protected-diff-caption-keyword-source.docx",
+        f'''
+    <w:p><w:r><w:t>{escape("目  录")}</w:t></w:r></w:p>
+    <w:p><w:r><w:t>{escape("1 绪论")}</w:t></w:r></w:p>
+    <w:p><w:r><w:t>{escape("本段正文用于触发 body_text 目标面，内容长度足够超过二十个字符。")}</w:t></w:r></w:p>
+    <w:p>
+      <w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="240" w:line="360" w:lineRule="auto"/><w:ind w:firstLine="0" w:left="0" w:right="0"/></w:pPr>
+      <w:r><w:rPr><w:sz w:val="21"/></w:rPr><w:t>{escape("图 1-1 系统架构图")}</w:t></w:r>
+    </w:p>
+        ''',
+    )
+    final_docx = make_raw_docx(
+        td / "protected-diff-caption-keyword-final.docx",
+        f'''
+    <w:p><w:r><w:t>{escape("目  录")}</w:t></w:r></w:p>
+    <w:p><w:r><w:t>{escape("1 绪论")}</w:t></w:r></w:p>
+    <w:p><w:r><w:t>{escape("本段正文用于触发 body_text 目标面，内容长度足够超过二十个字符。")}</w:t></w:r></w:p>
+    <w:p>
+      <w:pPr><w:jc w:val="left"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/><w:ind w:firstLine="560"/></w:pPr>
+      <w:r><w:rPr><w:sz w:val="24"/></w:rPr><w:t>{escape("图 1-1 系统架构图")}</w:t></w:r>
+    </w:p>
+        ''',
+    )
+    report = td / "protected-diff-caption-keyword-report.json"
+    proc = subprocess.run(
+        [
+            str(PYTHON_EXE),
+            str(SKILL_ROOT / "scripts" / "audit_docx_protected_surface_diff.py"),
+            "--source-docx",
+            str(source_docx),
+            "--final-docx",
+            str(final_docx),
+            "--output",
+            str(report),
+            "--target-surface",
+            "figure_table_captions_and_holders",
+            "--json",
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout_seconds(SHORT_SUBPROCESS_TIMEOUT),
+    )
+    if proc.returncode != 0:
+        return proc.returncode, proc.stdout + proc.stderr
+    payload = json.loads(report.read_text(encoding="utf-8"))
+    ok = (
+        payload["keyword_run_split_verdict"].startswith("not-applicable")
+        and payload["protected_surface_diff_verdict"] == "pass"
+        and not payload["unauthorized_non_target_changes"]
+    )
+    return (0 if ok else 1, proc.stdout + json.dumps(payload, ensure_ascii=False))
 
 
 def case_transaction_protected_surface_diff_non_target_rejected(td: Path) -> tuple[int, str]:
@@ -35440,6 +36651,52 @@ def case_formula_text_pseudo_object_rejected(td: Path) -> tuple[int, str]:
     write_text(record, text)
     proc = run_validator(record)
     return proc.returncode, proc.stdout
+
+
+def case_formula_audit_algorithm_code_assignments_excluded_valid(td: Path) -> tuple[int, str]:
+    final_docx = make_min_docx(
+        td / "algorithm_code_assignments.docx",
+        [
+            "1 Introduction",
+            "代码4-1 多无人机协同任务分配核心实现",
+            "def allocate_multi_uav_tasks(uavs, tasks, weights, safe_energy):",
+            "    assignment = {}",
+            "    unassigned = []",
+            "    ordered_tasks = sorted(",
+            "        key=lambda t: (-t['priority'], -t['risk'], t['plan_time'])",
+            "    )",
+            "    best_score = float('inf')",
+            "    distance = estimate_distance(uav['position'], task['area'])",
+            "    energy = (",
+            "        weights['alpha'] * distance",
+            "        + weights['beta'] * task['duration']",
+            "    )",
+            "    if score < best_score:",
+            "        best_score = score",
+            "        best_uav = uav",
+            "        best_energy = energy",
+            "正文说明算法依据约束条件完成任务分配。",
+        ],
+    )
+    report = td / "algorithm_code_assignments.json"
+    proc = subprocess.run(
+        [
+            str(PYTHON_EXE),
+            str(FORMULA_AUDIT_SCRIPT),
+            str(final_docx),
+            "--allow-no-formulas",
+            "--report",
+            str(report),
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+        timeout=timeout_seconds(120),
+    )
+    extra = report.read_text(encoding="utf-8") if report.exists() else ""
+    return proc.returncode, proc.stdout + proc.stderr + "\n" + extra
 
 
 def case_formula_leadin_without_formula_rejected(td: Path) -> tuple[int, str]:
@@ -37652,6 +38909,8 @@ CASES = [
     ("protected_surface_diff_script_citation_loss_rejected", case_protected_surface_diff_script_citation_loss_rejected, 1, "citation_run_diff_verdict"),
     ("protected_surface_diff_approved_nonpreservation_valid", case_protected_surface_diff_approved_nonpreservation_valid, 0, "citation_preservation_scope"),
     ("protected_surface_diff_new_thesis_disposition_valid", case_protected_surface_diff_new_thesis_disposition_valid, 0, "controlled_bookmark_disposition"),
+    ("protected_surface_diff_caption_style_drift_rejected", case_protected_surface_diff_caption_style_drift_rejected, 1, "figure_table_captions_and_holders"),
+    ("protected_surface_diff_caption_style_drift_keyword_not_applicable_valid", case_protected_surface_diff_caption_style_drift_keyword_not_applicable_valid, 0, "not-applicable keyword surfaces unchanged and not targeted"),
     ("transaction_post_mutation_surface_diff_schema_rejected", case_transaction_post_mutation_surface_diff_schema_rejected, 1, "post_mutation_surface_diff schema must be graduation-project-builder.docx-protected-surface-diff.v1"),
     ("transaction_protected_surface_diff_non_target_rejected", case_transaction_protected_surface_diff_non_target_rejected, 1, "protected-surface diff report contains unauthorized non-target protected surface changes"),
     ("transaction_review_artifact_fake_pass_rejected", case_transaction_review_artifact_fake_pass_rejected, 1, "review artifact diff missing final docx path"),
@@ -37814,10 +39073,20 @@ CASES = [
     ("user_reported_cross_surface_ledger_missing_rejected", case_user_reported_cross_surface_ledger_missing_rejected, 1, "user-reported issue ledger missing cross-surface-regression coverage"),
     ("user_reported_header_title_consistency_missing_rejected", case_user_reported_header_title_consistency_missing_rejected, 1, "gate record lacks body opener/header title consistency evidence path"),
     ("user_reported_header_title_consistency_valid", case_user_reported_header_title_consistency_valid, 0, "SKILL GATE PASSED"),
+    ("user_reported_figure_width_gate_fields_missing_rejected", case_user_reported_figure_width_gate_fields_missing_rejected, 1, "figure visible-content completeness verdict"),
+    ("user_reported_algorithm_code_visibility_fields_missing_rejected", case_user_reported_algorithm_code_visibility_fields_missing_rejected, 1, "algorithm code visibility verdict"),
+    ("user_reported_toc_digits_cache_fields_missing_rejected", case_user_reported_toc_digits_cache_fields_missing_rejected, 1, "TOC digits/cache preservation verdict"),
+    ("user_reported_material_generated_substitute_fields_missing_rejected", case_user_reported_material_generated_substitute_fields_missing_rejected, 1, "figure generated-substitute rejection verdict"),
+    ("user_reported_figure_width_dummy_evidence_rejected", case_user_reported_figure_width_dummy_evidence_rejected, 1, "figure extents evidence must be readable JSON"),
+    ("user_reported_algorithm_code_visibility_dummy_evidence_rejected", case_user_reported_algorithm_code_visibility_dummy_evidence_rejected, 1, "algorithm code visibility evidence must be readable JSON"),
+    ("user_reported_toc_digits_cache_dummy_evidence_rejected", case_user_reported_toc_digits_cache_dummy_evidence_rejected, 1, "TOC digits/cache preservation evidence must be readable JSON"),
+    ("user_reported_drawio_impostor_flowchart_fields_missing_rejected", case_user_reported_drawio_impostor_flowchart_fields_missing_rejected, 1, "flowchart semantic trigger inventory path"),
+    ("user_reported_drawio_impostor_image_only_source_rejected", case_user_reported_drawio_impostor_image_only_source_rejected, 1, "image-only"),
     ("wps_preset_claim_rejected", case_wps_preset_claim_rejected, 1, "WPS preset application summary makes an unsafe editor-authority claim"),
     ("image_metadata_sync_rejected", case_image_metadata_sync_rejected, 1, "image metadata sync summary indicates unresolved picture metadata drift"),
     ("formula_numbering_surface_rejected", case_formula_numbering_surface_rejected, 1, "formula number layout issue count"),
     ("formula_text_pseudo_object_rejected", case_formula_text_pseudo_object_rejected, 1, "plain-text pseudo-formula paragraphs"),
+    ("formula_audit_algorithm_code_assignments_excluded_valid", case_formula_audit_algorithm_code_assignments_excluded_valid, 0, "code_like_formula_exclusion_count"),
     ("formula_leadin_without_formula_rejected", case_formula_leadin_without_formula_rejected, 1, "missing_formula_after_leadin"),
     ("formula_object_without_number_rejected", case_formula_object_without_number_rejected, 1, "formula-number-required-missing"),
     ("formula_minimum_count_rejected", case_formula_minimum_count_rejected, 1, "below minimum formula count"),
@@ -37825,6 +39094,7 @@ CASES = [
     ("gate_record_mechanical_formula_minimum_rejected", case_gate_record_mechanical_formula_minimum_rejected, 1, "mechanical thesis formula object count is below minimum 200"),
     ("gate_formula_loss_user_ledger_rejected", case_gate_formula_loss_user_ledger_rejected, 1, "formula task has no detectable formula object"),
     ("gate_record_cad_appendix_binding_missing_rejected", case_gate_record_cad_appendix_binding_missing_rejected, 1, "must bind CAD appendix binding audit path"),
+    ("repair_caption_run_format_uses_donor_style_valid", case_repair_caption_run_format_uses_donor_style_valid, 0, "caption_count"),
     ("inline_formula_anchor_replacement_valid", case_inline_formula_anchor_replacement_valid, 0, '"pseudo_formula_count": 0'),
     ("header_footer_position_rejected", case_header_footer_position_rejected, 1, "header placement summary indicates unresolved header-placement drift"),
     ("footer_baseline_typography_rejected", case_footer_baseline_typography_rejected, 1, "footer baseline typography summary indicates unresolved footer-baseline typography drift"),
@@ -38117,6 +39387,7 @@ CASES = [
     ("update_static_toc_missing_tail_entry_rejected", case_update_static_toc_missing_tail_entry_rejected, 0, "missing required tail entries"),
     ("toc_leader_audit_tail_entries_missing_rejected", case_toc_leader_audit_tail_entries_missing_rejected, 0, "missing required tail-block entry"),
     ("toc_leader_audit_table_contamination_rejected", case_toc_leader_audit_table_contamination_rejected, 0, "TOC protected range contains table"),
+    ("repair_toc_dotted_leaders_multicontent_missing_page_valid", case_repair_toc_dotted_leaders_multicontent_missing_page_valid, 0, "split_concatenated_entry_indexes"),
     ("toc_rendered_page_sync_mismatch_rejected", case_toc_rendered_page_sync_mismatch_rejected, 0, "TOC rendered page sync mismatch"),
     ("repair_frontmatter_toc_structure_tail_order_and_toc_entries_valid", case_repair_frontmatter_toc_structure_tail_order_and_toc_entries_valid, 0, "tail_block_order_repaired"),
     ("repair_frontmatter_toc_structure_preserves_frontmatter_valid", case_repair_frontmatter_toc_structure_preserves_frontmatter_valid, 0, "frontmatter TOC structure repair preserved front matter"),
@@ -38253,11 +39524,22 @@ CASES = [
     ("audit_body_style_figure_caption_requires_preceding_image_rejected", case_audit_body_style_figure_caption_requires_preceding_image_rejected, 0, "figure-caption adjacency expected"),
     ("audit_figure_extents_oversized_body_image_rejected", case_audit_figure_extents_oversized_body_image_rejected, 0, "exceeds display threshold"),
     ("audit_figure_extents_runtime_screenshot_narrow_rejected", case_audit_figure_extents_runtime_screenshot_narrow_rejected, 0, "min_width_cm=8.0"),
+    ("audit_figure_extents_height_constrained_portrait_valid", case_audit_figure_extents_height_constrained_portrait_valid, 0, "height_constrained_width"),
     ("figure_width_not_paragraph_margin_aligned_rejected", case_figure_width_not_paragraph_margin_aligned_rejected, 0, "below paragraph-margin width"),
+    ("audit_figure_extents_low_native_ppi_rejected", case_audit_figure_extents_low_native_ppi_rejected, 0, "below native-resolution readability threshold"),
+    ("audit_figure_extents_native_constrained_width_valid", case_audit_figure_extents_native_constrained_width_valid, 0, "native_resolution_constrained_width"),
+    ("audit_figure_extents_src_rect_crop_rejected", case_audit_figure_extents_src_rect_crop_rejected, 0, "nonzero picture crop a:srcRect"),
+    ("audit_figure_extents_exact_line_spacing_clip_rejected", case_audit_figure_extents_exact_line_spacing_clip_rejected, 0, "exact line spacing smaller than image height"),
+    ("audit_figure_extents_image_holder_indent_rejected", case_audit_figure_extents_image_holder_indent_rejected, 0, "unsafe paragraph layout"),
     ("repair_figure_extents_shrinks_height_overflow_valid", case_repair_figure_extents_shrinks_height_overflow_valid, 0, "exceeds-safe-page-height"),
+    ("repair_figure_extents_clears_exact_line_spacing_valid", case_repair_figure_extents_clears_exact_line_spacing_valid, 0, "changed_holder_safety_count"),
+    ("repair_figure_extents_clears_image_holder_indent_valid", case_repair_figure_extents_clears_image_holder_indent_valid, 0, "changed_holder_layout_count"),
+    ("repair_figure_extents_shrinks_low_native_ppi_valid", case_repair_figure_extents_shrinks_low_native_ppi_valid, 0, "below-min-native-ppi"),
     ("audit_figure_extents_structural_undersized_rejected", case_audit_figure_extents_structural_undersized_rejected, 0, "below readability threshold"),
     ("audit_figure_extents_structural_narrow_width_rejected", case_audit_figure_extents_structural_narrow_width_rejected, 0, "min_width_cm=9.0"),
     ("audit_figure_extents_frontmatter_image_rejected", case_audit_figure_extents_frontmatter_image_rejected, 0, "front-matter drawing is not source-preserved"),
+    ("audit_figure_extents_frontmatter_holder_indent_source_preserved_rejected", case_audit_figure_extents_frontmatter_holder_indent_source_preserved_rejected, 0, "front-matter image holder has unsafe paragraph layout"),
+    ("repair_figure_extents_clears_frontmatter_holder_indent_valid", case_repair_figure_extents_clears_frontmatter_holder_indent_valid, 0, "changed_holder_layout_count"),
     ("audit_figure_extents_caption_overcount_guard_valid", case_audit_figure_extents_caption_overcount_guard_valid, 0, "caption-overcount"),
     ("audit_figure_extents_appendix_not_body_rejected", case_audit_figure_extents_appendix_not_body_rejected, 0, "body figure count below required minimum"),
     ("repair_figure_locality_keeps_large_image_before_malformed_caption_valid", case_repair_figure_locality_keeps_large_image_before_malformed_caption_valid, 0, "malformed_caption_split_from_image_holder"),
@@ -38335,6 +39617,8 @@ CASES = [
     ("figure_manifest_family_route_rejected", case_figure_manifest_family_route_rejected, 0, "sequential figure declared"),
     ("figure_manifest_mechanical_cad_sequence_word_valid", case_figure_manifest_mechanical_cad_sequence_word_valid, 0, ""),
     ("figure_manifest_structural_png_only_rejected", case_figure_manifest_structural_png_only_rejected, 0, "missing draw.io source"),
+    ("figure_manifest_structural_material_source_still_requires_drawio_rejected", case_figure_manifest_structural_material_source_still_requires_drawio_rejected, 0, "structural figure missing draw.io source"),
+    ("figure_manifest_drawio_image_only_impostor_rejected", case_figure_manifest_drawio_image_only_impostor_rejected, 0, "imported raster/image cells"),
     ("figure_manifest_unauthorized_existing_image_replacement_rejected", case_figure_manifest_unauthorized_existing_image_replacement_rejected, 0, "missing explicit replacement authorization source"),
     ("figure_manifest_source_final_media_hash_replacement_rejected", case_figure_manifest_source_final_media_hash_replacement_rejected, 0, "media relationship changed without explicit replacement authorization"),
     ("figure_manifest_missing_source_docx_for_final_media_rejected", case_figure_manifest_missing_source_docx_for_final_media_rejected, 0, "source_docx_path does not exist"),
@@ -38374,6 +39658,7 @@ CASES = [
     ("figure_manifest_runtime_screenshot_widget_grab_rejected", case_figure_manifest_runtime_screenshot_widget_grab_rejected, 0, "widget/component render substitute"),
     ("figure_manifest_preserved_runtime_screenshot_requires_evidence", case_figure_manifest_preserved_runtime_screenshot_requires_evidence, 0, "runtime screenshot missing real route/page URL"),
     ("figure_manifest_source_preserved_structural_caption_no_diagram_valid", case_figure_manifest_source_preserved_structural_caption_no_diagram_valid, 0, "source-preserved structural caption accepted"),
+    ("figure_manifest_material_only_structural_valid", case_figure_manifest_material_only_structural_valid, 0, "material-only structural figure accepted"),
     ("figure_manifest_runtime_screenshot_top_left_crop_rejected", case_figure_manifest_runtime_screenshot_top_left_crop_rejected, 0, "runtime screenshot appears cropped or partial-window"),
     ("figure_manifest_runtime_screenshot_blank_render_rejected", case_figure_manifest_runtime_screenshot_blank_render_rejected, 0, "rendered image appears blank/near-empty"),
     ("figure_manifest_algorithm_result_purple_placeholder_rejected", case_figure_manifest_algorithm_result_purple_placeholder_rejected, 0, "purple placeholder/color block"),
@@ -38498,6 +39783,8 @@ LEGACY_PRE_SPLIT_FAST_CASE_NAMES = {
     "figure_manifest_chinese_result_sample_requires_provenance",
     "figure_manifest_algorithm_result_real_provenance_valid",
     "figure_manifest_structural_png_only_rejected",
+    "figure_manifest_structural_material_source_still_requires_drawio_rejected",
+    "figure_manifest_drawio_image_only_impostor_rejected",
     "figure_manifest_structural_router_collision_rejected",
     "figure_manifest_structural_line_crosses_node_rejected",
     "figure_manifest_structural_non_orthogonal_connector_rejected",
@@ -38537,6 +39824,15 @@ LEGACY_PRE_SPLIT_FAST_CASE_NAMES = {
     "user_reported_cross_surface_ledger_missing_rejected",
     "user_reported_header_title_consistency_missing_rejected",
     "user_reported_header_title_consistency_valid",
+    "user_reported_figure_width_gate_fields_missing_rejected",
+    "user_reported_algorithm_code_visibility_fields_missing_rejected",
+    "user_reported_toc_digits_cache_fields_missing_rejected",
+    "user_reported_material_generated_substitute_fields_missing_rejected",
+    "user_reported_figure_width_dummy_evidence_rejected",
+    "user_reported_algorithm_code_visibility_dummy_evidence_rejected",
+    "user_reported_toc_digits_cache_dummy_evidence_rejected",
+    "user_reported_drawio_impostor_flowchart_fields_missing_rejected",
+    "user_reported_drawio_impostor_image_only_source_rejected",
     "body_citation_diff_source_without_hyperlinks_valid",
     "body_citation_diff_whole_rebuild_chain_valid",
     "body_citation_diff_local_preservation_still_rejected",
@@ -38692,6 +39988,8 @@ FAST_THESIS_RECORD_CASE_NAMES = {
     "transaction_toc_page_number_fake_metric_rejected",
     "protected_surface_diff_script_citation_loss_rejected",
     "protected_surface_diff_new_thesis_disposition_valid",
+    "protected_surface_diff_caption_style_drift_rejected",
+    "protected_surface_diff_caption_style_drift_keyword_not_applicable_valid",
     "transaction_post_mutation_surface_diff_schema_rejected",
     "transaction_protected_surface_diff_non_target_rejected",
     "transaction_review_artifact_fake_pass_rejected",
@@ -38746,11 +40044,22 @@ FAST_THESIS_RECORD_CASE_NAMES = {
     "user_reported_cross_surface_ledger_missing_rejected",
     "user_reported_header_title_consistency_missing_rejected",
     "user_reported_header_title_consistency_valid",
+    "user_reported_figure_width_gate_fields_missing_rejected",
+    "user_reported_algorithm_code_visibility_fields_missing_rejected",
+    "user_reported_toc_digits_cache_fields_missing_rejected",
+    "user_reported_material_generated_substitute_fields_missing_rejected",
+    "user_reported_figure_width_dummy_evidence_rejected",
+    "user_reported_algorithm_code_visibility_dummy_evidence_rejected",
+    "user_reported_toc_digits_cache_dummy_evidence_rejected",
+    "user_reported_drawio_impostor_flowchart_fields_missing_rejected",
+    "user_reported_drawio_impostor_image_only_source_rejected",
     "passed_with_limitations_rejected",
     "acceptance_generator_missing_header_footer_page_number_detector_rejected",
     "user_reported_abstract_header_footer_visual_geometry_missing_rejected",
     "figure_manifest_algorithm_result_schematic_rejected",
     "figure_manifest_algorithm_result_real_provenance_valid",
+    "figure_manifest_structural_material_source_still_requires_drawio_rejected",
+    "figure_manifest_drawio_image_only_impostor_rejected",
     "figure_manifest_unauthorized_existing_image_replacement_rejected",
     "figure_manifest_source_final_media_hash_replacement_rejected",
     "figure_manifest_missing_source_docx_for_final_media_rejected",
@@ -38775,13 +40084,25 @@ FAST_THESIS_RECORD_CASE_NAMES = {
     "bibliography_manual_auto_numbering_rejected",
     "audit_figure_extents_oversized_body_image_rejected",
     "audit_figure_extents_runtime_screenshot_narrow_rejected",
+    "audit_figure_extents_height_constrained_portrait_valid",
     "figure_width_not_paragraph_margin_aligned_rejected",
+    "audit_figure_extents_low_native_ppi_rejected",
+    "audit_figure_extents_native_constrained_width_valid",
+    "audit_figure_extents_src_rect_crop_rejected",
+    "audit_figure_extents_exact_line_spacing_clip_rejected",
+    "audit_figure_extents_image_holder_indent_rejected",
     "repair_figure_extents_shrinks_height_overflow_valid",
+    "repair_figure_extents_clears_exact_line_spacing_valid",
+    "repair_figure_extents_clears_image_holder_indent_valid",
+    "repair_figure_extents_shrinks_low_native_ppi_valid",
     "audit_figure_extents_structural_undersized_rejected",
     "audit_figure_extents_structural_narrow_width_rejected",
     "audit_figure_extents_frontmatter_image_rejected",
+    "audit_figure_extents_frontmatter_holder_indent_source_preserved_rejected",
+    "repair_figure_extents_clears_frontmatter_holder_indent_valid",
     "audit_figure_extents_caption_overcount_guard_valid",
     "audit_figure_extents_appendix_not_body_rejected",
+    "repair_caption_run_format_uses_donor_style_valid",
     "repair_frontmatter_toc_structure_toc_mixed_run_rewritten_valid",
     "repair_frontmatter_toc_structure_live_toc_field_wraps_static_cache_valid",
     "gate_live_toc_required_static_toc_rejected",
@@ -38834,6 +40155,7 @@ FAST_THESIS_RECORD_CASE_NAMES = {
     "update_static_toc_missing_tail_entry_rejected",
     "toc_leader_audit_tail_entries_missing_rejected",
     "toc_leader_audit_table_contamination_rejected",
+    "repair_toc_dotted_leaders_multicontent_missing_page_valid",
     "toc_rendered_page_sync_mismatch_rejected",
     "repair_frontmatter_toc_structure_tail_order_and_toc_entries_valid",
     "repair_frontmatter_toc_structure_reference_residue_preserves_citations_valid",

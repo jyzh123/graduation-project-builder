@@ -10,7 +10,7 @@ import re
 import zipfile
 from xml.etree import ElementTree as ET
 
-from toc_leader_audit import NS, W, audit_docx_toc_dotted_leaders, choose_right_tab, collect_toc_entry_paragraphs, is_toc_title, load_styles, page_number_after_last_tab, paragraph_style_id, run_tab_segments, w_attr
+from toc_leader_audit import NS, W, audit_docx_toc_dotted_leaders, choose_right_tab, collect_toc_entry_paragraphs, is_body_level1_heading, is_toc_title, load_styles, page_number_after_last_tab, page_number_tail_after_last_tab, page_number_tail_is_render_safe, paragraph_style_id, run_tab_segments, tail_text_node_runs_after_final_tab, w_attr
 
 
 def ensure_child(parent: ET.Element, tag: str, *, first: bool = False) -> ET.Element:
@@ -277,6 +277,10 @@ def split_tabbed_toc_text_with_trailing_page(paragraph: ET.Element) -> bool:
     tab_count, segments = run_tab_segments(paragraph)
     if not tab_count or page_number_after_last_tab(paragraph):
         return False
+    if move_trailing_page_number_after_final_tab(paragraph):
+        return True
+    if paragraph.find(".//w:hyperlink", NS) is not None:
+        return False
     if not segments:
         return False
     leading = "".join(segments[:-1]).strip() or segments[0].strip()
@@ -294,6 +298,169 @@ def split_tabbed_toc_text_with_trailing_page(paragraph: ET.Element) -> bool:
     return True
 
 
+def text_nodes_for_direct_runs(paragraph: ET.Element) -> list[tuple[int, ET.Element, ET.Element]]:
+    rows: list[tuple[int, ET.Element, ET.Element]] = []
+    for run_index, run in enumerate(paragraph.iter(W + "r")):
+        for node in run.findall("w:t", NS):
+            rows.append((run_index, run, node))
+    return rows
+
+
+def direct_run_has_tab(run: ET.Element) -> bool:
+    return run.find("w:tab", NS) is not None
+
+
+def move_trailing_page_number_after_final_tab(paragraph: ET.Element) -> bool:
+    """Move a misplaced TOC page token to the final tab tail.
+
+    This handles rows such as `1.1 研究背景  1<TAB>`, where the paragraph
+    structure still has a final tab but the page number was written before it.
+    The repair preserves existing paragraph properties and most run structure.
+    """
+
+    runs = list(paragraph.iter(W + "r"))
+    tab_run_indexes = [idx for idx, run in enumerate(runs) if direct_run_has_tab(run)]
+    if not tab_run_indexes:
+        return False
+    parent_map = {child: parent for parent in paragraph.iter() for child in list(parent)}
+    final_tab_run_index = tab_run_indexes[-1]
+    before_nodes = [
+        (run_index, run, node)
+        for run_index, run, node in text_nodes_for_direct_runs(paragraph)
+        if run_index < final_tab_run_index
+    ]
+    after_nodes = [
+        (run_index, run, node)
+        for run_index, run, node in text_nodes_for_direct_runs(paragraph)
+        if run_index > final_tab_run_index
+    ]
+    page = ""
+    source_rpr: ET.Element | None = None
+    for _run_index, run, node in reversed(before_nodes):
+        value = node.text or ""
+        match = re.match(r"^(?P<label>.*?)(?P<gap>[\s\u3000]+)(?P<page>\d+|[ivxlcdmIVXLCDM]+)\s*$", value)
+        if not match:
+            continue
+        label = match.group("label").rstrip()
+        page = match.group("page")
+        if not label:
+            continue
+        node.text = label + " "
+        rpr = run.find("w:rPr", NS)
+        source_rpr = deepcopy(rpr) if rpr is not None else None
+        break
+    if not page:
+        return False
+    for _run_index, _run, node in reversed(after_nodes):
+        if (node.text or "").strip():
+            continue
+        node.text = page
+        return True
+    tab_run = runs[final_tab_run_index]
+    tab_parent = parent_map.get(tab_run)
+    if tab_parent is None:
+        return False
+    tab_position = list(tab_parent).index(tab_run)
+    page_run = ET.Element(W + "r")
+    if source_rpr is not None:
+        page_run.append(source_rpr)
+    text_node = ET.Element(W + "t")
+    text_node.text = page
+    page_run.append(text_node)
+    tab_parent.insert(tab_position + 1, page_run)
+    return True
+
+
+def text_nodes_after_final_tab(paragraph: ET.Element) -> list[ET.Element]:
+    nodes: list[ET.Element] = []
+    seen_tab = False
+    for node in paragraph.iter():
+        if node.tag == W + "tab":
+            seen_tab = True
+            nodes = []
+            continue
+        if node.tag != W + "t":
+            continue
+        text = node.text or ""
+        if "\t" in text:
+            seen_tab = True
+            nodes = [node]
+            continue
+        if seen_tab:
+            nodes.append(node)
+    return nodes
+
+
+def normalize_page_number_tail_after_final_tab(paragraph: ET.Element) -> bool:
+    page = page_number_after_last_tab(paragraph)
+    tail = page_number_tail_after_last_tab(paragraph)
+    if not page or page_number_tail_is_render_safe(tail, page):
+        return False
+    if tail.strip() != page:
+        return False
+    nodes = text_nodes_after_final_tab(paragraph)
+    if not nodes:
+        return False
+    for index in range(len(nodes) - 1, -1, -1):
+        text = nodes[index].text or ""
+        if "\t" not in text:
+            continue
+        prefix, raw_tail = text.rsplit("\t", 1)
+        following_tail = "".join(node.text or "" for node in nodes[index + 1 :])
+        if (raw_tail + following_tail).strip() != page:
+            return False
+        changed = False
+        new_text = prefix + "\t" + page
+        if text != new_text:
+            nodes[index].text = new_text
+            changed = True
+        for node in nodes[index + 1 :]:
+            if node.text:
+                node.text = ""
+                changed = True
+        return changed
+    changed = False
+    nonempty_nodes = [(node, node.text or "") for node in nodes if (node.text or "").strip()]
+    if not nonempty_nodes:
+        return False
+    if "".join(text.strip() for _node, text in nonempty_nodes) != page:
+        return False
+    page_node = nonempty_nodes[0][0]
+    for node in nodes:
+        text = node.text or ""
+        if node is page_node:
+            new_text = page
+            if text != new_text:
+                node.text = new_text
+                changed = True
+            continue
+        if text:
+            node.text = ""
+            changed = True
+    return changed
+
+
+def remove_unsafe_page_number_tail_run_scaling(paragraph: ET.Element) -> bool:
+    page = page_number_after_last_tab(paragraph)
+    if not page:
+        return False
+    rows = tail_text_node_runs_after_final_tab(paragraph)
+    nonempty_rows = [(run, node.text or "") for run, node in rows if (node.text or "").strip()]
+    if not nonempty_rows:
+        return False
+    if "".join(text.rsplit("\t", 1)[-1].strip() for _run, text in nonempty_rows) != page:
+        return False
+    changed = False
+    for run, _text in nonempty_rows:
+        rpr = run.find("w:rPr", NS)
+        if rpr is None:
+            continue
+        for scale in list(rpr.findall("w:w", NS)):
+            rpr.remove(scale)
+            changed = True
+    return changed
+
+
 def append_repairable_tabbed_toc_candidates(
     root: ET.Element,
     styles: dict[str, object],
@@ -302,30 +469,36 @@ def append_repairable_tabbed_toc_candidates(
     body = root.find(".//w:body", NS)
     if body is None:
         return []
-    children = list(body)
+    paragraphs = list(body.iter(W + "p"))
     title_index: int | None = None
-    for index, child in enumerate(children):
-        if child.tag == W + "p" and is_toc_title(child, styles):  # type: ignore[arg-type]
+    for index, child in enumerate(paragraphs):
+        if is_toc_title(child, styles):  # type: ignore[arg-type]
             title_index = index
             break
     if title_index is None:
         return []
     added: list[ET.Element] = []
     known = {id(paragraph) for paragraph in entries}
-    for child in children[title_index + 1 :]:
-        if child.tag != W + "p":
-            continue
+    seen_toc_like = False
+    for child in paragraphs[title_index + 1 :]:
         if id(child) in known:
+            seen_toc_like = True
             continue
         text = paragraph_text(child)
+        tab_count, _segments = run_tab_segments(child)
         if not text.strip():
             continue
+        if tab_count:
+            seen_toc_like = True
+        if seen_toc_like and not tab_count and is_body_level1_heading(child):  # type: ignore[arg-type]
+            break
         if re.match(r"^\s*(?:\d{1,2}\s+|第\s*\d+\s*章|第\d+章|绗)", text) and not tab_count_has_missing_page(child):
             break
         if tab_count_has_missing_page(child) and split_static_toc_text(text) is not None:
             entries.append(child)
             added.append(child)
             known.add(id(child))
+            seen_toc_like = True
     return added
 
 
@@ -365,6 +538,8 @@ def split_concatenated_entry_runs(paragraph: ET.Element) -> bool:
     split = split_static_toc_text(text)
     if split is None:
         return False
+    if paragraph.find(".//w:hyperlink", NS) is not None:
+        return False
     label, page = split
     base_rpr = rpr_without_underline(first_text_run_rpr(paragraph))
     for child in list(paragraph):
@@ -402,6 +577,8 @@ def repair_document_xml(
     changed_indexes: list[int] = []
     template_metric_indexes: list[int] = []
     split_indexes: list[int] = []
+    page_tail_normalized_indexes: list[int] = []
+    page_tail_scaling_repaired_indexes: list[int] = []
     body = root.find(".//w:body", NS)
     paragraphs = list(body.iter(W + "p")) if body is not None else []
     for paragraph in entries:
@@ -410,6 +587,10 @@ def repair_document_xml(
             template_metric_indexes.append(index)
         if split_concatenated_entry_runs(paragraph):
             split_indexes.append(index)
+        if normalize_page_number_tail_after_final_tab(paragraph):
+            page_tail_normalized_indexes.append(index)
+        if remove_unsafe_page_number_tail_run_scaling(paragraph):
+            page_tail_scaling_repaired_indexes.append(index)
         if patch_entry_tabs(paragraph, leader=leader, default_pos=default_pos):
             changed_indexes.append(index)
     report: dict[str, object] = {
@@ -417,6 +598,8 @@ def repair_document_xml(
         "changed_paragraph_indexes": changed_indexes,
         "template_metric_replayed_paragraph_indexes": template_metric_indexes,
         "split_concatenated_entry_indexes": split_indexes,
+        "page_tail_normalized_paragraph_indexes": page_tail_normalized_indexes,
+        "page_tail_scaling_repaired_paragraph_indexes": page_tail_scaling_repaired_indexes,
         "entry_count": len(entries),
         "repairable_tabbed_missing_page_entry_count": len(added_repairable_entries),
         "collection_issues": collection_issues,

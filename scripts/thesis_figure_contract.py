@@ -81,6 +81,18 @@ STRUCTURAL_FORBIDDEN_SOURCE_PATTERNS = (
     "\u624b\u5de5png",
     "\u624b\u5de5 png",
 )
+USER_MATERIAL_SOURCE_TOKENS = (
+    "user-material",
+    "user_material",
+    "material-doc",
+    "material_doc",
+    "provided-material",
+    "provided_material",
+    "source-material",
+    "source_material",
+    "\u7d20\u6750",
+    "\u7528\u6237\u7d20\u6750",
+)
 RUNTIME_SCREENSHOT_TOKENS = (
     "screenshot",
     "screen shot",
@@ -388,6 +400,12 @@ MANIFEST_PATH_FIELDS = {
     "output_docx_path",
     "reviewed_output_path",
     "final_manuscript_path",
+    "user_material_source_path",
+    "material_source_path",
+    "material_doc_path",
+    "material_source_inventory_path",
+    "material_extracted_image_path",
+    "material_source_evidence_path",
     "table_authority_source_path",
     "authority_source_file_path",
     "active_table_authority_path",
@@ -954,18 +972,32 @@ def drawio_flowchart_issues(drawio: Path) -> list[str]:
                 "height": float(geom.attrib.get("height", "0")) if geom is not None else 0.0,
             }
         )
+    issues: list[str] = []
+    raster_vertices = [node for node in vertices if _drawio_style_uses_raster_image(str(node.get("style") or ""))]
+    native_vertices = [node for node in vertices if node not in raster_vertices]
+    if raster_vertices:
+        labels = ", ".join(str(node.get("value") or "<blank>") for node in raster_vertices[:5])
+        issues.append(
+            "flowchart draw.io source contains imported raster/image cells; "
+            f"use native draw.io mxGraph shapes, not pasted PNG/SVG/JPEG: {labels}"
+        )
     if not vertices:
         return ["flowchart draw.io source has no usable vertices"]
-    issues: list[str] = []
-    ellipses = [node for node in vertices if "ellipse" in str(node["style"]).lower() or str(node["style_map"].get("rounded", "")) == "1"]
-    processes = [node for node in vertices if node not in ellipses and "rhombus" not in str(node["style"]).lower()]
+    if not native_vertices:
+        issues.append("flowchart draw.io source is image-only and has no native draw.io flowchart nodes")
+    ellipses = [
+        node
+        for node in native_vertices
+        if "ellipse" in str(node["style"]).lower() or str(node["style_map"].get("rounded", "")) == "1"
+    ]
+    processes = [node for node in native_vertices if node not in ellipses and "rhombus" not in str(node["style"]).lower()]
     if not any("\u5f00\u59cb" in str(node["value"]) or "start" in str(node["value"]).lower() for node in ellipses):
         issues.append("flowchart missing explicit start terminator")
     if not any("\u7ed3\u675f" in str(node["value"]) or "end" in str(node["value"]).lower() for node in ellipses):
         issues.append("flowchart missing explicit end terminator")
     if not processes:
         issues.append("flowchart missing process nodes")
-    for node in vertices:
+    for node in native_vertices:
         values = dict(node["style_map"])
         fill = normalize_color(values.get("fillColor", ""))
         stroke = normalize_color(values.get("strokeColor", ""))
@@ -1041,10 +1073,29 @@ def _clean_label(value: object) -> str:
     return re.sub(r"\s+", " ", text).strip() or "<blank>"
 
 
+def _drawio_style_uses_raster_image(style: str) -> bool:
+    lowered = (style or "").lower()
+    values = style_map(style or "")
+    shape = (values.get("shape") or "").strip().lower()
+    image_value = (values.get("image") or "").strip().lower()
+    raster_markers = (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tif", ".tiff")
+    return (
+        shape == "image"
+        or "shape=image" in lowered
+        or lowered.startswith("image;")
+        or ";image;" in lowered
+        or "data:image" in lowered
+        or image_value.startswith(("data:image", "http://", "https://", "file:"))
+        or any(marker in image_value for marker in raster_markers)
+    )
+
+
 def _drawio_shape_kind(style: str) -> str:
     lowered = (style or "").lower()
     values = style_map(style or "")
     shape = (values.get("shape") or "").lower()
+    if _drawio_style_uses_raster_image(style):
+        return "image"
     if shape == "text" or lowered.startswith("text;") or ";text;" in lowered:
         return "annotation"
     if "rhombus" in lowered or shape == "rhombus":
@@ -1353,11 +1404,13 @@ def drawio_vertices(drawio: Path) -> tuple[list[dict[str, Any]], list[str]]:
             style = cell.attrib.get("style", "")
             x = _float_value(geom.attrib.get("x"))
             y = _float_value(geom.attrib.get("y"))
+            is_raster_image = _drawio_style_uses_raster_image(style)
             vertices.append(
                 {
                     "id": str(cell.attrib.get("id") or ""),
                     "label": _clean_label(cell.attrib.get("value")),
                     "kind": _drawio_shape_kind(style),
+                    "is_raster_image": is_raster_image,
                     "style": style,
                     "x": x,
                     "y": y,
@@ -1532,12 +1585,26 @@ def drawio_structural_geometry_report(drawio: Path, *, family: str = "structure"
     line_segments, line_issues = _drawio_line_segments(drawio)
     issues = list(vertex_issues) + list(edge_issues) + list(line_issues)
     visible_vertices = _drawio_visible_vertices(vertices)
+    raster_image_vertices = [
+        node
+        for node in visible_vertices
+        if bool(node.get("is_raster_image")) or str(node.get("kind") or "") == "image"
+    ]
+    native_visible_vertices = [node for node in visible_vertices if node not in raster_image_vertices]
     vertex_by_id = {str(node["id"]): node for node in vertices if str(node.get("id") or "")}
-    visible_by_id = {str(node["id"]): node for node in visible_vertices if str(node.get("id") or "")}
+    visible_by_id = {str(node["id"]): node for node in native_visible_vertices if str(node.get("id") or "")}
     router_ids = _drawio_router_vertices(vertices)
-    container_ids = _drawio_container_vertex_ids(visible_vertices)
+    container_ids = _drawio_container_vertex_ids(native_visible_vertices)
+    if raster_image_vertices:
+        labels = ", ".join(str(node.get("label") or "<blank>") for node in raster_image_vertices[:5])
+        issues.append(
+            "structural draw.io source contains imported raster/image cells; "
+            f"use native mxGraph shapes and connectors, not a pasted PNG/SVG/JPEG inside draw.io: {labels}"
+        )
     if not visible_vertices:
         issues.append("structural draw.io source has no visible shape vertices")
+    if not native_visible_vertices:
+        issues.append("structural draw.io source is image-only and has no native visible shape vertices")
     if not edges and not line_segments:
         issues.append("structural draw.io source has no connector edges or line segments")
     boundary_orthogonal_issues: list[str] = []
@@ -1556,8 +1623,8 @@ def drawio_structural_geometry_report(drawio: Path, *, family: str = "structure"
             f"line `{segment.get('id')}`"
         )
     issues.extend(boundary_orthogonal_issues)
-    for index, left in enumerate(visible_vertices):
-        for right in visible_vertices[index + 1 :]:
+    for index, left in enumerate(native_visible_vertices):
+        for right in native_visible_vertices[index + 1 :]:
             if str(left.get("id") or "") in container_ids or str(right.get("id") or "") in container_ids:
                 if _bbox_contains(left, right) or _bbox_contains(right, left):
                     continue
@@ -1612,7 +1679,8 @@ def drawio_structural_geometry_report(drawio: Path, *, family: str = "structure"
         "schema": "graduation-project-builder.structural-figure-geometry.v1",
         "drawio_path": str(drawio.resolve()),
         "family": family,
-        "visible_vertex_count": len(visible_vertices),
+        "visible_vertex_count": len(native_visible_vertices),
+        "imported_raster_image_vertex_count": len(raster_image_vertices),
         "edge_count": len(edges),
         "line_segment_count": len(line_segments),
         "boundary_orthogonal_connector_verdict": "fail" if boundary_orthogonal_issues else "pass",
@@ -1631,7 +1699,22 @@ def drawio_structural_geometry_report(drawio: Path, *, family: str = "structure"
                     "bottom": node["bottom"],
                 },
             }
-            for node in visible_vertices
+            for node in native_visible_vertices
+        ],
+        "rejected_image_vertices": [
+            {
+                "id": node["id"],
+                "label": node["label"],
+                "bbox": {
+                    "x": node["x"],
+                    "y": node["y"],
+                    "width": node["width"],
+                    "height": node["height"],
+                    "right": node["right"],
+                    "bottom": node["bottom"],
+                },
+            }
+            for node in raster_image_vertices
         ],
         "issues": issues,
         "verdict": "fail" if issues else "pass",
@@ -1769,6 +1852,9 @@ def validate_structural_geometry_report(report_path: Path, drawio: Path) -> list
         issues.append(f"structural figure geometry report draw.io path mismatch: {report_path}")
     if report.get("verdict") != "pass":
         issues.append(f"structural figure geometry report verdict is not pass: {report_path}")
+    imported_raster_count = report.get("imported_raster_image_vertex_count")
+    if isinstance(imported_raster_count, int) and imported_raster_count > 0:
+        issues.append(f"structural figure geometry report contains imported raster/image vertices: {report_path}")
     report_issues = report.get("issues")
     if report_issues not in ([], None):
         issues.append(f"structural figure geometry report still lists issues: {report_path}")
@@ -1804,6 +1890,9 @@ def validate_non_er_structural_geometry_report(report_path: Path, drawio: Path) 
         issues.append(f"non-ER structural figure geometry report draw.io path mismatch: {report_path}")
     if report.get("verdict") != "pass":
         issues.append(f"non-ER structural figure geometry report verdict is not pass: {report_path}")
+    imported_raster_count = report.get("imported_raster_image_vertex_count")
+    if isinstance(imported_raster_count, int) and imported_raster_count > 0:
+        issues.append(f"non-ER structural figure geometry report contains imported raster/image vertices: {report_path}")
     if report.get("boundary_orthogonal_connector_verdict") != "pass":
         issues.append(f"non-ER structural figure geometry report boundary/orthogonal connector verdict is not pass: {report_path}")
     report_issues = report.get("issues")
@@ -3759,7 +3848,11 @@ def manifest_entries_are_source_preserved(figures: dict[str, Any], diagrams: dic
         for entry in collection.values()
         if isinstance(entry, dict)
     ]
-    return bool(entries) and all(_is_preserved_existing_figure_entry(entry) for entry in entries)
+    return bool(entries) and all(
+        _is_preserved_existing_figure_entry(entry)
+        or _entry_uses_material_only_reuse(entry)
+        for entry in entries
+    )
 
 
 def manifest_entries_are_mechanical_cad(figures: dict[str, Any]) -> bool:
@@ -3869,6 +3962,58 @@ def _is_preserved_existing_figure_entry(entry: dict[str, Any]) -> bool:
             "source_preserved",
             "no_image_mutation",
             "no-image-mutation",
+        )
+    )
+
+
+def _truthy_manifest_value(value: object) -> bool:
+    text = str(value or "").strip().lower()
+    return text in {"1", "true", "yes", "y", "pass", "passed", "locked", "enabled"}
+
+
+def _entry_uses_material_only_reuse(entry: dict[str, Any], manifest: dict[str, Any] | None = None) -> bool:
+    manifest = manifest or {}
+    if any(
+        _truthy_manifest_value(
+            entry.get(key)
+            or manifest.get(key)
+        )
+        for key in (
+            "material_only_reuse",
+            "material_only_mode",
+            "source_only_reuse",
+            "source_material_only",
+            "no_redraw_user_override",
+        )
+    ):
+        return True
+    text = " ".join(
+        str(entry.get(key) or manifest.get(key) or "")
+        for key in (
+            "family",
+            "source_kind",
+            "final_source_kind",
+            "declared_family",
+            "inferred_family",
+            "kind",
+            "asset_type",
+            "mutation_intent",
+            "source_policy",
+            "user_override",
+            "explicit_user_override",
+        )
+    ).strip().lower()
+    return any(
+        token in text
+        for token in (
+            "material-only",
+            "material_only",
+            "source-only",
+            "source_only",
+            "no-redraw",
+            "no_redraw",
+            "no-generation",
+            "no_generation",
         )
     )
 
@@ -4379,6 +4524,185 @@ def _validate_manifest_evidence_paths(value: object, field_name: str) -> list[st
     return issues
 
 
+def _manifest_material_source_path(manifest: dict[str, Any]) -> str:
+    for key in ("user_material_source_path", "material_source_path", "material_doc_path"):
+        value = manifest.get(key)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return ""
+
+
+def _manifest_material_source_active(manifest: dict[str, Any]) -> bool:
+    if _manifest_material_source_path(manifest):
+        return True
+    value = str(manifest.get("user_material_source_required") or manifest.get("material_source_required") or "").strip().lower()
+    return value in {"yes", "true", "required", "pass"}
+
+
+def _entry_uses_user_material_source(entry: dict[str, Any], manifest: dict[str, Any]) -> bool:
+    text = " ".join(
+        str(entry.get(key) or "")
+        for key in (
+            "source_kind",
+            "final_source_kind",
+            "authoring_tool",
+            "asset_type",
+            "kind",
+            "material_source_kind",
+            "source_material_match_verdict",
+        )
+    ).strip().lower()
+    if any(token.lower() in text for token in USER_MATERIAL_SOURCE_TOKENS):
+        return True
+    if _entry_value(
+        entry,
+        (
+            "material_extracted_image_path",
+            "material_source_path",
+            "material_doc_path",
+            "material_source_inventory_path",
+            "material_media_index",
+            "material_source_anchor",
+        ),
+    ):
+        return True
+    return _manifest_material_source_active(manifest) and str(entry.get("material_source_not_applicable_reason") or "").strip() == ""
+
+
+def _validate_material_source_file(
+    *,
+    key: str,
+    manifest: dict[str, Any],
+    entry: dict[str, Any],
+) -> list[str]:
+    issues: list[str] = []
+    source_value = _entry_value(entry, ("material_source_path", "material_doc_path")) or _manifest_material_source_path(manifest)
+    source_sha_value = (
+        _entry_value(entry, ("material_source_sha256", "material_doc_sha256"))
+        or str(manifest.get("user_material_source_sha256") or manifest.get("material_source_sha256") or "").strip()
+    )
+    if not source_value:
+        issues.append(f"{key}: material-sourced figure missing user material source path")
+        return issues
+    source_path = Path(source_value)
+    if not source_path.exists():
+        issues.append(f"{key}: user material source file missing: {source_value}")
+    else:
+        actual_sha = file_sha256(source_path)
+        if not source_sha_value:
+            issues.append(f"{key}: material-sourced figure missing user material source SHA256")
+        elif source_sha_value.strip().lower() != actual_sha:
+            issues.append(f"{key}: user material source SHA256 does not match source file")
+    return issues
+
+
+def validate_user_material_source_contract(
+    key: str,
+    entry: dict[str, Any],
+    manifest: dict[str, Any],
+    *,
+    final_docx: Path | None = None,
+) -> list[str]:
+    issues: list[str] = []
+    structural_entry = _is_structural_manifest_entry(entry)
+    material_only_entry = _entry_uses_material_only_reuse(entry, manifest)
+    issues.extend(_validate_material_source_file(key=key, manifest=manifest, entry=entry))
+
+    inventory_value = (
+        _entry_value(entry, ("material_source_inventory_path", "material_inventory_path"))
+        or str(manifest.get("material_source_inventory_path") or manifest.get("user_material_source_inventory_path") or "").strip()
+    )
+    if not inventory_value:
+        issues.append(f"{key}: material-sourced figure missing material source inventory path")
+    else:
+        issues.extend(f"{key}: {issue}" for issue in _validate_manifest_evidence_paths(inventory_value, "material_source_inventory_path"))
+
+    anchor_value = _entry_value(
+        entry,
+        (
+            "material_source_anchor",
+            "material_media_index",
+            "material_caption",
+            "material_context",
+            "material_source_caption",
+        ),
+    )
+    if not anchor_value:
+        issues.append(f"{key}: material-sourced figure missing material anchor/index/caption")
+
+    extracted_value = _entry_value(entry, ("material_extracted_image_path", "material_image_path", "material_source_image_path"))
+    extracted_sha_value = _entry_value(
+        entry,
+        ("material_extracted_image_sha256", "material_image_sha256", "material_source_image_sha256"),
+    ).lower()
+    extracted_sha = ""
+    if not extracted_value and (not structural_entry or material_only_entry):
+        issues.append(f"{key}: material-sourced figure missing extracted material image path")
+    elif extracted_value:
+        extracted_path = Path(extracted_value)
+        if not extracted_path.exists():
+            issues.append(f"{key}: extracted material image file missing: {extracted_value}")
+        elif extracted_path.suffix.lower() not in IMAGE_EXTENSIONS:
+            issues.append(f"{key}: extracted material image path is not a supported image: {extracted_value}")
+        else:
+            extracted_sha = file_sha256(extracted_path)
+            if not extracted_sha_value:
+                issues.append(f"{key}: material-sourced figure missing extracted material image SHA256")
+            elif extracted_sha_value != extracted_sha:
+                issues.append(f"{key}: extracted material image SHA256 does not match file")
+            issues.extend(_image_visual_quality_issues(extracted_path, f"{key}: material-sourced image"))
+
+    for verdict_label, aliases in (
+        ("source_material_match_verdict", ("source_material_match_verdict", "material_source_match_verdict")),
+        ("no_generated_substitute_verdict", ("no_generated_substitute_verdict", "generated_substitute_rejection_verdict")),
+    ):
+        if not _verdict_is_pass(_entry_value(entry, aliases)):
+            issues.append(f"{key}: material-sourced figure {verdict_label} must be pass")
+
+    if material_only_entry:
+        if not _verdict_is_pass(
+            _entry_value(
+                entry,
+                (
+                    "material_only_reuse_verdict",
+                    "material_only_source_reuse_verdict",
+                    "source_material_only_reuse_verdict",
+                ),
+            )
+        ):
+            issues.append(f"{key}: material-only figure material_only_reuse_verdict must be pass")
+        if _entry_value(entry, ("drawio", "drawio_path", "svg", "svg_path")):
+            issues.append(f"{key}: material-only figure must not use draw.io/SVG reconstruction fields")
+    elif structural_entry:
+        if not _verdict_is_pass(
+            _entry_value(
+                entry,
+                (
+                    "material_to_drawio_native_reconstruction_verdict",
+                    "drawio_matches_material_source_verdict",
+                    "material_to_drawio_match_verdict",
+                    "source_material_to_drawio_verdict",
+                ),
+            )
+        ):
+            issues.append(
+                f"{key}: material-sourced structural figure requires pass draw.io/native reconstruction verdict"
+            )
+
+    if final_docx is not None and final_docx.exists() and extracted_sha and (not structural_entry or material_only_entry):
+        final_media_hashes = _media_sha_set(docx_image_relationship_manifest(final_docx))
+        final_embedded_sha = _entry_value(entry, ("final_embedded_media_sha256", "final_media_sha256", "final_asset_sha256")).lower()
+        if final_embedded_sha and final_embedded_sha not in final_media_hashes:
+            issues.append(f"{key}: declared final embedded media SHA256 is not present in final DOCX media")
+        expected_sha = final_embedded_sha or extracted_sha
+        if expected_sha != extracted_sha:
+            issues.append(f"{key}: final embedded media SHA256 differs from extracted material image SHA256")
+        if extracted_sha not in final_media_hashes:
+            issues.append(f"{key}: extracted material image SHA256 is not embedded in final DOCX media")
+
+    return issues
+
+
 def validate_table_manifest_entries(tables: object) -> list[str]:
     if tables in (None, {}):
         return []
@@ -4499,10 +4823,14 @@ def validate_figure_manifest(
             continue
         issues.extend(validate_common_figure_entry_contract(key, entry))
         is_structural_entry = _is_structural_manifest_entry(entry)
-        if is_structural_entry:
+        material_only_entry = _entry_uses_material_only_reuse(entry, manifest)
+        material_source_entry = _entry_uses_user_material_source(entry, manifest)
+        if material_source_entry or material_only_entry:
+            issues.extend(validate_user_material_source_contract(key, entry, manifest, final_docx=final_docx))
+        if is_structural_entry and not material_only_entry:
             issues.extend(validate_in_figure_language_contract(key, entry))
             issues.extend(validate_structural_raster_style_contract(key, entry))
-        if is_structural_entry and _matching_diagram_entry(key, entry, diagrams) is None:
+        if is_structural_entry and not material_only_entry and _matching_diagram_entry(key, entry, diagrams) is None:
             issues.append(f"{key}: structural figure missing matching diagrams manifest entry")
             drawio_value = _entry_value(entry, ("drawio", "drawio_path"))
             svg_value = _entry_value(entry, ("svg", "svg_path"))
@@ -4513,7 +4841,7 @@ def validate_figure_manifest(
                 issues.append(f"{key}: structural figure missing SVG export: {svg_value or '<missing>'}")
             if not png_value or not Path(png_value).exists():
                 issues.append(f"{key}: structural figure missing raster fallback: {png_value or '<missing>'}")
-        if is_structural_entry and final_docx is not None and final_docx.exists():
+        if is_structural_entry and not material_only_entry and final_docx is not None and final_docx.exists():
             issues.extend(validate_structural_docx_svg_fallback(key, entry, svg_fallback_pairs))
         elif _is_runtime_screenshot_entry(entry) and not _is_preserved_existing_figure_entry(entry):
             issues.extend(validate_runtime_screenshot_entry(key, entry))
@@ -4524,8 +4852,15 @@ def validate_figure_manifest(
             issues.append(f"{key}: diagram entry is not an object")
             continue
         issues.extend(validate_common_figure_entry_contract(key, entry))
-        issues.extend(validate_in_figure_language_contract(key, entry))
-        issues.extend(validate_structural_raster_style_contract(key, entry))
+        material_only_entry = _entry_uses_material_only_reuse(entry, manifest)
+        if not material_only_entry:
+            issues.extend(validate_in_figure_language_contract(key, entry))
+            issues.extend(validate_structural_raster_style_contract(key, entry))
+        material_source_entry = _entry_uses_user_material_source(entry, manifest)
+        if material_source_entry or material_only_entry:
+            issues.extend(validate_user_material_source_contract(key, entry, manifest, final_docx=final_docx))
+        if material_only_entry:
+            continue
         family = str(entry.get("family") or "").strip().lower()
         inferred = str(entry.get("inferred_family") or "").strip().lower()
         declared = str(entry.get("declared_family") or "").strip().lower()

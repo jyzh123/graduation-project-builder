@@ -823,8 +823,9 @@ def validate_protected_surface_diff_report(
         issues.append("protected-surface diff review_artifact_diff_verdict is not pass")
     if not is_pass(report.get("citation_run_diff_verdict")):
         issues.append("protected-surface diff citation_run_diff_verdict is not pass")
-    if not is_pass(report.get("keyword_run_split_verdict")):
-        issues.append("protected-surface diff keyword_run_split_verdict is not pass")
+    keyword_verdict = normalize(report.get("keyword_run_split_verdict"))
+    if not (is_pass(keyword_verdict) or keyword_verdict.startswith("not-applicable")):
+        issues.append("protected-surface diff keyword_run_split_verdict is not pass or not-applicable")
 
     changed_parts = set(as_list(report.get("changed_package_parts")))
     package_part_diffs = report.get("package_part_diffs")

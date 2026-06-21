@@ -34,6 +34,9 @@ class TocEntryAudit:
     text: str
     tab_count: int
     page_number: str
+    page_number_tail_text: str
+    page_number_tail_render_safe: bool
+    page_number_tail_format_issues: tuple[str, ...]
     right_tab_pos: str
     right_tab_positions: tuple[str, ...]
     right_tab_leader: str
@@ -196,6 +199,61 @@ def page_number_after_last_tab(paragraph: ET.Element) -> str:
     return trailing_page_number_from_text(tail)
 
 
+def page_number_tail_after_last_tab(paragraph: ET.Element) -> str:
+    _tab_count, segments = run_tab_segments(paragraph)
+    return segments[-1] if segments else ""
+
+
+def page_number_tail_is_render_safe(tail: str, page_number: str) -> bool:
+    if not page_number:
+        return False
+    if tail != page_number:
+        return False
+    return bool(re.fullmatch(r"\d+|[ivxlcdmIVXLCDM]+", page_number))
+
+
+def tail_text_node_runs_after_final_tab(paragraph: ET.Element) -> list[tuple[ET.Element, ET.Element]]:
+    rows: list[tuple[ET.Element, ET.Element]] = []
+    seen_tab = False
+    for run in paragraph.iter(W + "r"):
+        for child in list(run):
+            if child.tag == W + "tab":
+                seen_tab = True
+                rows = []
+                continue
+            if child.tag != W + "t":
+                continue
+            text = child.text or ""
+            if "\t" in text:
+                seen_tab = True
+                rows = [(run, child)]
+                continue
+            if seen_tab:
+                rows.append((run, child))
+    return rows
+
+
+def page_number_tail_format_issues(paragraph: ET.Element, page_number: str) -> list[str]:
+    if not page_number:
+        return []
+    rows = tail_text_node_runs_after_final_tab(paragraph)
+    nonempty_rows = [(run, node, node.text or "") for run, node in rows if (node.text or "").strip()]
+    if not nonempty_rows:
+        return []
+    if "".join(text.rsplit("\t", 1)[-1].strip() for _run, _node, text in nonempty_rows) != page_number:
+        return []
+    issues: list[str] = []
+    for run, _node, _text in nonempty_rows:
+        rpr = run.find("w:rPr", NS)
+        if rpr is None:
+            continue
+        scale = rpr.find("w:w", NS)
+        scale_value = w_attr(scale, "val")
+        if scale is not None and scale_value not in {"", "100"}:
+            issues.append(f"page-number tail run has unsafe horizontal scale: w={scale_value}")
+    return issues
+
+
 def looks_like_toc_entry_without_tab(paragraph: ET.Element, styles: dict[str, StyleInfo]) -> bool:
     text = paragraph_text(paragraph)
     if not trailing_page_number_from_text(text):
@@ -249,6 +307,15 @@ def sdt_content(element: ET.Element) -> ET.Element | None:
 
 def direct_paragraphs(element: ET.Element) -> list[ET.Element]:
     return [child for child in list(element) if child.tag == W + "p"]
+
+
+def paragraphs_from_body_child(element: ET.Element) -> list[ET.Element]:
+    content = sdt_content(element)
+    if content is not None:
+        return direct_paragraphs(content)
+    if element.tag == W + "p":
+        return [element]
+    return []
 
 
 def child_text(element: ET.Element) -> str:
@@ -319,6 +386,25 @@ def collect_toc_entry_paragraphs(root: ET.Element, styles: dict[str, StyleInfo])
                 issues.append(f"TOC candidate paragraph lacks page number after final tab: {text[:80]}")
                 continue
             issues.append(f"TOC content-control range contains non-entry paragraph: {text[:80]}")
+        stop_scan = False
+        for child in children[title_index + 1 :]:
+            for paragraph in paragraphs_from_body_child(child):
+                text = paragraph_text(paragraph)
+                tab_count, _segments = run_tab_segments(paragraph)
+                if is_toc_entry_candidate(paragraph, styles):
+                    entries.append(paragraph)
+                    continue
+                if not text.strip():
+                    continue
+                if tab_count and not page_number_after_last_tab(paragraph):
+                    issues.append(f"TOC candidate paragraph lacks page number after final tab: {text[:80]}")
+                    continue
+                if is_body_level1_heading(paragraph):
+                    stop_scan = True
+                    break
+                issues.append(f"TOC continuation range contains non-entry paragraph before body start: {text[:80]}")
+            if stop_scan:
+                break
         if not entries:
             issues.append("TOC entry block has no tabbed entry paragraphs after TOC title")
         return entries, issues
@@ -415,6 +501,9 @@ def audit_docx_toc_dotted_leaders(docx_path: Path) -> tuple[dict[str, object], l
         text = paragraph_text(paragraph)
         tab_count, _segments = run_tab_segments(paragraph)
         page_number = page_number_after_last_tab(paragraph)
+        page_number_tail = page_number_tail_after_last_tab(paragraph)
+        page_number_tail_safe = page_number_tail_is_render_safe(page_number_tail, page_number)
+        tail_format_issues = page_number_tail_format_issues(paragraph, page_number)
         tabs, direct_count, inherited_count = effective_tabs(paragraph, styles)
         right_tabs = [tab for tab in tabs if (w_attr(tab, "val") or "left") == "right"]
         right_tab_positions = tuple(sorted({w_attr(tab, "pos") or "none" for tab in right_tabs}))
@@ -426,6 +515,12 @@ def audit_docx_toc_dotted_leaders(docx_path: Path) -> tuple[dict[str, object], l
             entry_issues.append("missing visible w:tab run before page number")
         if not page_number:
             entry_issues.append("missing page-number text after final w:tab")
+        elif not page_number_tail_safe:
+            entry_issues.append(
+                "page-number tail after final w:tab is not render-safe: "
+                f"tail={page_number_tail!r}, page={page_number!r}"
+            )
+        entry_issues.extend(tail_format_issues)
         if right_tab is None:
             entry_issues.append("missing right tab stop for page-number column")
         elif (w_attr(right_tab, "val") or "left") != "right":
@@ -442,6 +537,9 @@ def audit_docx_toc_dotted_leaders(docx_path: Path) -> tuple[dict[str, object], l
                 text=text,
                 tab_count=tab_count,
                 page_number=page_number,
+                page_number_tail_text=page_number_tail,
+                page_number_tail_render_safe=page_number_tail_safe,
+                page_number_tail_format_issues=tuple(tail_format_issues),
                 right_tab_pos=pos,
                 right_tab_positions=right_tab_positions,
                 right_tab_leader=leader,
@@ -474,6 +572,9 @@ def audit_docx_toc_dotted_leaders(docx_path: Path) -> tuple[dict[str, object], l
                 "text": audit.text,
                 "tab_count": audit.tab_count,
                 "page_number": audit.page_number,
+                "page_number_tail_text": audit.page_number_tail_text,
+                "page_number_tail_render_safe": audit.page_number_tail_render_safe,
+                "page_number_tail_format_issues": list(audit.page_number_tail_format_issues),
                 "right_tab_pos": audit.right_tab_pos,
                 "right_tab_positions": list(audit.right_tab_positions),
                 "right_tab_leader": audit.right_tab_leader,

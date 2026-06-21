@@ -396,8 +396,34 @@
 - figure asset manifest path:
 - figure source DOCX path:
 - figure source DOCX SHA256:
+- figure user material source path:
+- figure user material source SHA256:
+- figure supplemental material source path:
+- figure supplemental material source SHA256:
+- figure supplemental missing-figure ledger path:
+- figure supplemental missing-source verdict:
+- figure material-source inventory path:
+- figure material-source binding verdict:
+- figure material-only reuse verdict:
+- figure generated-substitute rejection verdict:
 - figure inventory path:
 - figure manifest contract verdict:
+- figure extents audit path:
+- figure paragraph-margin width verdict:
+- figure native PPI threshold:
+- figure native PPI target binding:
+- figure native PPI enforcement verdict:
+- figure native PPI issue count:
+- figure native-resolution constrained width count:
+- figure target pixel size and inserted PPI:
+- figure visible-content completeness verdict:
+- figure nonzero crop count:
+- figure exact-line-spacing clipping count:
+- figure image-holder layout verdict:
+- figure image-holder layout issue count:
+- figure all-drawing holder layout issue count:
+- figure image-holder noncenter alignment count:
+- figure image-holder abnormal indent count:
 - figure anchor location verdict:
 - caption asset binding verdict:
 - per-figure evidence manifest path:
@@ -416,6 +442,10 @@
 - algorithm result system search / startup attempt path:
 - algorithm result provenance verdict:
 - code screenshot authenticity evidence paths:
+- algorithm code visibility evidence path:
+- algorithm code visibility verdict:
+- TOC digits/cache preservation evidence path:
+- TOC digits/cache preservation verdict:
 - toc restoration evidence paths:
 - toc rendered baseline comparison evidence paths:
 - toc visual geometry evidence paths:
@@ -884,9 +914,12 @@ Do not report completion after title/header, chapter-opener, page-flow, paginati
 Do not report completion when teacher/user comments, existing captions, generated assets, or the request mention figure/screenshot/chart/diagram work unless the figure comment conversion checklist path, figure plan path, figure task card paths, figure asset manifest path, per-figure evidence manifest path, and figure review evidence paths are all nonblank and point to the exact reviewed output.
 Do not report completion when a figure-related comment exists but any affected figure lacks its own task-card verdict, selected sample/style source, pre-insertion evidence, post-insertion rendered evidence, and final DOCX relationship evidence.
 Do not report completion after thesis figure work if the figure asset manifest is missing, if structural figures lack draw.io/SVG/raster fallback evidence, if ER/dense structural figures lack a pass source-scale geometry validation report and relation-attribute collision verdict, or if the exact final DOCX lacks raster-renderable image evidence for draw.io-backed structural figures.
-Do not report completion when any title, caption, nearby prose, figure manifest entry, or teacher/user comment has flowchart/workflow/process/step/chain semantics unless the affected figure is represented as a draw.io-backed `flowchart` entry in the figure asset manifest with draw.io source, SVG export, raster fallback, source-scale geometry report, rendered-page evidence, final DOCX relationship evidence, and a passing flowchart manifest contract verdict.
+The preceding draw.io/SVG rule is the default structural-figure path; `CORE-FIGURE-019` material-only reuse replaces it only when the current user explicitly locks source-only/no-redraw material extraction for the paper.
+Do not report completion when any title, caption, nearby prose, figure manifest entry, or teacher/user comment has flowchart/workflow/process/step/chain semantics unless the affected figure is represented as either a draw.io-backed `flowchart` entry in the default path or a material-only source-preserved figure under `CORE-FIGURE-019`. The draw.io path must bind draw.io source, SVG export, raster fallback, source-scale geometry report, rendered-page evidence, final DOCX relationship evidence, and a passing flowchart manifest contract verdict. The material-only path must bind the primary material source, allowed supplemental source if used, missing-primary-source reason, extracted image SHA256, final embedded media SHA256, generated-substitute rejection verdict, paragraph-width placement evidence, and a passing material-only reuse verdict.
+Do not report completion when the current user says images should come only from a material document or supplemental DOCX unless `figure material-only reuse verdict` passes and any supplemental image is justified by a missing-figure ledger.
 Do not report completion after thesis ER/dense structural figure work if source-scale bbox evidence, inserted-scale geometry/collision evidence, dense-zone crop evidence, shape-overlap verdict, and source-to-inserted geometry verdict are missing or not passing.
 Do not report completion after thesis figure work when final acceptance only contains a broad figure summary without per-figure evidence rows.
+Do not report completion after user-reported image indentation, image-holder offset, screenshot width, or figure display-incomplete complaints unless the exact-output figure extents audit includes pass `figure image-holder layout verdict`, zero `figure image-holder layout issue count`, zero noncenter image-holder alignment count, zero abnormal image-holder indent count, and per-figure holder effective alignment/indent fields.
 Do not report completion for a CAD/mechanical/structural design thesis unless the formula object audit evidence is bound to the exact final DOCX and proves at least 200 real Word equation objects in the body, with zero raw math command tokens and zero rendered near-empty formula-only pages, unless the user explicitly set a different numeric formula bound or excluded calculation-depth/formula work.
 Do not report completion for mechanical CAD drawing work when the strict package audit lacks a passing machine overlap audit for rendered sheets, including zero reserved-zone/title-block/table/note/annotation/frame-clearance collision counts.
 Do not report completion for mechanical CAD drawing work when hatch or section-fill texture is not proven clipped to its owning entity boundary, or when the hatch/section fill clipping audit reports any adjacent-view, dimension-line, title-block, table, BOM, frame, or blank-background leak.

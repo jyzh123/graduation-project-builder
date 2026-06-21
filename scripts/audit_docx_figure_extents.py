@@ -19,6 +19,7 @@ from thesis_figure_contract import (
     ASSET_SCHEMA,
     R_NS,
     W_NS,
+    WP_NS,
     docx_body_figure_paragraphs,
     docx_drawing_object_manifest,
     docx_image_relationship_manifest,
@@ -30,10 +31,13 @@ from thesis_figure_contract import (
 
 
 EMU_PER_CM = 360000
+READABLE_HEIGHT_TOLERANCE_CM = 0.10
+NATIVE_PPI_TOLERANCE = 0.5
 W = f"{{{W_NS}}}"
 R = f"{{{R_NS}}}"
 A = f"{{{A_NS}}}"
-NS = {"w": W_NS, "r": R_NS, "a": A_NS}
+WP = f"{{{WP_NS}}}"
+NS = {"w": W_NS, "r": R_NS, "a": A_NS, "wp": WP_NS}
 BODY_CHAPTER_RE = re.compile(r"^\s*(?:第[一二三四五六七八九十百零\d]+章|[1-9]\s+)")
 BACK_MATTER_RE = re.compile(r"^\s*(?:参考文献|附录|致谢)(?:\s|$|[A-Za-z0-9一二三四五六七八九十])")
 APPENDIX_CAPTION_RE = re.compile(r"^\s*(?:附图|附表)\s*[A-Za-z0-9一二三四五六七八九十]*[.．、-]")
@@ -51,6 +55,7 @@ STRUCTURAL_FIGURE_TOKENS = (
     "模型结构",
     "证据链",
 )
+INDENT_FIELDS = ("left", "right", "firstLine", "hanging", "leftChars", "rightChars", "firstLineChars", "hangingChars")
 
 
 def sha256_file(path: Path) -> str:
@@ -74,6 +79,100 @@ def _paragraph_style(paragraph: ET.Element) -> str:
     if pstyle is None:
         return ""
     return pstyle.attrib.get(f"{W}val", "")
+
+
+def _int_or_zero(value: str) -> int:
+    try:
+        return int(value or "0")
+    except ValueError:
+        return 0
+
+
+def _style_layouts(docx_path: Path) -> tuple[dict[str, dict[str, Any]], str]:
+    try:
+        with zipfile.ZipFile(docx_path) as zf:
+            root = ET.fromstring(zf.read("word/styles.xml"))
+    except Exception:
+        return {}, ""
+    layouts: dict[str, dict[str, Any]] = {}
+    default_style_id = ""
+    for style in root.findall("w:style", NS):
+        if style.attrib.get(f"{W}type") != "paragraph":
+            continue
+        style_id = style.attrib.get(f"{W}styleId", "")
+        if not style_id:
+            continue
+        if style.attrib.get(f"{W}default") == "1":
+            default_style_id = style_id
+        based_on = style.find("w:basedOn", NS)
+        jc = style.find("w:pPr/w:jc", NS)
+        ind = style.find("w:pPr/w:ind", NS)
+        layouts[style_id] = {
+            "based_on": based_on.attrib.get(f"{W}val", "") if based_on is not None else "",
+            "jc": jc.attrib.get(f"{W}val", "") if jc is not None else "",
+            "ind": {field: ind.attrib.get(f"{W}{field}", "") for field in INDENT_FIELDS} if ind is not None else {},
+        }
+    return layouts, default_style_id
+
+
+def _effective_style_layout(style_id: str, layouts: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {"jc": "", "ind": {}}
+    seen: set[str] = set()
+
+    def apply(current_id: str) -> None:
+        if not current_id or current_id in seen:
+            return
+        seen.add(current_id)
+        current = layouts.get(current_id)
+        if not current:
+            return
+        apply(str(current.get("based_on") or ""))
+        if current.get("jc"):
+            result["jc"] = str(current.get("jc") or "")
+        result["ind"].update({k: v for k, v in (current.get("ind") or {}).items() if v != ""})
+
+    apply(style_id)
+    return result
+
+
+def paragraph_layout_info(
+    paragraph: ET.Element,
+    style_layouts: dict[str, dict[str, Any]],
+    default_style_id: str,
+) -> dict[str, object]:
+    ppr = paragraph.find("./w:pPr", NS)
+    style_id = _paragraph_style(paragraph) or default_style_id
+    inherited = _effective_style_layout(style_id, style_layouts) if style_id else {"jc": "", "ind": {}}
+    jc_node = ppr.find("./w:jc", NS) if ppr is not None else None
+    ind_node = ppr.find("./w:ind", NS) if ppr is not None else None
+    direct_jc = jc_node.attrib.get(f"{W}val", "") if jc_node is not None else ""
+    effective_jc = direct_jc or str(inherited.get("jc") or "")
+    direct_ind = {field: ind_node.attrib.get(f"{W}{field}", "") for field in INDENT_FIELDS} if ind_node is not None else {}
+    inherited_ind = dict(inherited.get("ind") or {})
+    effective_ind = {
+        field: direct_ind[field] if field in direct_ind and direct_ind[field] != "" else inherited_ind.get(field, "")
+        for field in INDENT_FIELDS
+    }
+    nonzero_indent_fields = {
+        field: value
+        for field, value in effective_ind.items()
+        if value != "" and _int_or_zero(str(value)) != 0
+    }
+    reasons: list[str] = []
+    if effective_jc and effective_jc.lower() != "center":
+        reasons.append(f"effective alignment `{effective_jc}` is not center")
+    if nonzero_indent_fields:
+        reasons.append(f"effective indentation is nonzero: {nonzero_indent_fields}")
+    return {
+        "style_id": style_id,
+        "direct_alignment": direct_jc,
+        "effective_alignment": effective_jc,
+        "direct_indent": direct_ind,
+        "effective_indent": effective_ind,
+        "nonzero_indent_fields": nonzero_indent_fields,
+        "layout_issue_reasons": reasons,
+        "safe_image_holder_layout": not reasons,
+    }
 
 
 def _is_toc_cache_paragraph(paragraph: ET.Element, text: str, style: str) -> bool:
@@ -156,6 +255,75 @@ def paragraph_relationship_ids(paragraph: ET.Element) -> list[str]:
         if rid:
             ids.append(rid)
     return ids
+
+
+def paragraph_crop_rects(paragraph: ET.Element) -> list[dict[str, int]]:
+    rects: list[dict[str, int]] = []
+    for rect in paragraph.findall(f".//{A}srcRect"):
+        crop: dict[str, int] = {}
+        for key in ("l", "t", "r", "b"):
+            raw_value = rect.attrib.get(key, "0") or "0"
+            try:
+                crop[key] = int(raw_value)
+            except ValueError:
+                crop[key] = 0
+        rects.append(crop)
+    return rects
+
+
+def paragraph_spacing_info(paragraph: ET.Element, image_height_emu: int) -> dict[str, object]:
+    spacing = paragraph.find("./w:pPr/w:spacing", NS)
+    if spacing is None:
+        return {
+            "line_rule": "",
+            "line_twips": 0,
+            "line_height_emu": 0,
+            "exact_line_spacing_clips_inline_image": False,
+        }
+    line_rule = spacing.attrib.get(f"{W}lineRule", "")
+    try:
+        line_twips = int(spacing.attrib.get(f"{W}line", "0") or "0")
+    except ValueError:
+        line_twips = 0
+    line_height_emu = line_twips * 635
+    exact_clips = bool(
+        image_height_emu > 0
+        and line_rule.lower() == "exact"
+        and (line_height_emu <= 0 or line_height_emu < int(image_height_emu * 0.98))
+    )
+    return {
+        "line_rule": line_rule,
+        "line_twips": line_twips,
+        "line_height_emu": line_height_emu,
+        "exact_line_spacing_clips_inline_image": exact_clips,
+    }
+
+
+def paragraph_drawing_mode_counts(paragraph: ET.Element) -> dict[str, int]:
+    return {
+        "inline_count": len(paragraph.findall(f".//{WP}inline")),
+        "anchor_count": len(paragraph.findall(f".//{WP}anchor")),
+    }
+
+
+def paragraph_display_safety_map(docx_path: Path) -> dict[int, dict[str, object]]:
+    with zipfile.ZipFile(docx_path) as zf:
+        root = ET.fromstring(zf.read("word/document.xml"))
+    body = root.find(f".//{W}body")
+    if body is None:
+        return {}
+    result: dict[int, dict[str, object]] = {}
+    style_layouts, default_style_id = _style_layouts(docx_path)
+    for index, paragraph in enumerate(body.findall(f".//{W}p"), start=1):
+        crop_rects = paragraph_crop_rects(paragraph)
+        nonzero_crop_rects = [rect for rect in crop_rects if any(value != 0 for value in rect.values())]
+        result[index] = {
+            "crop_rects": crop_rects,
+            "nonzero_crop_rects": nonzero_crop_rects,
+            "paragraph_layout": paragraph_layout_info(paragraph, style_layouts, default_style_id),
+            **paragraph_drawing_mode_counts(paragraph),
+        }
+    return result
 
 
 def paragraph_relationship_id_map(docx_path: Path) -> dict[int, list[str]]:
@@ -278,6 +446,10 @@ def audit_figure_extents(
     structural_min_readable_width_cm: float = 9.0,
     structural_min_readable_height_cm: float = 4.0,
     min_text_width_ratio: float = 0.95,
+    min_native_ppi: float = 0.0,
+    enforce_min_native_ppi: bool = False,
+    native_ppi_target_media_name: str = "",
+    native_ppi_target_caption_contains: str = "",
     require_explanations: bool = False,
     min_explanation_chars: int = 25,
     min_body_figure_count: int | None = None,
@@ -287,6 +459,7 @@ def audit_figure_extents(
     for row in rows:
         row["body_scope"] = is_body_figure_scope(row, scope_bounds)
     rel_ids_by_para = paragraph_relationship_id_map(final_docx)
+    display_safety_by_para = paragraph_display_safety_map(final_docx)
     media_manifest = media_by_rid(final_docx)
     text_width_emu = docx_text_width_emu(final_docx) or 0
     text_height_emu = docx_text_height_emu(final_docx) or 0
@@ -297,9 +470,17 @@ def audit_figure_extents(
         else {}
     )
     final_drawings = docx_drawing_object_manifest(final_docx)
+    try:
+        with zipfile.ZipFile(final_docx) as zf:
+            document_root = ET.fromstring(zf.read("word/document.xml"))
+            document_body = document_root.find(f".//{W}body")
+            document_paragraphs = document_body.findall(f".//{W}p") if document_body is not None else []
+    except Exception:
+        document_paragraphs = []
 
     issues: list[str] = []
     figures: list[dict[str, object]] = []
+    all_drawing_holders: list[dict[str, object]] = []
     zero_extent_front_matter_count = 0
     real_front_matter_count = 0
     formal_caption_count = 0
@@ -307,7 +488,15 @@ def audit_figure_extents(
     oversized_count = 0
     undersized_count = 0
     paragraph_margin_width_drift_count = 0
+    nonzero_crop_count = 0
+    exact_line_spacing_clip_count = 0
+    image_holder_layout_issue_count = 0
+    image_holder_noncenter_alignment_count = 0
+    image_holder_abnormal_indent_count = 0
+    safe_page_height_risk_count = 0
     bottom_blank_like_count = 0
+    native_ppi_issue_count = 0
+    native_resolution_constrained_width_count = 0
     missing_caption_count = 0
     missing_explanation_count = 0
     template_preserved_front_matter_count = 0
@@ -331,6 +520,75 @@ def audit_figure_extents(
         max_cx = int(row.get("max_extent_cx_emu") or 0)
         max_cy = int(row.get("max_extent_cy_emu") or 0)
         is_real_drawing = bool(rel_ids or max_cx or max_cy)
+        paragraph = (
+            document_paragraphs[paragraph_index - 1]
+            if 1 <= paragraph_index <= len(document_paragraphs)
+            else None
+        )
+        display_safety = display_safety_by_para.get(paragraph_index, {})
+        layout_info = dict(display_safety.get("paragraph_layout") or {})
+        crop_rects = list(display_safety.get("crop_rects") or [])
+        nonzero_crop_rects = list(display_safety.get("nonzero_crop_rects") or [])
+        spacing_info = paragraph_spacing_info(paragraph, max_cy) if paragraph is not None else {}
+        if is_real_drawing:
+            holder_scope = (
+                "front-matter"
+                if row.get("front_matter_drawing")
+                else ("body" if row.get("body_scope") else "non-body")
+            )
+            holder_record = {
+                "paragraph_index": paragraph_index,
+                "scope": holder_scope,
+                "text_prefix": text[:120],
+                "width_cm": emu_to_cm(max_cx),
+                "height_cm": emu_to_cm(max_cy),
+                "cx_emu": max_cx,
+                "cy_emu": max_cy,
+                "inline_count": display_safety.get("inline_count", 0),
+                "anchor_count": display_safety.get("anchor_count", 0),
+                "crop_rects": crop_rects,
+                "nonzero_crop_rects": nonzero_crop_rects,
+                "nonzero_crop": bool(nonzero_crop_rects),
+                "line_rule": spacing_info.get("line_rule", ""),
+                "line_twips": spacing_info.get("line_twips", 0),
+                "exact_line_spacing_clips_inline_image": bool(spacing_info.get("exact_line_spacing_clips_inline_image")),
+                "holder_style_id": layout_info.get("style_id", ""),
+                "holder_direct_alignment": layout_info.get("direct_alignment", ""),
+                "holder_effective_alignment": layout_info.get("effective_alignment", ""),
+                "holder_direct_indent": layout_info.get("direct_indent", {}),
+                "holder_effective_indent": layout_info.get("effective_indent", {}),
+                "holder_nonzero_indent_fields": layout_info.get("nonzero_indent_fields", {}),
+                "image_holder_layout_issue": not bool(layout_info.get("safe_image_holder_layout", True)),
+                "holder_layout_issue_reasons": layout_info.get("layout_issue_reasons", []),
+            }
+            all_drawing_holders.append(holder_record)
+            if nonzero_crop_rects:
+                nonzero_crop_count += 1
+                issues.append(
+                    f"{holder_scope} image holder has nonzero picture crop a:srcRect: "
+                    f"paragraph {paragraph_index} crop_rects={nonzero_crop_rects}"
+                )
+            if spacing_info.get("exact_line_spacing_clips_inline_image"):
+                exact_line_spacing_clip_count += 1
+                issues.append(
+                    f"{holder_scope} image holder uses exact line spacing smaller than image height: "
+                    f"paragraph {paragraph_index} line_twips={spacing_info.get('line_twips')} "
+                    f"image_height_cm={emu_to_cm(max_cy)}"
+                )
+            if layout_info and not layout_info.get("safe_image_holder_layout", True):
+                image_holder_layout_issue_count += 1
+                effective_alignment = str(layout_info.get("effective_alignment") or "")
+                nonzero_indent_fields = dict(layout_info.get("nonzero_indent_fields") or {})
+                if effective_alignment and effective_alignment.lower() != "center":
+                    image_holder_noncenter_alignment_count += 1
+                if nonzero_indent_fields:
+                    image_holder_abnormal_indent_count += 1
+                issues.append(
+                    f"{holder_scope} image holder has unsafe paragraph layout: "
+                    f"paragraph {paragraph_index} "
+                    f"effective_alignment=`{effective_alignment or '<missing>'}` "
+                    f"nonzero_indent_fields={nonzero_indent_fields}"
+                )
         if row.get("front_matter_drawing"):
             if not is_real_drawing:
                 zero_extent_front_matter_count += 1
@@ -377,10 +635,67 @@ def audit_figure_extents(
         width_cm = emu_to_cm(max_cx)
         height_cm = emu_to_cm(max_cy)
         width_text_ratio = (max_cx / text_width_emu) if text_width_emu else None
+        rid = rel_ids[0] if rel_ids else ""
+        media = media_manifest.get(rid, {})
+        image_stats = image_bottom_band_stats(final_docx, media.get("media_name", ""))
+        pixel_width = int(image_stats.get("pixel_width") or 0)
+        pixel_height = int(image_stats.get("pixel_height") or 0)
+        inserted_ppi_width_raw = pixel_width / (width_cm / 2.54) if pixel_width and width_cm else 0.0
+        inserted_ppi_height_raw = pixel_height / (height_cm / 2.54) if pixel_height and height_cm else 0.0
+        inserted_ppi_width = round(inserted_ppi_width_raw, 1) if inserted_ppi_width_raw else 0.0
+        inserted_ppi_height = round(inserted_ppi_height_raw, 1) if inserted_ppi_height_raw else 0.0
+        text_width_cm = emu_to_cm(text_width_emu) if text_width_emu else 0.0
+        native_ppi_at_text_width = (
+            round(pixel_width / (text_width_cm / 2.54), 1)
+            if pixel_width and text_width_cm
+            else 0.0
+        )
+        native_resolution_constrained_width = bool(
+            min_native_ppi > 0
+            and pixel_width > 0
+            and native_ppi_at_text_width > 0
+            and native_ppi_at_text_width < min_native_ppi
+        )
+        media_name_for_target = str(media.get("media_name") or "").replace("\\", "/")
+        native_ppi_target_media_name_norm = native_ppi_target_media_name.replace("\\", "/").strip()
+        native_ppi_target_caption_contains_norm = native_ppi_target_caption_contains.strip()
+        native_ppi_target_match = bool(
+            not native_ppi_target_media_name_norm
+            and not native_ppi_target_caption_contains_norm
+        )
+        if native_ppi_target_media_name_norm:
+            native_ppi_target_match = (
+                media_name_for_target == native_ppi_target_media_name_norm
+                or media_name_for_target.endswith("/" + native_ppi_target_media_name_norm)
+                or Path(media_name_for_target).name == native_ppi_target_media_name_norm
+            )
+        if native_ppi_target_caption_contains_norm and native_ppi_target_caption_contains_norm in caption:
+            native_ppi_target_match = True
+        native_ppi_issue = bool(
+            enforce_min_native_ppi
+            and native_ppi_target_match
+            and min_native_ppi > 0
+            and pixel_width > 0
+            and pixel_height > 0
+            and min(inserted_ppi_width_raw, inserted_ppi_height_raw) < (min_native_ppi - NATIVE_PPI_TOLERANCE)
+        )
+        if native_resolution_constrained_width:
+            native_resolution_constrained_width_count += 1
+        if native_ppi_issue:
+            native_ppi_issue_count += 1
+            issues.append(
+                "body figure below native-resolution readability threshold: "
+                f"paragraph {paragraph_index} caption=`{caption[:60]}` "
+                f"pixels={pixel_width}x{pixel_height} "
+                f"inserted_ppi_width={inserted_ppi_width} inserted_ppi_height={inserted_ppi_height} "
+                f"min_native_ppi={min_native_ppi}"
+            )
         oversized_width = width_cm > max_width_cm or (text_width_emu and max_cx > int(text_width_emu * 1.02))
         oversized_height = height_cm > max_height_cm or (text_height_emu and max_cy > int(text_height_emu * 0.82))
         if oversized_width or oversized_height:
             oversized_count += 1
+            if oversized_height:
+                safe_page_height_risk_count += 1
             issues.append(
                 "body figure exceeds display threshold: "
                 f"paragraph {paragraph_index} width_cm={width_cm} height_cm={height_cm}"
@@ -388,16 +703,6 @@ def audit_figure_extents(
         structural_caption = is_structural_figure_caption(caption)
         required_min_width = structural_min_readable_width_cm if structural_caption else min_readable_width_cm
         required_min_height = structural_min_readable_height_cm if structural_caption else min_readable_height_cm
-        undersized_width = width_cm < required_min_width
-        undersized_height = height_cm < required_min_height
-        if undersized_width or undersized_height:
-            undersized_count += 1
-            issues.append(
-                "body figure below readability threshold: "
-                f"paragraph {paragraph_index} caption=`{caption[:60]}` "
-                f"width_cm={width_cm} height_cm={height_cm} "
-                f"min_width_cm={required_min_width} min_height_cm={required_min_height}"
-            )
         scaled_height_at_target_width = 0
         if max_cx > 0 and max_cy > 0 and text_width_emu and min_text_width_ratio > 0:
             scaled_height_at_target_width = int(max_cy * ((text_width_emu * min_text_width_ratio) / max_cx))
@@ -408,11 +713,22 @@ def audit_figure_extents(
                 or (text_height_emu and scaled_height_at_target_width > int(text_height_emu * 0.82))
             )
         )
+        undersized_width = width_cm < required_min_width and not height_constrained_width
+        undersized_height = (height_cm + READABLE_HEIGHT_TOLERANCE_CM) < required_min_height
+        if undersized_width or undersized_height:
+            undersized_count += 1
+            issues.append(
+                "body figure below readability threshold: "
+                f"paragraph {paragraph_index} caption=`{caption[:60]}` "
+                f"width_cm={width_cm} height_cm={height_cm} "
+                f"min_width_cm={required_min_width} min_height_cm={required_min_height}"
+            )
         paragraph_margin_width_drift = (
             bool(text_width_emu)
             and min_text_width_ratio > 0
             and max_cx < int(text_width_emu * min_text_width_ratio)
             and not height_constrained_width
+            and not (native_resolution_constrained_width and not native_ppi_issue)
         )
         if paragraph_margin_width_drift:
             paragraph_margin_width_drift_count += 1
@@ -424,9 +740,6 @@ def audit_figure_extents(
                 f"width_text_ratio={ratio_text} min_text_width_ratio={min_text_width_ratio}"
             )
 
-        rid = rel_ids[0] if rel_ids else ""
-        media = media_manifest.get(rid, {})
-        image_stats = image_bottom_band_stats(final_docx, media.get("media_name", ""))
         if image_stats.get("bottom_blank_like"):
             bottom_blank_like_count += 1
             issues.append(f"body figure paragraph {paragraph_index} has blank-like bottom band")
@@ -447,6 +760,31 @@ def audit_figure_extents(
                 "cy_emu": max_cy,
                 "text_width_cm": emu_to_cm(text_width_emu) if text_width_emu else 0.0,
                 "width_text_ratio": width_text_ratio,
+                "native_ppi_min_threshold": min_native_ppi,
+                "native_ppi_tolerance": NATIVE_PPI_TOLERANCE,
+                "native_ppi_enforced": enforce_min_native_ppi,
+                "native_ppi_target_match": native_ppi_target_match,
+                "inserted_ppi_width": inserted_ppi_width,
+                "inserted_ppi_height": inserted_ppi_height,
+                "native_ppi_at_text_width": native_ppi_at_text_width,
+                "native_resolution_constrained_width": native_resolution_constrained_width,
+                "native_ppi_issue": native_ppi_issue,
+                "inline_count": display_safety.get("inline_count", 0),
+                "anchor_count": display_safety.get("anchor_count", 0),
+                "crop_rects": crop_rects,
+                "nonzero_crop_rects": nonzero_crop_rects,
+                "nonzero_crop": bool(nonzero_crop_rects),
+                "line_rule": spacing_info.get("line_rule", ""),
+                "line_twips": spacing_info.get("line_twips", 0),
+                "exact_line_spacing_clips_inline_image": bool(spacing_info.get("exact_line_spacing_clips_inline_image")),
+                "holder_style_id": layout_info.get("style_id", ""),
+                "holder_direct_alignment": layout_info.get("direct_alignment", ""),
+                "holder_effective_alignment": layout_info.get("effective_alignment", ""),
+                "holder_direct_indent": layout_info.get("direct_indent", {}),
+                "holder_effective_indent": layout_info.get("effective_indent", {}),
+                "holder_nonzero_indent_fields": layout_info.get("nonzero_indent_fields", {}),
+                "image_holder_layout_issue": not bool(layout_info.get("safe_image_holder_layout", True)),
+                "holder_layout_issue_reasons": layout_info.get("layout_issue_reasons", []),
                 "height_constrained_width": height_constrained_width,
                 "scaled_height_at_target_width_cm": round(emu_to_cm(scaled_height_at_target_width), 2) if scaled_height_at_target_width else 0,
                 "structural_caption": structural_caption,
@@ -475,7 +813,7 @@ def audit_figure_extents(
         )
 
     return {
-        "schema": "graduation-project-builder.figure-extents-audit.v2",
+        "schema": "graduation-project-builder.figure-extents-audit.v3",
         "final_docx_path": str(final_docx),
         "final_docx_sha256": sha256_file(final_docx),
         "source_docx_path": str(source_docx) if source_docx else "",
@@ -488,7 +826,12 @@ def audit_figure_extents(
         "min_readable_height_cm": min_readable_height_cm,
         "structural_min_readable_width_cm": structural_min_readable_width_cm,
         "structural_min_readable_height_cm": structural_min_readable_height_cm,
+        "readable_height_tolerance_cm": READABLE_HEIGHT_TOLERANCE_CM,
         "min_text_width_ratio": min_text_width_ratio,
+        "min_native_ppi": min_native_ppi,
+        "enforce_min_native_ppi": enforce_min_native_ppi,
+        "native_ppi_target_media_name": native_ppi_target_media_name,
+        "native_ppi_target_caption_contains": native_ppi_target_caption_contains,
         "text_width_emu": text_width_emu,
         "text_width_cm": emu_to_cm(text_width_emu) if text_width_emu else 0.0,
         "text_height_emu": text_height_emu,
@@ -503,16 +846,34 @@ def audit_figure_extents(
         "front_matter_real_drawing_count": real_front_matter_count,
         "front_matter_zero_extent_drawing_count": zero_extent_front_matter_count,
         "template_preserved_front_matter_count": template_preserved_front_matter_count,
+        "all_drawing_holder_count": len(all_drawing_holders),
+        "all_drawing_holder_layout_issue_count": image_holder_layout_issue_count,
+        "all_drawing_holder_noncenter_alignment_count": image_holder_noncenter_alignment_count,
+        "all_drawing_holder_abnormal_indent_count": image_holder_abnormal_indent_count,
+        "all_drawing_nonzero_crop_count": nonzero_crop_count,
+        "all_drawing_exact_line_spacing_clip_count": exact_line_spacing_clip_count,
         "oversized_count": oversized_count,
         "undersized_count": undersized_count,
+        "native_ppi_issue_count": native_ppi_issue_count,
+        "native_resolution_constrained_width_count": native_resolution_constrained_width_count,
         "paragraph_margin_width_drift_count": paragraph_margin_width_drift_count,
+        "nonzero_crop_count": nonzero_crop_count,
+        "exact_line_spacing_clip_count": exact_line_spacing_clip_count,
+        "image_holder_layout_issue_count": image_holder_layout_issue_count,
+        "image_holder_noncenter_alignment_count": image_holder_noncenter_alignment_count,
+        "image_holder_abnormal_indent_count": image_holder_abnormal_indent_count,
+        "safe_page_height_risk_count": safe_page_height_risk_count,
+        "image_holder_layout_verdict": "pass" if image_holder_layout_issue_count == 0 else "fail",
+        "visible_content_completeness_verdict": "pass" if nonzero_crop_count == 0 and exact_line_spacing_clip_count == 0 and safe_page_height_risk_count == 0 and image_holder_layout_issue_count == 0 else "fail",
         "bottom_blank_like_count": bottom_blank_like_count,
         "missing_caption_count": missing_caption_count,
         "missing_explanation_count": missing_explanation_count,
         "require_explanations": require_explanations,
         "min_body_figure_count": min_body_figure_count,
+        "all_drawing_holders": all_drawing_holders,
         "figures": figures,
         "issues": issues,
+        "native_resolution_verdict": "pass" if native_ppi_issue_count == 0 else "fail",
         "passed": not issues,
     }
 
@@ -583,6 +944,10 @@ def main() -> int:
     parser.add_argument("--structural-min-readable-width-cm", type=float, default=9.0)
     parser.add_argument("--structural-min-readable-height-cm", type=float, default=4.0)
     parser.add_argument("--min-text-width-ratio", type=float, default=0.95)
+    parser.add_argument("--min-native-ppi", type=float, default=0.0)
+    parser.add_argument("--enforce-min-native-ppi", action="store_true")
+    parser.add_argument("--native-ppi-target-media-name", default="")
+    parser.add_argument("--native-ppi-target-caption-contains", default="")
     parser.add_argument("--require-explanations", action="store_true")
     parser.add_argument("--min-explanation-chars", type=int, default=25)
     parser.add_argument("--min-body-figure-count", type=int)
@@ -601,6 +966,10 @@ def main() -> int:
         structural_min_readable_width_cm=args.structural_min_readable_width_cm,
         structural_min_readable_height_cm=args.structural_min_readable_height_cm,
         min_text_width_ratio=args.min_text_width_ratio,
+        min_native_ppi=args.min_native_ppi,
+        enforce_min_native_ppi=args.enforce_min_native_ppi,
+        native_ppi_target_media_name=args.native_ppi_target_media_name,
+        native_ppi_target_caption_contains=args.native_ppi_target_caption_contains,
         require_explanations=args.require_explanations,
         min_explanation_chars=args.min_explanation_chars,
         min_body_figure_count=args.min_body_figure_count,

@@ -17,7 +17,7 @@
 - role_attendance_matrix: controller active; figure-worker active; format-worker active; acceptance-worker active; audit active; content-worker not-applicable; citation-worker not-applicable; program-worker not-applicable
 - not_applicable_lanes_with_reasons: content-worker=no thesis prose edit; citation-worker=no citation/bibliography mutation; program-worker=no runtime project mutation
 - spawned_agent_ids: existing live agents `019e0abd-c13b-7011-9f6f-322a6e7a834c`, `019e0abd-c53a-7a51-a4f0-113312d7ad71`, `019e0abd-cabe-77e0-8f2e-30680e104a43`, `019e0abd-cfce-75d2-8d56-df2a2ec1dd59`, `019e0ac9-48b5-74e1-94de-cd2c864ce3c9`, `019e0ac9-846c-72b1-a9ec-2242b04d18af`
-- spawned_agent_aliases_zh: 019e0abd-c13b-7011-9f6f-322a6e7a834c=瀹℃牳-rules; 019e0abd-c53a-7a51-a4f0-113312d7ad71=瀹℃牳-scripts; 019e0abd-cabe-77e0-8f2e-30680e104a43=瀹℃牳-records; 019e0abd-cfce-75d2-8d56-df2a2ec1dd59=楠屾敹; 019e0ac9-48b5-74e1-94de-cd2c864ce3c9=瀹℃牳-routing; 019e0ac9-846c-72b1-a9ec-2242b04d18af=瀹℃牳-validation
+- spawned_agent_aliases_zh: 019e0abd-c13b-7011-9f6f-322a6e7a834c=审核-rules; 019e0abd-c53a-7a51-a4f0-113312d7ad71=审核-scripts; 019e0abd-cabe-77e0-8f2e-30680e104a43=审核-records; 019e0abd-cfce-75d2-8d56-df2a2ec1dd59=验收; 019e0ac9-48b5-74e1-94de-cd2c864ce3c9=审核-routing; 019e0ac9-846c-72b1-a9ec-2242b04d18af=审核-validation
 - audit_agent_id: controller-final-audit
 - sequential_audit_fallback_id: controller-final-audit
 - action_audit_scope: inspect scripts, rule owners, transaction rules, maintenance rules, owner map, file-role index, durable audit, and targeted selftests for image/front-matter/keyword gates

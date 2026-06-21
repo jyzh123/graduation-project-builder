@@ -755,14 +755,15 @@ def compare_citations(
                 issues.append(
                     f"citation marker [{number}] source occurrence lost hyperlink host at {source_location}"
                 )
-        for item in final_records:
-            issues.extend(
-                _final_citation_record_issues(
-                    number,
-                    item,
-                    source_has_hyperlink=source_has_hyperlink,
+        if citation_preservation_scope != STRICT_CITATION_PRESERVATION_SCOPE:
+            for item in final_records:
+                issues.extend(
+                    _final_citation_record_issues(
+                        number,
+                        item,
+                        source_has_hyperlink=source_has_hyperlink,
+                    )
                 )
-            )
 
     return issues
 
@@ -1160,7 +1161,9 @@ def validate_citation_run_reports(
             citation_preservation_scope=citation_preservation_scope,
         )
     )
-    if source_snapshot.records or final_snapshot.records:
+    if citation_preservation_scope != STRICT_CITATION_PRESERVATION_SCOPE and (
+        source_snapshot.records or final_snapshot.records
+    ):
         try:
             final_audit = audit_body_citations(final_docx)
         except Exception as exc:

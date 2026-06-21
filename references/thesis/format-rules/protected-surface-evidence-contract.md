@@ -412,3 +412,30 @@ External format reports are protected-surface evidence sources. A report-driven 
 A final handoff is blocked when report-owned rows are left as prose notes, when stats-page structure/header/footer/page-number issues are omitted from the ledger, when a row has no final evidence binding, or when the final audit points to a stale DOCX/PDF hash.
 
 For Fanyu/format-audit packages that include a comment-bearing DOCX, recognizing a comment issue family as supported is not enough. The report-equivalent audit must close each blocking comment/stat family with a concrete verifier row. Page setup families are mandatory hard fields: `页眉内容` must verify the fixed left header text `沈阳科技学院学士学位论文` plus a non-empty right chapter/tail-block title on every header part, and the right title must match the chapter/tail-title set owned by the section that references that header part rather than any arbitrary legal chapter title; `页码` `字号问题` must verify PAGE-field/page-number runs at `小五` (`w:sz=18` and `w:szCs=18`) on every footer part; `空白页问题` must remain failed unless rendered PDF or whole-document pagination evidence proves no blank rendered page. These rows may not be downgraded into ledger summaries.
+
+## FMT-EVID-016. Figure And Table Caption Style Drift Must Be Source-Relative
+
+The protected surface `figure_table_captions_and_holders` is a source-relative
+freeze surface, not a single sampled caption row.
+
+For every thesis DOCX mutation, the protected-surface diff must extract and
+compare the full source and final collection of:
+
+- formal figure-caption paragraphs
+- formal table-caption or table-title paragraphs, including in-table title rows
+  when they are visible paragraph surfaces
+- image-holder paragraphs that contain `w:drawing` or `w:pict`
+
+Each row must include paragraph order, text, style id, paragraph-property hash,
+run-property hashes, run count, and drawing/picture hashes when present. If a
+non-caption target such as `body_text`, `toc_entries`, `page_numbers`, or
+`references_entries` changes any figure/table caption paragraph style, direct
+run typography, keep-with-next setting, alignment, spacing, indentation, or
+holder drawing signature, the protected-surface diff must mark
+`figure_table_captions_and_holders` as an unauthorized non-target change.
+
+Body-style audits that only detect caption sibling contamination are not enough
+to close this rule. The transaction must bind the source-to-final protected
+surface JSON emitted by `scripts/audit_docx_protected_surface_diff.py` on the
+exact final DOCX SHA256, and the transaction validator must parse that JSON
+instead of trusting a pass-shaped acceptance statement.
