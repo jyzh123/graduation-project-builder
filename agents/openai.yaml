@@ -19,5 +19,7 @@ interface:
 
     修改论文时输入：
     $graduation-project-builder 多agent协同，根据格式模板和论文批注修改论文，注意不要破坏原有的论文格式。
+
+    建议配合目标模式使用，看情况可以同时叠加计划模式和目标模式。如果单用可能会导致修改出错。
 policy:
   allow_implicit_invocation: true
