@@ -2,11 +2,11 @@
 
 这是从 Codex 同步到当前项目的 `graduation-project-builder` 完整副本，供当前 WorkBuddy 项目直接复用。
 
-## 前置依赖和配套 skills
+## 前置依赖和推荐配套 skills
 
 使用本 skill 前，建议先确认当前 Codex 环境具备任务所需的前置能力。不是每个任务都需要全部前置，但涉及对应交付物时应提前安装或启用：
 
-- 图表、流程图、ER 图、UML、BPMN、网络图等：建议配套 `drawio-diagrams-enhanced`，并准备 draw.io / diagrams.net；需要批量导出或 CI 导出时配套 `drawio-export-tools`。
+- 图表、流程图、ER 图、UML、BPMN、网络图等：默认需要 draw.io / diagrams.net 和 `drawio-diagrams-enhanced`；需要批量导出、CI 导出、SVG/PNG 导出时配套 `drawio-export-tools`。论文结构图不能默认用 Mermaid、Pillow、AI 生成 PNG 或贴图替代 draw.io 源文件，除非用户明确锁定材料复用或 draw.io 确实不适合。
 - Word 论文、DOCX 模板、批注、目录、页眉页脚、引用和格式修复：建议配套 `Word / DOCX` 或 `officecli`，并准备可用于渲染检查的 Word、WPS 或 LibreOffice 环境。
 - Excel、CSV、实验数据、统计表和明细表：建议配套 `Excel / XLSX`。
 - Mermaid 架构图、流程图、时序图和 ERD：建议配套 `mermaid-diagram-specialist`。
@@ -15,7 +15,7 @@
 - 需要生成或编辑位图素材、截图替代图、纹理或视觉资产时：建议配套 `imagegen`。
 - 安装或更新 GitHub skill 时：建议配套 `skill-installer`。
 
-如果缺少上述前置，Codex 应先说明缺口，再选择可执行的替代路径；涉及正式论文、图表、DOCX 或模板验收时，不应跳过对应前置检查。
+如果缺少上述前置，Codex 应先说明缺口，再选择可执行的替代路径；涉及正式论文、结构图、DOCX 或模板验收时，不应静默跳过对应前置检查。
 
 ## 建议 Codex 使用
 

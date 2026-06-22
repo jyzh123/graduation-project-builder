@@ -13,6 +13,22 @@ when thesis work is in scope.
 focused files under `references/`, reusable templates in `assets/`, and
 executable checks in `scripts/`.
 
+## 0B. Prerequisite Capability Gate
+
+- Before substantive work, check task-specific prerequisites and route detailed
+  tooling decisions through `references/tooling-dependencies.md`.
+- For thesis structural figures such as flowcharts, ER diagrams, UML, BPMN, and
+  network diagrams, default to draw.io / diagrams.net source plus the
+  draw.io-oriented workflow; do not silently substitute Mermaid, Pillow, AI
+  generated PNGs, or pasted bitmaps unless the user explicitly locks
+  material-only reuse or draw.io is unsuitable for the task.
+- For DOCX, spreadsheet, diagram export, writing polish, image generation, or
+  GitHub skill installation work, verify the matching external tool or companion
+  skill availability before mutation. Record missing prerequisites, fallback
+  paths, and any explicit skip in the active checklist or run manifest.
+- A formal thesis, diagram, DOCX, or template-verification handoff may not claim
+  completion when prerequisite checks were silently skipped.
+
 ## 0A. Explicit Invocation Bootstrap
 
 - On explicit invocation, create the lock/checklist/audit bootstrap before project inspection, DOCX inspection, code search, browser checks, helper scripts, smoke checks, mutation, or handoff; only then inspect project files or execute work.
