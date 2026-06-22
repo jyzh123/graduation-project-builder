@@ -1,6 +1,6 @@
 interface:
-  display_name: "\u6BD5\u8BBE"
-  short_description: "Cross-stack autopilot for build, polish, verification, and thesis delivery."
-  default_prompt: "Use $graduation-project-builder to summarize requirements, build missing parts, polish the project, and verify it end to end across the current stack."
+  display_name: "毕设论文一键化"
+  short_description: "建议 Codex 使用的毕设、论文、课程设计一体化交付 skill。"
+  default_prompt: "使用 $graduation-project-builder 处理毕设、毕业论文、课程设计和系统交付任务。所有会话默认授权多 agent，所有任务必须多 agent 并行执行，并且至少保留一个审核 agent，检查内容是否符合 skill 内部样式和限制要求，以及是否符合用户提供模板的样式和限制要求。"
 policy:
   allow_implicit_invocation: true

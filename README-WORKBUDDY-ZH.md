@@ -1,6 +1,10 @@
-# 项目级毕设 Skill 使用说明
+# graduation-project-builder--毕设论文一键化
 
 这是从 Codex 同步到当前项目的 `graduation-project-builder` 完整副本，供当前 WorkBuddy 项目直接复用。
+
+## 建议 Codex 使用
+
+建议在 Codex 中优先使用本 skill 处理毕业设计、毕业论文、课程设计、开题/中期/答辩材料，以及“系统 + 论文”一体化交付任务。所有会话默认授权多 agent，所有任务必须多 agent 并行执行，并且每次任务至少保留一个审核 agent，专门检查内容是否符合 skill 内部样式和限制要求，以及是否符合用户提供模板的样式和限制要求。
 
 ## 一、建议优先阅读顺序
 
